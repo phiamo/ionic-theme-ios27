@@ -12,6 +12,7 @@ import type {
 import { createRuntime } from './runtime';
 import { createVerticalBarsWebProjection } from './vertical-bars-web';
 import { prehideVerticalBarsToolbarSources } from './prehide';
+import { observeVerticalBarsModals } from './shared/modal';
 export type {
   NativeUIShellComponent,
   NativeUIShellControls,
@@ -160,6 +161,7 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
     );
   if (active) return active;
   activeConfiguration = configuration;
+  const stopModals = observeVerticalBarsModals(document);
   const prehide =
     options.controls === undefined || options.controls.toolbar === true ? prehideVerticalBarsToolbarSources(document) : undefined;
   // A slow destroy of a superseded activation must not release a newer one.
@@ -174,7 +176,10 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
     manage(createVerticalBarsWebProjection(document, options), {
       reason,
       suspend: () => prehide?.suspend(),
-      destroy: () => prehide?.stop(),
+      destroy: () => {
+        prehide?.stop();
+        stopModals();
+      },
       release,
     });
   return (start = active =
@@ -218,6 +223,7 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
             await placementListener?.remove().catch(() => {});
             if (monitoring) await plugin.stopDeviceLayoutMonitoring().catch(() => {});
             prehide?.stop();
+            stopModals();
           },
         });
       } catch (error) {

@@ -22,6 +22,18 @@ final class ShellSnapshotTests: XCTestCase {
         try JSValueDecoder().decode(ShellSnapshot.self, from: ["revision": 1, "viewportWidth": width, "controls": controls])
     }
 
+    func testModalRailFrameIsOptionalAndRequiresPositiveBounds() throws {
+        var payload: JSObject = ["revision": 1, "viewportWidth": 466.0, "controls": [control()]]
+        let page = try JSValueDecoder().decode(ShellSnapshot.self, from: payload)
+        XCTAssertNil(page.verticalBarFrame)
+        for height in [339.0, 0.0, -1.0] {
+            payload["verticalBarFrame"] = ["x": 0.0, "y": 339.0, "width": 466.0, "height": height]
+            let modal = try JSValueDecoder().decode(ShellSnapshot.self, from: payload)
+            XCTAssertEqual(modal.isValid, height > 0)
+            XCTAssertEqual(modal.verticalBarFrame?.y, 339)
+        }
+    }
+
     @MainActor func testTabTypographyPreservesCSSWeightsAndSize() throws {
         let weights: [UIFont.Weight] = [.ultraLight, .thin, .light, .regular, .medium, .semibold, .bold, .heavy, .black]
         let tab = UITabBarItem()

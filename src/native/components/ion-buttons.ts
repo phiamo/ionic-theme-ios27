@@ -1,3 +1,4 @@
+import { modalUsesVerticalBars } from '../shared/modal';
 import { createCandidate, appendItem } from '../shared/candidate';
 import type { Candidate, Identify } from '../shared/candidate';
 import { childElements, verticalBarsToolbarActions, inFixedToolbar, isVerticalBarsToolbarGroup } from '../shared/dom';
@@ -10,7 +11,8 @@ export const read = (element: HTMLElement, id: Identify): Candidate | undefined 
   if (!inFixedToolbar(element)) return;
   let children = childElements(element);
   if (children.length === 1) return menuButton.read(element, id);
-  const verticalBars = !element.closest('ion-menu, ion-modal, ion-popover') && !!element.closest('ion-app.ios-theme-vertical-bars');
+  const verticalBars =
+    !element.closest('ion-menu, ion-popover') && modalUsesVerticalBars(element) && !!element.closest('ion-app.ios-theme-vertical-bars');
   if (verticalBars && !isVerticalBarsToolbarGroup(element)) return;
   if (verticalBars) children = verticalBarsToolbarActions(element);
   if (

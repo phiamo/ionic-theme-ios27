@@ -11,11 +11,13 @@ struct ShellSnapshot: Decodable {
     let revision: Int
     let transitionDuration: Double?
     let viewportWidth: Double
+    let verticalBarFrame: ShellFrame?
     let verticalBarEdge: String?
     let controls: [ShellControl]
 
     var isValid: Bool {
         revision >= 0 && (transitionDuration.map { $0.isFinite && $0 >= 0 && $0 <= 500 } ?? true) && viewportWidth.isFinite && viewportWidth > 0 && controls.count <= 100 &&
+        (verticalBarFrame.map { $0.isValid } ?? true) &&
         (verticalBarEdge == nil || verticalBarEdge == "left" || verticalBarEdge == "right") &&
         Set(controls.map(\.id)).count == controls.count && controls.allSatisfy(\.isValid)
     }

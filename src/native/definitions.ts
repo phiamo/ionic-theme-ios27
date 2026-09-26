@@ -144,6 +144,8 @@ export interface ShellSnapshot {
   viewportWidth: number;
   /** Physical side the native rail is drawn on; the runtime resolves the logical edge through the document direction. */
   verticalBarEdge?: 'left' | 'right';
+  /** Visible foreground modal bounds; omitted for the full page. */
+  verticalBarFrame?: Frame;
   controls: ShellControl[];
 }
 

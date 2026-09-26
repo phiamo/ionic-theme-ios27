@@ -2756,3 +2756,59 @@ test('rejected search retries when tab content changes without resizing', async 
   await expect(footer).toHaveAttribute('data-native-ui-shell', '');
   expect(await page.locator('ion-tab-bar').boundingBox()).toEqual(before);
 });
+
+for (const type of ['normal', 'card', 'sheet']) {
+  test(`verticalBars native controls follow the foreground ${type} modal`, async ({ page }) => {
+    await page.setViewportSize({ width: 700, height: 900 });
+    await mockNative(page);
+    await page.goto('/main/index/modal');
+    await page.locator('ion-app').evaluate((app) => app.classList.add('ios-theme-vertical-bars'));
+    await page.getByText(`present:${type}`, { exact: true }).click();
+    const modal = page.locator('ion-modal');
+    const close = modal.locator('ion-toolbar ion-button').first();
+    await expect(close).toHaveAttribute('data-native-ui-shell', '');
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const snapshot = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').updates.at(-1)!;
+          return snapshot.controls.flatMap((control) => control.items.map((item) => item.accessibilityLabel));
+        }),
+      )
+      .toEqual(['Close']);
+    if (type === 'sheet') {
+      await modal.evaluate((element: HTMLIonModalElement) => element.setCurrentBreakpoint(0.5));
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const frame = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').updates.at(-1)?.verticalBarFrame;
+            const modal = document.querySelector('ion-modal')!;
+            const top = modal.shadowRoot!.querySelector('[part~="content"]')!.getBoundingClientRect().top;
+            return !!frame && Math.abs(frame.y - top) < 1 && frame.height < innerHeight;
+          }),
+        )
+        .toBe(true);
+    }
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await expect(close).not.toHaveAttribute('data-native-ui-shell');
+    await expect(close).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').updates.at(-1)?.controls.length))
+      .toBe(0);
+    // A delayed tap from the old native modal surface must not dismiss it.
+    await activate(page, 'Close');
+    await expect(modal).toBeVisible();
+    await page.setViewportSize({ width: 700, height: 900 });
+    await expect(close).toHaveAttribute('data-native-ui-shell', '');
+    await modal.evaluate((element: HTMLIonModalElement) => {
+      element.canDismiss = false;
+    });
+    await activate(page, 'Close', true);
+    await expect(modal).toBeVisible();
+    await modal.evaluate((element: HTMLIonModalElement) => {
+      element.canDismiss = true;
+    });
+    await activate(page, 'Close', true);
+    await expect(modal).toHaveCount(0);
+    await expect(page.locator('app-modal ion-back-button')).toHaveAttribute('data-native-ui-shell', '');
+  });
+}

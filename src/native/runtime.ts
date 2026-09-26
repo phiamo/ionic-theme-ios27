@@ -1,3 +1,4 @@
+import { inVerticalBarsSurface, topModal, modalUsesVerticalBars, modalVerticalBarFrame } from './shared/modal';
 import type { PluginListenerHandle } from '@capacitor/core';
 import { LIFECYCLE_WILL_ENTER, LIFECYCLE_WILL_LEAVE, LIFECYCLE_DID_ENTER, LIFECYCLE_DID_LEAVE } from '@ionic/core';
 import { VERTICAL_BARS_TRANSITION_CANCELED, getNativeSearchBindings, setNativeUIShellIntegration } from '../native-integration';
@@ -205,14 +206,19 @@ export const createRuntime = async (
         Array.from(pages).some((scope) => scope.contains(element)) ||
         Array.from(moving.keys()).some((surface) => surface.contains(element))));
   const painted = () => new Promise<void>((resolve) => win.requestAnimationFrame(() => win.requestAnimationFrame(() => resolve())));
-  const overlayOpen = (includeMenu = true) => {
+  const overlayOpen = (includeMenu = true, allowModal = false) => {
+    const modal = topModal(doc);
+    const ignored = (element: Element) => allowModal && !!modal && modalUsesVerticalBars(modal) && element.matches('ion-modal');
     for (const element of presented) if (!element.isConnected) presented.delete(element);
-    const presentedOverlayOpen = Array.from(presented).some((element) => includeMenu || !element.matches('ion-menu'));
+    const presentedOverlayOpen = Array.from(presented).some(
+      (element) => !ignored(element) && (includeMenu || !element.matches('ion-menu')),
+    );
     return (
       manualSuspensions.size > 0 ||
       presentedOverlayOpen ||
       Array.from(doc.querySelectorAll(overlays)).some(
         (element) =>
+          !ignored(element) &&
           (includeMenu || !element.matches('ion-menu')) &&
           ((element as Element & { presented?: boolean }).presented || element.classList.contains('show-menu')),
       )
@@ -225,7 +231,7 @@ export const createRuntime = async (
     search.keepSearchTabsVisible();
     for (const page of pages) if (!page.isConnected) pages.delete(page);
     for (const surface of moving.keys()) if (!surface.isConnected) moving.delete(surface);
-    if (doc.hidden || overlayOpen(false)) return [];
+    if (doc.hidden || overlayOpen(false, true)) return [];
     if (win.visualViewport && (win.visualViewport.scale !== 1 || win.visualViewport.offsetTop !== 0) && !search.hasActive()) return [];
     const menuOpen = overlayOpen();
     const candidates = unprojected(sources.keys(), () =>
@@ -233,7 +239,10 @@ export const createRuntime = async (
         .decorate(
           Array.from(doc.querySelectorAll<HTMLElement>(selector))
             .filter(
-              (element) => !verticalBarsPages.isDeparted(element) && (!blocked(element) || (menuOpen && isVerticalBarsSource(element))),
+              (element) =>
+                inVerticalBarsSurface(element) &&
+                !verticalBarsPages.isDeparted(element) &&
+                (!blocked(element) || (menuOpen && isVerticalBarsSource(element))),
             )
             .map(readEnabledCandidate)
             .filter((candidate): candidate is Candidate => !!candidate),
@@ -333,7 +342,14 @@ export const createRuntime = async (
           ? 'left'
           : 'right'
         : undefined;
-      const data = { viewportWidth: win.innerWidth, verticalBarEdge, controls: candidates.map((candidate) => candidate.control) };
+      const modal = topModal(doc);
+      const verticalBarFrame = modal && modalUsesVerticalBars(modal) ? modalVerticalBarFrame(modal) : undefined;
+      const data = {
+        verticalBarFrame,
+        viewportWidth: win.innerWidth,
+        verticalBarEdge,
+        controls: candidates.map((candidate) => candidate.control),
+      };
       const serialized = JSON.stringify(data);
       if (serialized === lastSnapshot && !forceRefresh) return;
       const snapshot: ShellSnapshot = { ...data, revision: ++revision, transitionDuration: crossfade.duration(handoffInstant) };
@@ -675,7 +691,7 @@ export const createRuntime = async (
       event.revision < acceptedRevision ||
       event.revision > revision ||
       event.sequence <= lastSequence ||
-      overlayOpen(false)
+      overlayOpen(false, true)
     )
       return;
     // Native may send input before update() resolves on the JS bridge.
@@ -688,7 +704,7 @@ export const createRuntime = async (
     const element = actions.get(event.id);
     if (!element) return;
     const owner = Array.from(sources.keys()).find((source) => source === element || source.contains(element));
-    if (!owner) return;
+    if (!owner || !inVerticalBarsSurface(owner)) return;
     const direct = !blocked(owner) && unprojected(sources.keys(), () => readEnabledCandidate(owner));
     const candidate = direct || read().find((candidate) => candidate.actions.has(event.id));
     const item = candidate?.control.items.find((item) => item.id === event.id);

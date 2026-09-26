@@ -1,3 +1,4 @@
+import { modalUsesVerticalBars } from './shared/modal';
 import { LIFECYCLE_DID_ENTER, LIFECYCLE_DID_LEAVE, LIFECYCLE_WILL_ENTER, LIFECYCLE_WILL_LEAVE } from '@ionic/core';
 import { VERTICAL_BARS_TRANSITION_CANCELED } from '../native-integration';
 import {
@@ -17,7 +18,7 @@ import {
   setVerticalBarsPlacement,
 } from './shared/dom';
 
-const overlays = 'ion-menu, ion-modal, ion-popover';
+const overlays = 'ion-menu, ion-popover';
 const sourceSelector = 'ion-back-button, ion-menu-button, ion-buttons, ion-button';
 // Realm- and teardown-safe: globals such as Element/HTMLElement may be gone
 // when a queued mutation microtask or a stale listener still runs.
@@ -60,7 +61,7 @@ export const prehideVerticalBarsToolbarSources = (doc: Document): { suspend: () 
     scopes.delete(scope);
   };
   const capture = (scope: HTMLElement) => {
-    if (!root()?.contains(scope) || scope.closest(overlays) || verticalBarsPages.isDeparted(scope)) return;
+    if (!root()?.contains(scope) || scope.closest(overlays) || !modalUsesVerticalBars(scope) || verticalBarsPages.isDeparted(scope)) return;
     const owned = scopes.get(scope) ?? new Set<HTMLElement>();
     const place = (element: HTMLElement, rail: boolean) => {
       if (owned.has(element)) return;
@@ -73,7 +74,8 @@ export const prehideVerticalBarsToolbarSources = (doc: Document): { suspend: () 
     };
     const sources = scope.matches('ion-back-button') ? [scope] : Array.from(scope.querySelectorAll<HTMLElement>(sourceSelector));
     sources.forEach((element) => {
-      if (element.closest(overlays) || (scope.matches('.ion-page') && routedPage(element) !== scope)) return;
+      if (!modalUsesVerticalBars(element) || element.closest(overlays) || (scope.matches('.ion-page') && routedPage(element) !== scope))
+        return;
       if (element.matches('ion-buttons')) {
         const children = childElements(element);
         const actions = children.filter((child) => eligible(child) && isVerticalBarsToolbarActionShape(child));
@@ -134,7 +136,7 @@ export const prehideVerticalBarsToolbarSources = (doc: Document): { suspend: () 
       Array.from(scopes.keys()).forEach(release);
       return;
     }
-    for (const scope of scopes.keys()) if (!scope.isConnected) release(scope);
+    for (const scope of scopes.keys()) if (!scope.isConnected || !modalUsesVerticalBars(scope)) release(scope);
     for (const [element, pending] of pendingBacks) if (element.shadowRoot || element.classList.contains('hydrated')) capture(pending.scope);
     // Ionic inserts the destination as invisible before WillEnter. Hide its
     // sources in that same mutation microtask; capture new DOM identities on active pages too.
@@ -193,6 +195,7 @@ export const prehideVerticalBarsToolbarSources = (doc: Document): { suspend: () 
   for (const name of [LIFECYCLE_WILL_LEAVE, LIFECYCLE_DID_ENTER, LIFECYCLE_DID_LEAVE])
     doc.addEventListener(name, onPageLifecycle, { capture: true, signal: listeners.signal });
   doc.addEventListener(VERTICAL_BARS_TRANSITION_CANCELED, onTransitionCanceled, { capture: true, signal: listeners.signal });
+  doc.defaultView?.addEventListener('nativeUIShellRefresh', reconcile, { signal: listeners.signal });
   reconcile();
   const mutationRelevant = (record: MutationRecord) => {
     if (record.type === 'childList')

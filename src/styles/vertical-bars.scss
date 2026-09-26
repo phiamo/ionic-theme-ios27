@@ -31,8 +31,21 @@ ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-left {
   --ios-theme-vertical-bars-safe-area-right-resolved: var(--ios-theme-vertical-bars-safe-area-right, 0px);
 }
 
+// Centered dialogs do not inherit the page's rail reservation.
+ion-app.ios-theme-vertical-bars ion-modal:not(.ios-theme-vertical-bars-modal) {
+  --ios-theme-vertical-bars-safe-area-left-resolved: 0px;
+  --ios-theme-vertical-bars-safe-area-right-resolved: 0px;
+}
+
+ion-app.ios-theme-vertical-bars ion-modal.ios-theme-vertical-bars-modal {
+  --ios-theme-vertical-bars-modal-toolbar-top: max(
+    24px,
+    calc(var(--ios-theme-vertical-bars-toolbar-top, 220px) - var(--ios-theme-vertical-bars-modal-offset-top, 0px))
+  );
+}
+
 // Supply material defaults only to Web projections, never to ordinary controls.
-ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-toolbar-ready
+:is(ion-app.ios-theme-vertical-bars, ion-modal.ios-theme-vertical-bars-modal).ios-theme-vertical-bars-toolbar-ready
   > :is(ion-menu-button, ion-button).ios-theme-vertical-bars-toolbar-projection {
   --ios26-glass-background-rgb: var(--ion-background-color-rgb, 255, 255, 255);
   --ios26-glass-border-color-rgb: var(--ion-background-color-rgb, 255, 255, 255);
@@ -45,8 +58,7 @@ ion-app.ios-theme-vertical-bars .ios-transition-shade {
 }
 
 // Keep page backgrounds and the router full width; move only their foregrounds.
-ion-app.ios-theme-vertical-bars
-  ion-content:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(:where(ion-menu *, ion-modal *, ion-popover *)) {
+ion-app.ios-theme-vertical-bars ion-content:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(:where(ion-menu *, ion-popover *)) {
   --ion-safe-area-left: 0px;
   --ion-safe-area-right: 0px;
 
@@ -61,8 +73,7 @@ ion-app.ios-theme-vertical-bars
   }
 }
 
-ion-app.ios-theme-vertical-bars
-  ion-toolbar:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(:where(ion-menu *, ion-modal *, ion-popover *)) {
+ion-app.ios-theme-vertical-bars ion-toolbar:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(:where(ion-menu *, ion-popover *)) {
   --ion-safe-area-left: 0px;
   --ion-safe-area-right: 0px;
 
@@ -256,8 +267,11 @@ html.ios-theme-native-ui-shell-prehide
   visibility: hidden !important;
 }
 
-ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-toolbar-ready {
-  ion-toolbar:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(:where(ion-menu *, ion-modal *, ion-popover *))
+ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-toolbar-ready,
+ion-app.ios-theme-vertical-bars ion-modal.ios-theme-vertical-bars-modal.ios-theme-vertical-bars-toolbar-ready {
+  ion-toolbar:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(
+      :where(ion-menu *, ion-modal:not(.ios-theme-vertical-bars-modal) *, ion-popover *)
+    )
     ion-back-button:is(.ios, .md)[data-native-ui-shell]:not(
       .ios-theme-disabled,
       .ios26-disabled,
@@ -265,7 +279,9 @@ ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-toolbar-ready {
     ) {
     display: none;
   }
-  ion-toolbar:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(:where(ion-menu *, ion-modal *, ion-popover *))
+  ion-toolbar:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(
+      :where(ion-menu *, ion-modal:not(.ios-theme-vertical-bars-modal) *, ion-popover *)
+    )
     ion-buttons:is(.ios, .md)
     > :is(ion-button, ion-menu-button):is(.ios, .md)[data-native-ui-shell]:not(
       .ios-theme-disabled,
@@ -274,7 +290,9 @@ ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-toolbar-ready {
     ) {
     display: none;
   }
-  ion-toolbar:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(:where(ion-menu *, ion-modal *, ion-popover *))
+  ion-toolbar:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(
+      :where(ion-menu *, ion-modal:not(.ios-theme-vertical-bars-modal) *, ion-popover *)
+    )
     ion-buttons:is(.ios, .md):has(> :is(ion-back-button, ion-button, ion-menu-button)[data-native-ui-shell]):not(
       :has(> :is(ion-back-button, ion-button, ion-menu-button):not([data-native-ui-shell]))
     ) {
@@ -283,7 +301,7 @@ ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-toolbar-ready {
   > ion-back-button.ios-theme-vertical-bars-back-button-projection {
     position: fixed;
     z-index: 1001;
-    top: var(--ios-theme-vertical-bars-toolbar-top, 220px);
+    top: var(--ios-theme-vertical-bars-modal-toolbar-top, var(--ios-theme-vertical-bars-toolbar-top, 220px));
     right: max(4px, calc((var(--ios-theme-vertical-bars-safe-area-right-resolved) - 46px) / 2));
     display: block;
     width: 46px;
@@ -293,7 +311,10 @@ ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-toolbar-ready {
   > :is(.ios, .md).ios-theme-vertical-bars-toolbar-projection {
     position: fixed;
     z-index: 1001;
-    top: calc(var(--ios-theme-vertical-bars-toolbar-top, 220px) + var(--ios-theme-vertical-bars-toolbar-offset, 0px));
+    top: calc(
+      var(--ios-theme-vertical-bars-modal-toolbar-top, var(--ios-theme-vertical-bars-toolbar-top, 220px)) +
+        var(--ios-theme-vertical-bars-toolbar-offset, 0px)
+    );
     right: max(4px, calc((var(--ios-theme-vertical-bars-safe-area-right-resolved) - 46px) / 2));
     width: 46px;
     min-width: 46px;
@@ -338,7 +359,8 @@ ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-toolbar-ready {
   }
 }
 
-ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-left {
+ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-left,
+ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-left ion-modal.ios-theme-vertical-bars-modal {
   > ion-back-button.ios-theme-vertical-bars-back-button-projection,
   > :is(.ios, .md).ios-theme-vertical-bars-toolbar-projection {
     right: auto;

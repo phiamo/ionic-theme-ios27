@@ -12,6 +12,9 @@ test('verticalBars mode replaces the toolbar back button with an interactive Web
   await expect(source).toBeHidden();
   await expect(projection).toBeVisible();
   await expect(projection).toHaveCount(1);
+  await app.evaluate((element) => element.style.setProperty('--ios-theme-vertical-bars-toolbar-top', '0px'));
+  await expect(projection).toHaveCSS('top', '0px');
+  await app.evaluate((element) => element.style.removeProperty('--ios-theme-vertical-bars-toolbar-top'));
 
   await source.evaluate((element) => {
     const original = element.getBoundingClientRect.bind(element);
