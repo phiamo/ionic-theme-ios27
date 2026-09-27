@@ -55,16 +55,24 @@ import { Foldable, type FoldState } from '@erkamyaman/capacitor-foldable';
 const applyFold = (fold: FoldState) => {
   const pane = document.querySelector('ion-split-pane');
   pane?.classList.toggle('ios-theme-split-pane-half-open', fold.state === 'half-opened');
-  pane?.setAttribute('when', fold.hingeBounds ? '(min-width: 900px)' : '(min-width: 992px)');
+  const expanded = fold.state === 'half-opened' || (fold.state === 'flat' && !!fold.hingeBounds);
+  pane?.setAttribute('when', expanded ? '(min-width: 900px)' : '(min-width: 992px)');
 };
-const listener = await Foldable.addListener('foldStateChange', applyFold);
-applyFold(await Foldable.getFoldState());
+let receivedEvent = false;
+let disposed = false;
+const listener = await Foldable.addListener('foldStateChange', (fold) => {
+  receivedEvent = true;
+  if (!disposed) applyFold(fold);
+});
+const initialFold = await Foldable.getFoldState();
+if (!disposed && !receivedEvent) applyFold(initialFold);
 
 // When the consumer goes away:
+// disposed = true;
 // await listener.remove();
 ```
 
-`getFoldState()` and `foldStateChange` report `state` (`'flat'`, `'half-opened'`, or `'closed'`), `posture`, and optional hinge geometry. Without fold information, the plugin returns a flat state without `hingeBounds`; restore the ordinary split-pane breakpoint in that case. The Web implementation also returns a flat state.
+`getFoldState()` and `foldStateChange` report `state` (`'flat'`, `'half-opened'`, or `'closed'`), `posture`, and optional hinge geometry. Without fold information, the plugin returns a flat state without `hingeBounds`; restore the ordinary split-pane breakpoint in that case. The Web implementation also returns a flat state. A half-opened state uses the 900px breakpoint even without hinge geometry; a flat state with hinge geometry also uses 900px. A closed state restores the ordinary 992px breakpoint. Events received during initialization take precedence over the initial read.
 
 `getBarPlacement()` and `barPlacementChange` report `{ verticalBarEdge: 'leading' | 'trailing' | null }`. The edge is **logical**: leading is the physical left in LTR and the physical right in RTL. Pass `{ edge: verticalBarEdge, nativeEdge: verticalBarEdge }` to `setPlacement()`. No start/stop monitoring calls are needed; remove each listener when its owner is disposed.
 
@@ -158,7 +166,7 @@ ion-split-pane {
 }
 ```
 
-The registered `--ios-theme-split-pane-width` defaults to `320px`; `.ios-theme-split-pane-half-open` sets it to `50vw`. Set `halfOpened` when `foldStateChange` reports `state === 'half-opened'` (and read the initial value with `getFoldState()`). Ionic's `when` decides whether the menu is a persistent side pane; choose its breakpoint so the pane is hidden when closed — absent `hingeBounds` means no fold geometry is available, so restore the ordinary breakpoint for it. The application chooses where to apply this width rule; an ordinary split pane elsewhere is unchanged. This layout does not enable Vertical Bars or move an overlay menu.
+The registered `--ios-theme-split-pane-width` defaults to `320px`; `.ios-theme-split-pane-half-open` sets it to `50vw`. Set `halfOpened` when `foldStateChange` reports `state === 'half-opened'` (and read the initial value with `getFoldState()`). Ionic's `when` decides whether the menu is a persistent side pane; use the 900px breakpoint for a half-opened state or a flat state with hinge geometry, and the ordinary 992px breakpoint when closed or flat without geometry. Missing `hingeBounds` alone does not mean the device is flat. The application chooses where to apply this width rule; an ordinary split pane elsewhere is unchanged. This layout does not enable Vertical Bars or move an overlay menu.
 
 ## Vertical Control Area API
 
