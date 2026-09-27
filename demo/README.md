@@ -20,7 +20,7 @@ npm install
 The demo depends on [`@erkamyaman/capacitor-foldable`](https://github.com/erkamyaman/capacitor-foldable) for bar placement and fold state. `npm install` installs it; after building, run `npx cap sync ios` to register it in the iOS app. For your own app:
 
 ```bash
-npm install @erkamyaman/capacitor-foldable@8
+npm install @erkamyaman/capacitor-foldable
 npx cap sync
 ```
 

@@ -41,7 +41,7 @@ The `/vertical-bars` entry point imports `@capacitor/core` at module load, so in
 Install the device-state plugin in the application, then sync the native project:
 
 ```bash
-npm install @erkamyaman/capacitor-foldable@8
+npm install @erkamyaman/capacitor-foldable
 npx cap sync
 ```
 

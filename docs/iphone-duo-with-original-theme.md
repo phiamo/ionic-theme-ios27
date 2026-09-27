@@ -125,7 +125,7 @@ When the application owner is disposed, call `await rail.destroy()` to restore t
 Install [`@erkamyaman/capacitor-foldable`](https://github.com/erkamyaman/capacitor-foldable) for device state:
 
 ```bash
-npm install @erkamyaman/capacitor-foldable@8
+npm install @erkamyaman/capacitor-foldable
 npx cap sync ios
 ```
 
