@@ -211,7 +211,7 @@ ion-app.ios-theme-vertical-bars
     margin-inline-start: 0;
   }
   // Duo's expanded platter keeps its center and reveals labels without shrinking icons.
-  &:has(> ion-tab-button:is(.ion-activated, :active)) {
+  &:is(.ios27-animated, :has(> ion-tab-button:is(.ion-activated, :active))) {
     --ios-theme-side-tab-bar-width: 72px;
     --ios-theme-side-tab-content-width: 64px;
     --ios-theme-side-tab-bar-gap: 20px;
@@ -223,7 +223,7 @@ ion-app.ios-theme-vertical-bars
     transform: none;
     -webkit-transform: none;
   }
-  &:has(> ion-tab-button:is(.ion-activated, :active)) > ion-tab-button:not(.ion-cloned-element) {
+  &:is(.ios27-animated, :has(> ion-tab-button:is(.ion-activated, :active))) > ion-tab-button:not(.ion-cloned-element) {
     width: 64px;
     min-width: 64px;
     height: 64px;

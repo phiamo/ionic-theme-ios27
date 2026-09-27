@@ -23,6 +23,10 @@ test('Vertical Control Area works in md mode with Ionic CSS and no iOS 27 theme'
     element.text = 'Return';
     element.closest('app-native-ui-shell')?.querySelector('ion-content')?.prepend(element);
   });
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
 
   const tabBar = page.locator('#tab-bar-bottom');

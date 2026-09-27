@@ -451,7 +451,10 @@ test('standalone vertical bars keep searchable tabs usable on the Web', async ({
 test('verticalBars back navigation and toolbar slots request native rail placement', async ({ page }) => {
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');
-  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => icon.setAttribute('slot', 'icon-only'));
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   const app = page.locator('ion-app');
   const source = page.locator('app-native-ui-shell ion-back-button').first();
   const projection = page.locator('ion-app > ion-back-button.ios-theme-vertical-bars-back-button-projection');
@@ -564,7 +567,10 @@ test('native verticalBars toolbar returns with Index after a pushed page', async
 test('native verticalBars actions follow WillEnter and stay enabled during navigation', async ({ page }) => {
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');
-  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => icon.setAttribute('slot', 'icon-only'));
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('ion-app').evaluate((app) => app.classList.add('ios-theme-vertical-bars'));
   const source = page.locator('app-native-ui-shell ion-back-button');
   await expect(source).toHaveAttribute('data-native-ui-shell', '');
@@ -622,7 +628,10 @@ test('native verticalBars actions follow WillEnter and stay enabled during navig
 test('verticalBars toolbar sources are hidden before ownership and restored with their lifecycle', async ({ page }) => {
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');
-  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => icon.setAttribute('slot', 'icon-only'));
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
   const source = page.locator('app-native-ui-shell ion-button[type=submit]');
   await expect(source).toHaveAttribute('data-native-ui-shell', '');
@@ -695,7 +704,10 @@ test('verticalBars toolbar sources are hidden before ownership and restored with
 test('rejected verticalBars control returns to an operable Web source', async ({ page }) => {
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');
-  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => icon.setAttribute('slot', 'icon-only'));
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
   const save = page.locator('app-native-ui-shell ion-button[type=submit]');
   await expect(save).toHaveAttribute('data-native-ui-shell', '');
@@ -714,7 +726,10 @@ test('verticalBars rail remains native while its Ionic menu is open', async ({ p
   await page.setViewportSize({ width: 390, height: 844 });
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');
-  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => icon.setAttribute('slot', 'icon-only'));
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('app-native-ui-shell ion-menu-button').evaluate((element: HTMLIonMenuButtonElement) => (element.autoHide = false));
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
   const menu = page.locator('ion-menu');
@@ -807,7 +822,10 @@ test('verticalBars controls stay operable on Web when the reported rail edge dif
   await page.setViewportSize({ width: 390, height: 844 });
   await mockNative(page, false, 'leading');
   await page.goto('/main/index/native-ui-shell');
-  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => icon.setAttribute('slot', 'icon-only'));
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('app-native-ui-shell ion-menu-button').evaluate((element: HTMLIonMenuButtonElement) => (element.autoHide = false));
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
 
