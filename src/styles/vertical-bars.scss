@@ -142,26 +142,27 @@ ion-app.ios-theme-vertical-bars {
 ion-app.ios-theme-vertical-bars
   ion-tabs:not(:where(ion-menu *, ion-modal *, ion-popover *))
   > ion-tab-bar:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled) {
-  --ios-theme-side-tab-bar-width: 50px;
-  --ios-theme-side-tab-bar-gap: 8px;
-  --ios-theme-side-safe-area: var(--ios-theme-vertical-bars-safe-area-right-resolved);
+  // iOS 27.1 Duo: 48pt platter, 44 × 58pt items with 8pt overlap, 24pt edge gaps.
+  --ios-theme-side-tab-bar-width: 48px;
+  --ios-theme-side-tab-content-width: 44px;
+  --ios-theme-side-tab-bar-gap: 24px;
   contain: layout style;
   position: absolute;
   z-index: 2;
   display: flex;
   flex-direction: column;
-  width: 46px;
-  min-width: 46px;
-  max-width: 46px;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
   height: fit-content;
   min-height: 0;
   padding: 2px;
-  border-radius: 25px;
+  border-radius: 24px;
   left: auto;
-  right: max(4px, calc((var(--ios-theme-side-safe-area) - var(--ios-theme-side-tab-bar-width)) / 2));
+  right: calc(24px + (48px - var(--ios-theme-side-tab-bar-width)) / 2);
   margin: 0;
   top: auto;
-  bottom: calc(var(--ion-safe-area-bottom, 0px) + var(--ios-theme-side-tab-bar-gap));
+  bottom: var(--ios-theme-side-tab-bar-gap);
 
   &.ios27-enable-gesture {
     touch-action: pan-x pinch-zoom;
@@ -170,14 +171,15 @@ ion-app.ios-theme-vertical-bars
   > ion-tab-button:not(.ion-cloned-element) {
     display: block;
     flex: none;
-    width: 46px;
-    min-width: 46px;
-    height: 52px;
-    min-height: 52px;
-    border-radius: 23px;
+    width: 44px;
+    min-width: 44px;
+    height: 58px;
+    min-height: 58px;
+    border-radius: 22px;
     &::part(native) {
       justify-content: center;
-      min-height: 52px;
+      min-height: 58px;
+      padding: 0;
     }
     ion-label {
       position: absolute;
@@ -195,32 +197,54 @@ ion-app.ios-theme-vertical-bars
       font-size: 28px;
     }
   }
+  > ion-tab-button.ion-activated {
+    transform: scale(1.16);
+  }
   > ion-tab-button:not(.ion-cloned-element) ~ ion-tab-button:not(.ion-cloned-element) {
-    margin-block-start: 0;
+    margin-block-start: -8px;
     margin-inline-start: 0;
   }
+  // Duo's expanded platter keeps its center and reveals labels without shrinking icons.
+  &:has(> ion-tab-button:is(.ion-activated, :active)) {
+    --ios-theme-side-tab-bar-width: 72px;
+    --ios-theme-side-tab-content-width: 64px;
+    --ios-theme-side-tab-bar-gap: 20px;
+    width: 64px;
+    min-width: 64px;
+    max-width: 64px;
+    padding: 4px;
+    border-radius: 36px;
+    transform: none;
+    -webkit-transform: none;
+  }
   &:has(> ion-tab-button:is(.ion-activated, :active)) > ion-tab-button:not(.ion-cloned-element) {
+    width: 64px;
+    min-width: 64px;
+    height: 64px;
+    min-height: 64px;
+    border-radius: 32px;
     &::part(native) {
       flex-direction: column;
-      padding-block: 4px;
+      min-height: 64px;
+      padding-block: 11px;
     }
     ion-label {
       position: static;
       width: auto;
       height: auto;
-      max-width: 44px;
+      max-width: 64px;
       padding: 0;
       margin: 1px 0 0;
       overflow: hidden;
       clip: auto;
-      font-size: 0.5rem;
-      line-height: 1;
+      font-size: 10px;
+      line-height: 12px;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     ion-icon {
       margin: 0;
-      font-size: 22px;
+      font-size: 28px;
     }
   }
 }
@@ -228,9 +252,8 @@ ion-app.ios-theme-vertical-bars
 ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-left
   ion-tabs:not(:where(ion-menu *, ion-modal *, ion-popover *))
   > ion-tab-bar:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled) {
-  --ios-theme-side-safe-area: var(--ios-theme-vertical-bars-safe-area-left-resolved);
   right: auto;
-  left: max(4px, calc((var(--ios-theme-side-safe-area) - var(--ios-theme-side-tab-bar-width)) / 2));
+  left: calc(24px + (48px - var(--ios-theme-side-tab-bar-width)) / 2);
 }
 
 .ios-theme-native-ui-shell-prehidden {
@@ -333,10 +356,12 @@ ion-app.ios-theme-vertical-bars ion-modal.ios-theme-vertical-bars-modal.ios-them
     border-radius: 50%;
   }
   > ion-button:is(.ios, .md).ios-theme-vertical-bars-toolbar-projection {
-    --background: rgba(var(--ios-theme-glass-background-rgb, var(--ios26-glass-background-rgb)), 0.72);
+    &:not(.button-solid):not(.button-outline) {
+      --background: rgba(var(--ios-theme-glass-background-rgb, var(--ios26-glass-background-rgb)), 0.72);
+    }
     --border-radius: 50%;
     @include glass.light-shadow('--box-shadow');
-    &::part(native) {
+    &:not(.button-outline)::part(native) {
       @include api.glass-control-background($include-background: false, $shadow: var(--box-shadow));
     }
   }
@@ -370,7 +395,7 @@ ion-app.ios-theme-vertical-bars.ios-theme-vertical-bars-left ion-modal.ios-theme
 
 // The lens is attached to body, outside the rail selectors.
 ion-tab-button.ios.ion-cloned-element.ios27-vertical-tab-effect {
-  border-radius: 23px;
+  border-radius: 32px;
   &::part(native) {
     min-height: 0;
     height: 100%;

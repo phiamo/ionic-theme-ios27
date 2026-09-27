@@ -165,6 +165,7 @@ test('verticalBars back projection respects source opt-out regardless of Ionic m
 test('verticalBars toolbar projects icon actions and preserves text-only actions', async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto('/main/index/native-ui-shell');
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => icon.setAttribute('slot', 'icon-only'));
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
 
   const sourceGroup = page.locator('app-native-ui-shell ion-header ion-buttons[slot="end"]').first();

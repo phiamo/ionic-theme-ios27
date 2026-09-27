@@ -106,9 +106,9 @@ import { enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-ba
 const rail = await enableVerticalControlArea();
 ```
 
-**What you should see:** your existing tab bar moves to the side, and supported icon-based fixed-toolbar actions appear there too. Content keeps its existing theme and leaves room for the controls. The Web tab rail displays icons; pressing and dragging reveals tab labels.
+**What you should see:** your existing tab bar moves to the side, and fixed-toolbar buttons with an `ion-icon` or SVG using `slot="icon-only"` appear there too. Content keeps its existing theme and leaves room for the controls. The Web tab rail displays icons; pressing and dragging reveals tab labels.
 
-Use your existing Ionic click handlers and routing. Text-only toolbar actions remain horizontal. Add `.ios-theme-horizontal-only` to an `ion-buttons` group or individual `ion-button` to keep an action in the horizontal toolbar.
+Use your existing Ionic click handlers, routing, and form associations. All button fills (`default`, `clear`, `solid`, and `outline`) use the same `icon-only` rule, including submit buttons. Actions without that slot remain horizontal. Add `.ios-theme-horizontal-only` to an `ion-buttons` group or individual `ion-button` to keep an action in the horizontal toolbar.
 
 When the application owner is disposed, call `await rail.destroy()` to restore the original controls and release the runtime. If you already use `enableNativeUIShell()`, keep that runtime and follow the [shared placement guide](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#project-controls-into-the-rail).
 
@@ -117,8 +117,8 @@ When the application owner is disposed, call `await rail.destroy()` to restore t
 | What you see | What to check |
 | --- | --- |
 | No space at the side | Load `vertical-bars.css` and put the class on `ion-app`. |
-| Space appears, but controls stay horizontal | Start `enableVerticalControlArea()` after mounting the app root. Use existing tabs or supported icon-based actions in a fixed toolbar. |
-| One action stays horizontal | Text-only actions, custom fills, and explicitly excluded controls keep their original presentation. See [control requirements](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#project-controls-into-the-rail). |
+| Space appears, but controls stay horizontal | Start `enableVerticalControlArea()` after mounting the app root. Use existing tabs or `slot="icon-only"` actions in a fixed header/footer toolbar. |
+| One action stays horizontal | Check for `slot="icon-only"` on the icon and a fixed toolbar outside scrolling content. Explicitly excluded controls and controls in centered modals stay horizontal; `fill` and `type="submit"` do not prevent movement. See [control requirements](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#toolbar-actions). |
 
 ## Connect an iPhone Duo
 

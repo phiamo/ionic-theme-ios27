@@ -107,6 +107,9 @@ struct ShellItemContent: Decodable, Equatable {
     let fontSize: Double
     let fontWeight: Double
     let color: String
+    let backgroundColor: String?
+    let borderColor: String?
+    let borderWidth: CGFloat?
     let badge: ShellBadge?
     var icon: String?
     var iconWidth: Double?

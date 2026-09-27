@@ -21,7 +21,7 @@ export const read = (element: HTMLElement, id: Identify): Candidate | undefined 
       (child) =>
         !child.matches(`${menuButton.tag}${verticalBars ? '' : '.ios'}`) &&
         (!child.matches(`ion-button${verticalBars ? '' : '.ios.button-clear'}`) ||
-          !(verticalBars ? ['default', 'clear'] : ['clear']).includes((child as HTMLIonButtonElement).fill ?? 'default')),
+          (!verticalBars && (child as HTMLIonButtonElement).fill !== 'clear')),
     )
   )
     return;

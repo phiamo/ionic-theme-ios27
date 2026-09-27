@@ -127,7 +127,7 @@ export const createRuntime = async (
     lastSnapshot = '';
     search.release(element);
     element.removeAttribute(marker);
-    if (!stopped) crossfade.play(element, false, handoffInstant || isVerticalBarsSource(element));
+    if (!stopped) crossfade.play(element, false, isVerticalBarsSource(element) ? !element.matches('ion-tab-bar') : handoffInstant);
     if (element.getAttribute('aria-hidden') === 'true') {
       const previous = sources.get(element);
       if (previous == null) element.removeAttribute('aria-hidden');

@@ -346,6 +346,7 @@ export const registerEffect = (
       moveAnimation.destroy();
       moveAnimation = undefined;
       const tabs = Array.from(targetElement.querySelectorAll<HTMLElement>(effectTagName)).filter((tab) => tab.offsetWidth > 0);
+      if (vertical) currentTouchedElement.classList.remove('ion-activated');
       const releasing = createTabBarReleaseAnimation(
         effectElement,
         currentTouchedElement,

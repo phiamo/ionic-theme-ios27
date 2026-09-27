@@ -123,7 +123,11 @@ for (const direction of ['ltr', 'rtl'] as const) {
               end: (edge === (direction === 'ltr' ? 'right' : 'left') ? 97 : 17) + 'px',
             });
         }
-        const close = modal.locator(':scope > .ios-theme-vertical-bars-toolbar-projection');
+        const close = modal.locator(':scope > .ios-theme-vertical-bars-toolbar-projection[aria-label=Close]');
+        const done = modal.locator(':scope > .ios-theme-vertical-bars-toolbar-projection[aria-label=Done]');
+        await expect(done).toBeVisible();
+        await expect(done).toHaveAttribute('fill', 'solid');
+        await expect(done).toHaveAttribute('color', 'primary');
         await expect(close).toBeVisible();
         await expect(page.locator('ion-app > .ios-theme-vertical-bars-back-button-projection')).toHaveCount(0);
         const bounds = await close.boundingBox();
@@ -131,6 +135,8 @@ for (const direction of ['ltr', 'rtl'] as const) {
         // A centered dialog on the open display keeps its own toolbar and width.
         await page.setViewportSize({ width: 1100, height: 900 });
         await expect(close).toHaveCount(0);
+        await expect(done).toHaveCount(0);
+        await expect(modal.locator('ion-toolbar').getByRole('button', { name: 'Done', exact: true })).toBeVisible();
         await expect(modal.locator('ion-toolbar').getByRole('button', { name: 'Close', exact: true })).toBeVisible();
         await expect
           .poll(() =>
@@ -153,7 +159,7 @@ for (const direction of ['ltr', 'rtl'] as const) {
         await modal.evaluate((element: HTMLIonModalElement) => {
           element.canDismiss = true;
         });
-        await close.click();
+        await done.click();
         await expect(modal).toHaveCount(0);
         await expect(page.locator('ion-app > .ios-theme-vertical-bars-back-button-projection')).toBeVisible();
       });
@@ -167,7 +173,7 @@ test('stacked modals keep rail controls inside the active dialog and restore the
   await page.locator('ion-app').evaluate((app) => app.classList.add('ios-theme-vertical-bars'));
   await page.getByText('present:normal', { exact: true }).click();
   const modals = page.locator('ion-modal');
-  const projection = '.ios-theme-vertical-bars-toolbar-projection';
+  const projection = '.ios-theme-vertical-bars-toolbar-projection[aria-label=Close]';
   await expect(modals.first().locator(projection)).toBeVisible();
   await modals.first().getByText('present:normal', { exact: true }).click();
   await expect(modals).toHaveCount(2);

@@ -144,11 +144,7 @@ export const isShellDisabled = (element: Element): boolean =>
 
 export const isVerticalBarsToolbarActionShape = (element: HTMLElement): boolean =>
   element.matches('ion-menu-button') ||
-  (element.matches('ion-button') &&
-    !!element.querySelector('ion-icon, svg') &&
-    !childNodesOf(element).some((node) => node.nodeType === 3 && !!node.textContent?.trim()) &&
-    !element.matches('.ion-color, [color]') &&
-    ['default', 'clear'].includes((element as HTMLIonButtonElement).fill ?? element.getAttribute('fill') ?? 'default'));
+  (element.matches('ion-button') && !!element.querySelector('ion-icon[slot="icon-only"], svg[slot="icon-only"]'));
 
 // Placement belongs to the DOM identity for one routed-page epoch. Changes to
 // content/disabled state affect rendering, never its chosen surface.

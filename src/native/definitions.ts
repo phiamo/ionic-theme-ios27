@@ -86,6 +86,9 @@ export interface ShellItem extends Frame {
   fontSize: number;
   fontWeight: number;
   color: string;
+  backgroundColor?: string;
+  borderColor?: string;
+  borderWidth?: number;
   badge?: ShellBadge;
   icon?: string;
   iconWidth?: number;

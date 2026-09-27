@@ -49,6 +49,24 @@ final class ShellSnapshotTests: XCTestCase {
         }
     }
 
+    @MainActor func testVerticalBarsPreserveButtonAppearance() throws {
+        guard #available(iOS 26.0, *) else { throw XCTSkip("Requires SwiftUI adaptive controls") }
+        let controls = try decode([control(["kind": "ion-buttons", "items": [
+            item(["backgroundColor": "rgb(0, 122, 255)"]),
+            item(["id": "outline", "borderColor": "rgb(255, 0, 0)", "borderWidth": 2.0])
+        ]])]).controls
+        XCTAssertEqual(controls.first?.items.first?.content.backgroundColor, "rgb(0, 122, 255)")
+        let model = ShellVerticalBarsModel()
+        model.apply(controls, rendering: ShellRendering())
+        XCTAssertNotNil(model.groups.first?.items.first?.background)
+        XCTAssertNotNil(model.groups.first?.items.last?.borderColor)
+        XCTAssertEqual(model.groups.first?.items.last?.borderWidth, 2)
+        model.apply(try decode([control(["kind": "ion-button"])]).controls, rendering: ShellRendering())
+        XCTAssertNil(model.groups.first?.items.first?.background)
+        XCTAssertNil(model.groups.first?.items.first?.borderColor)
+        XCTAssertEqual(model.groups.first?.items.first?.borderWidth, 0)
+    }
+
     @MainActor func testVerticalBarsTabOptimismWaitsForWebAndRollsBackWhenStale() throws {
         guard #available(iOS 26.0, *) else { throw XCTSkip("Requires SwiftUI adaptive tabs") }
         func tabs(_ selected: String, includeRight: Bool = true) throws -> [ShellControl] {
