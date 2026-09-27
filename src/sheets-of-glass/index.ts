@@ -124,6 +124,14 @@ export const registerEffect = (
     document.addEventListener('pointercancel', onPointerCancel);
   };
   targetElement.addEventListener('pointerdown', onPointerDown);
+  const onClick = (event: MouseEvent) => {
+    // A drag commits its destination itself; the browser may click the old pressed tab.
+    if (vertical && tabDragging && event.isTrusted && event.detail > 0) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  };
+  targetElement.addEventListener('click', onClick, true);
 
   const axisDetail = (detail: GestureDetail): GestureDetail =>
     vertical
@@ -193,6 +201,7 @@ export const registerEffect = (
         String(1 + 14.14 / (vertical ? targetElement.offsetHeight : targetElement.offsetWidth)),
       );
     }
+    if (vertical) targetElement.classList.add(ANIMATED_NAME);
     animationPosition = {
       minPositionX: animationRect(targetElement, vertical).left,
       maxPositionX:
@@ -284,7 +293,20 @@ export const registerEffect = (
       vertical ? previousY : currentX,
       vertical ? currentX : previousY,
     );
-    const latestTouchedElement = (nextEl?.closest(effectTagName) as HTMLElement) || undefined;
+    let latestTouchedElement: HTMLElement | undefined = (nextEl?.closest(effectTagName) as HTMLElement) || undefined;
+    if (vertical && effectTagName === 'ion-tab-button') {
+      // Overlapping, scaled tabs must not steal a drag from their neighbor.
+      const bar = targetElement.getBoundingClientRect();
+      const tabs = Array.from(targetElement.querySelectorAll<HTMLElement>(effectTagName)).filter((tab) => tab.offsetWidth > 0);
+      const distance = (tab: HTMLElement) => Math.abs(currentX - (bar.top + tab.offsetTop + tab.offsetHeight / 2));
+      latestTouchedElement =
+        currentX >= bar.top && currentX <= bar.bottom
+          ? tabs.reduce<HTMLElement | undefined>(
+              (closest, tab) => (!closest || distance(tab) < distance(closest) ? tab : closest),
+              undefined,
+            )
+          : undefined;
+    }
 
     if (
       latestTouchedElement &&
@@ -346,6 +368,10 @@ export const registerEffect = (
       moveAnimation.destroy();
       moveAnimation = undefined;
       const tabs = Array.from(targetElement.querySelectorAll<HTMLElement>(effectTagName)).filter((tab) => tab.offsetWidth > 0);
+      if (vertical) {
+        currentTouchedElement.classList.remove('ion-activated');
+        targetElement.classList.remove(ANIMATED_NAME);
+      }
       const releasing = createTabBarReleaseAnimation(
         effectElement,
         currentTouchedElement,
@@ -386,6 +412,7 @@ export const registerEffect = (
       cancelActiveGesture();
       // Remove event listeners
       targetElement.removeEventListener('pointerdown', onPointerDown);
+      targetElement.removeEventListener('click', onClick, true);
       targetElement.removeEventListener('nativeUIShellChange', nativeChanged);
 
       // Destroy gesture

@@ -1,4 +1,5 @@
 import { fadeMarker } from './crossfade';
+import { modalUsesVerticalBars } from './modal';
 
 import type { Frame } from '../definitions';
 
@@ -98,7 +99,8 @@ const verticalBarsTags = new Set(['ion-button', 'ion-back-button', 'ion-buttons'
 export const isVerticalBarsSource = (element: HTMLElement): boolean =>
   verticalBarsTags.has(element.localName) &&
   (element.matches('ion-tab-bar') || verticalBarsOwned(element)) &&
-  !element.closest('ion-menu, ion-modal, ion-popover') &&
+  !element.closest('ion-menu, ion-popover') &&
+  modalUsesVerticalBars(element) &&
   !!element.closest('ion-app.ios-theme-vertical-bars');
 
 export const isVerticalBarsBackPosition = (element: HTMLElement): boolean => {
@@ -109,7 +111,8 @@ export const isVerticalBarsBackPosition = (element: HTMLElement): boolean => {
     (back) =>
       back.closest('.ion-page') === page &&
       !back.matches('.ion-cloned-element') &&
-      !back.closest('ion-header[collapse], ion-footer[collapse], ion-menu, ion-modal, ion-popover'),
+      !back.closest('ion-header[collapse], ion-footer[collapse], ion-menu, ion-popover') &&
+      modalUsesVerticalBars(back),
   );
   const rank = (back: HTMLElement) =>
     inFixedToolbar(back) ? 0 : back.closest('ion-header ion-toolbar, ion-footer ion-toolbar') ? 1 : back.closest('ion-toolbar') ? 3 : 2;
@@ -141,11 +144,7 @@ export const isShellDisabled = (element: Element): boolean =>
 
 export const isVerticalBarsToolbarActionShape = (element: HTMLElement): boolean =>
   element.matches('ion-menu-button') ||
-  (element.matches('ion-button') &&
-    !!element.querySelector('ion-icon, svg') &&
-    !childNodesOf(element).some((node) => node.nodeType === 3 && !!node.textContent?.trim()) &&
-    !element.matches('.ion-color, [color]') &&
-    ['default', 'clear'].includes((element as HTMLIonButtonElement).fill ?? element.getAttribute('fill') ?? 'default'));
+  (element.matches('ion-button') && !!element.querySelector('ion-icon[slot="icon-only"], svg[slot="icon-only"]'));
 
 // Placement belongs to the DOM identity for one routed-page epoch. Changes to
 // content/disabled state affect rendering, never its chosen surface.
@@ -161,7 +160,7 @@ export const verticalBarsOwned = (element: HTMLElement): boolean => verticalBars
 export const isVerticalBarsToolbarAction = (element: HTMLElement): boolean =>
   verticalBarsOwned(element) && !isExcluded(element, verticalBarsEnteringPage(element)) && !isShellDisabled(element);
 
-const overlays = 'ion-menu, ion-modal, ion-popover';
+const overlays = 'ion-menu, ion-popover';
 
 /** Shared eligibility for a toolbar action candidate, before placement is decided (prehide) or consumed (projection). */
 export const verticalBarsActionCandidate = (element: HTMLElement): boolean =>
@@ -169,7 +168,8 @@ export const verticalBarsActionCandidate = (element: HTMLElement): boolean =>
   !element.closest('ion-buttons.ios-theme-horizontal-only, ion-button.ios-theme-horizontal-only') &&
   !isPermanentlyExcluded(element) &&
   !isShellDisabled(element) &&
-  !element.closest(overlays);
+  !element.closest(overlays) &&
+  modalUsesVerticalBars(element);
 
 /** Shared eligibility for a back-button candidate; the back button may sit outside a fixed toolbar. */
 export const verticalBarsBackCandidate = (element: HTMLElement): boolean =>
@@ -177,7 +177,8 @@ export const verticalBarsBackCandidate = (element: HTMLElement): boolean =>
   !element.closest('ion-buttons.ios-theme-horizontal-only') &&
   !isPermanentlyExcluded(element) &&
   !isShellDisabled(element) &&
-  !element.closest(overlays);
+  !element.closest(overlays) &&
+  modalUsesVerticalBars(element);
 
 export const verticalBarsToolbarActions = (element: HTMLElement): HTMLElement[] =>
   // Back buttons use the dedicated rail slot; they are never toolbar actions.

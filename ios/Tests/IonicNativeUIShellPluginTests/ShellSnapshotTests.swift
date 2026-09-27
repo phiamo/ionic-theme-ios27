@@ -22,6 +22,18 @@ final class ShellSnapshotTests: XCTestCase {
         try JSValueDecoder().decode(ShellSnapshot.self, from: ["revision": 1, "viewportWidth": width, "controls": controls])
     }
 
+    func testModalRailFrameIsOptionalAndRequiresPositiveBounds() throws {
+        var payload: JSObject = ["revision": 1, "viewportWidth": 466.0, "controls": [control()]]
+        let page = try JSValueDecoder().decode(ShellSnapshot.self, from: payload)
+        XCTAssertNil(page.verticalBarFrame)
+        for height in [339.0, 0.0, -1.0] {
+            payload["verticalBarFrame"] = ["x": 0.0, "y": 339.0, "width": 466.0, "height": height]
+            let modal = try JSValueDecoder().decode(ShellSnapshot.self, from: payload)
+            XCTAssertEqual(modal.isValid, height > 0)
+            XCTAssertEqual(modal.verticalBarFrame?.y, 339)
+        }
+    }
+
     @MainActor func testTabTypographyPreservesCSSWeightsAndSize() throws {
         let weights: [UIFont.Weight] = [.ultraLight, .thin, .light, .regular, .medium, .semibold, .bold, .heavy, .black]
         let tab = UITabBarItem()
@@ -35,6 +47,24 @@ final class ShellSnapshotTests: XCTestCase {
                 XCTAssertEqual(font, UIFont.systemFont(ofSize: 19, weight: weight), "CSS weight \(cssWeight)")
             }
         }
+    }
+
+    @MainActor func testVerticalBarsPreserveButtonAppearance() throws {
+        guard #available(iOS 26.0, *) else { throw XCTSkip("Requires SwiftUI adaptive controls") }
+        let controls = try decode([control(["kind": "ion-buttons", "items": [
+            item(["backgroundColor": "rgb(0, 122, 255)"]),
+            item(["id": "outline", "borderColor": "rgb(255, 0, 0)", "borderWidth": 2.0])
+        ]])]).controls
+        XCTAssertEqual(controls.first?.items.first?.content.backgroundColor, "rgb(0, 122, 255)")
+        let model = ShellVerticalBarsModel()
+        model.apply(controls, rendering: ShellRendering())
+        XCTAssertNotNil(model.groups.first?.items.first?.background)
+        XCTAssertNotNil(model.groups.first?.items.last?.borderColor)
+        XCTAssertEqual(model.groups.first?.items.last?.borderWidth, 2)
+        model.apply(try decode([control(["kind": "ion-button"])]).controls, rendering: ShellRendering())
+        XCTAssertNil(model.groups.first?.items.first?.background)
+        XCTAssertNil(model.groups.first?.items.first?.borderColor)
+        XCTAssertEqual(model.groups.first?.items.first?.borderWidth, 0)
     }
 
     @MainActor func testVerticalBarsTabOptimismWaitsForWebAndRollsBackWhenStale() throws {

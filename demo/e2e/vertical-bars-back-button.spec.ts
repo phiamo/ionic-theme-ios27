@@ -12,6 +12,9 @@ test('verticalBars mode replaces the toolbar back button with an interactive Web
   await expect(source).toBeHidden();
   await expect(projection).toBeVisible();
   await expect(projection).toHaveCount(1);
+  await app.evaluate((element) => element.style.setProperty('--ios-theme-vertical-bars-toolbar-top', '0px'));
+  await expect(projection).toHaveCSS('top', '0px');
+  await app.evaluate((element) => element.style.removeProperty('--ios-theme-vertical-bars-toolbar-top'));
 
   await source.evaluate((element) => {
     const original = element.getBoundingClientRect.bind(element);
@@ -162,6 +165,10 @@ test('verticalBars back projection respects source opt-out regardless of Ionic m
 test('verticalBars toolbar projects icon actions and preserves text-only actions', async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto('/main/index/native-ui-shell');
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
 
   const sourceGroup = page.locator('app-native-ui-shell ion-header ion-buttons[slot="end"]').first();

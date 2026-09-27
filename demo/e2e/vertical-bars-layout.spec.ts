@@ -79,3 +79,121 @@ for (const direction of ['ltr', 'rtl'] as const) {
     expect(result.modalSafeAreaRight).toBe('12px');
   });
 }
+
+for (const { type, edge, direction } of [
+  { type: 'normal', edge: 'right', direction: 'ltr' },
+  { type: 'card', edge: 'left', direction: 'ltr' },
+  { type: 'sheet', edge: 'right', direction: 'rtl' },
+]) {
+  test(`${type} modal respects ${edge} vertical bars in ${direction}`, async ({ page }) => {
+    await page.setViewportSize({ width: 700, height: 900 });
+    await page.goto('/main/index/modal', { waitUntil: 'networkidle' });
+    await page.locator('ion-app').evaluate(
+      (app, { direction, edge }) => {
+        app.dir = direction;
+        app.classList.add('ios-theme-vertical-bars', `ios-theme-vertical-bars-${edge}`);
+        app.style.setProperty(`--ion-safe-area-${edge}`, '80px');
+      },
+      { direction, edge },
+    );
+    await page.getByText(`present:${type}`, { exact: true }).click();
+    const modal = page.locator('ion-modal');
+    await expect(modal).toBeVisible();
+    // Ionic 9 updates inline safe areas on resize; keep the author's override explicit.
+    await page.addStyleTag({
+      content: 'ion-modal { --ion-safe-area-left: 12px !important; --ion-safe-area-right: 18px !important; }',
+    });
+    for (const tag of ['ion-toolbar', 'ion-content']) {
+      const component = modal.locator(tag).first();
+      await component.evaluate((element) => {
+        element.style.setProperty('--padding-start', '11px');
+        element.style.setProperty('--padding-end', '17px');
+      });
+      await expect
+        .poll(() =>
+          component.evaluate((element) => {
+            const host = getComputedStyle(element);
+            const part = getComputedStyle(element.shadowRoot!.querySelector('[part~="scroll"], [part~="container"]')!);
+            return {
+              left: host.getPropertyValue('--ion-safe-area-left').trim(),
+              right: host.getPropertyValue('--ion-safe-area-right').trim(),
+              start: part.paddingInlineStart,
+              end: part.paddingInlineEnd,
+            };
+          }),
+        )
+        .toEqual({
+          left: '0px',
+          right: '0px',
+          start: (edge === (direction === 'ltr' ? 'left' : 'right') ? 91 : 11) + 'px',
+          end: (edge === (direction === 'ltr' ? 'right' : 'left') ? 97 : 17) + 'px',
+        });
+    }
+    const close = modal.locator(':scope > .ios-theme-vertical-bars-toolbar-projection[aria-label=Close]');
+    const done = modal.locator(':scope > .ios-theme-vertical-bars-toolbar-projection[aria-label=Done]');
+    await expect(done).toBeVisible();
+    await expect(done).toHaveAttribute('fill', 'solid');
+    await expect(done).toHaveAttribute('color', 'primary');
+    await expect(close).toBeVisible();
+    await expect(page.locator('ion-app > .ios-theme-vertical-bars-back-button-projection')).toHaveCount(0);
+    const bounds = await close.boundingBox();
+    expect(edge === 'left' ? bounds!.x < 80 : bounds!.x > 620).toBe(true);
+    // A centered dialog on the open display keeps its own toolbar and width.
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await expect(close).toHaveCount(0);
+    await expect(done).toHaveCount(0);
+    await expect(modal.locator('ion-toolbar').getByRole('button', { name: 'Done', exact: true })).toBeVisible();
+    await expect(modal.locator('ion-toolbar').getByRole('button', { name: 'Close', exact: true })).toBeVisible();
+    for (const tag of ['ion-toolbar', 'ion-content']) {
+      await expect(modal.locator(tag).first()).toHaveCSS('--ion-safe-area-left', '12px');
+      await expect(modal.locator(tag).first()).toHaveCSS('--ion-safe-area-right', '18px');
+    }
+    await expect
+      .poll(() =>
+        modal
+          .locator('ion-content')
+          .evaluate((element) => getComputedStyle(element.shadowRoot!.querySelector('[part~="scroll"]')!).paddingInlineEnd),
+      )
+      .toBe('17px');
+    await page.setViewportSize({ width: 700, height: 900 });
+    await expect(close).toBeVisible();
+    await modal.evaluate((element: HTMLIonModalElement) => {
+      element.canDismiss = async () => {
+        element.setAttribute('data-dismiss-attempted', '');
+        return false;
+      };
+    });
+    await close.click();
+    await expect(modal).toHaveAttribute('data-dismiss-attempted', '');
+    await expect(modal).toBeVisible();
+    await modal.evaluate((element: HTMLIonModalElement) => {
+      element.canDismiss = true;
+    });
+    await done.click();
+    await expect(modal).toHaveCount(0);
+    await expect(page.locator('ion-app > .ios-theme-vertical-bars-back-button-projection')).toBeVisible();
+  });
+}
+
+test('stacked modals keep rail controls inside the active dialog and restore the previous surface', async ({ page }) => {
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.goto('/main/index/modal');
+  await page.locator('ion-app').evaluate((app) => app.classList.add('ios-theme-vertical-bars'));
+  await page.getByText('present:normal', { exact: true }).click();
+  const modals = page.locator('ion-modal');
+  const projection = '.ios-theme-vertical-bars-toolbar-projection[aria-label=Close]';
+  await expect(modals.first().locator(projection)).toBeVisible();
+  await modals.first().getByText('present:normal', { exact: true }).click();
+  await expect(modals).toHaveCount(2);
+  await expect(modals.first().locator(projection)).toHaveCount(0);
+  await expect(modals.last().locator(projection)).toBeVisible();
+  await modals.last().getByRole('button', { name: 'Close', exact: true }).focus();
+  await expect(modals.last().getByRole('button', { name: 'Close', exact: true })).toBeFocused();
+  await modals.last().getByRole('button', { name: 'Close', exact: true }).press('Enter');
+  await expect(modals).toHaveCount(1);
+  await expect(modals.first().locator(projection)).toBeVisible();
+  await modals.first().evaluate((modal) => modal.classList.add('ios-theme-shell-disabled'));
+  await expect(modals.first().locator(projection)).toHaveCount(0);
+  await modals.first().getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(modals).toHaveCount(0);
+});

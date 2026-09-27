@@ -80,15 +80,16 @@ export const createTabBarPressAnimation = (
   const start = (fromBox.left + fromBox.width / 2 - box.left) / parentScale;
   const end = (toBox.left + toBox.width / 2 - box.left) / parentScale;
   const selected = from === to;
+  const growth = vertical ? 20 / 16 : 1;
   const frames = tabBarPressFrames.map(([time, position, extraWidth, extraHeight, expansion]) => {
-    const scale = 1 + (14.14 / mainSize(bar, vertical)) * expansion;
+    const scale = vertical ? 1 : 1 + (14.14 / mainSize(bar, vertical)) * expansion;
     // A selected item expands in place, without the transfer's sideways deformation.
     const press = 1 - Math.exp(-18 * time) * (1 + 18 * time);
     return {
       offset: time / 0.9,
       x: center + (left + start + (end - start) * position - center) * scale - width / 2,
-      sx: ((width + (selected ? 16 * press : extraWidth)) * scale) / width,
-      sy: ((height + (selected ? 16 * press : extraHeight)) * scale) / height,
+      sx: ((width + (selected ? 16 * press : extraWidth) * growth) * scale) / width,
+      sy: ((height + (selected ? 16 * press : extraHeight) * growth) * scale) / height,
     };
   });
   const move = createAnimation()
@@ -111,9 +112,9 @@ export const createTabBarDragAnimation = (effect: HTMLElement, bar: HTMLElement,
   const native = effect.shadowRoot!.querySelector<HTMLElement>('[part="native"]')!;
   const current = axisScale(native.style.transform || getComputedStyle(native).transform, vertical);
   const { width, height } = animationRect(effect, vertical);
-  const scale = 1 + 14.14 / mainSize(bar, vertical);
-  const restX = ((width + 16) * scale) / width;
-  const restY = ((height + 16) * scale) / height;
+  const scale = vertical ? 1 : 1 + 14.14 / mainSize(bar, vertical);
+  const restX = ((width + (vertical ? 20 : 16)) * scale) / width;
+  const restY = ((height + (vertical ? 20 : 16)) * scale) / height;
   // Approximate the 100/600pt/s UIKit samples; keep deformation bounded for fast swipes.
   const stretch = Math.min(16, 32 * velocity * velocity) * scale;
   const rebound = Math.max(stretch, (current.a - restX) * width) * 0.8;
@@ -157,16 +158,19 @@ export const createTabBarReleaseAnimation = (
   const center = box.left + box.width / 2;
   const x = center + (targetBox.left + targetBox.width / 2 - center) / (box.width / mainSize(bar, vertical)) - current.width / 2;
   const y = box.top + box.height / 2 - current.height / 2;
+  // The vertical platter contracts from 64pt items to 44 × 58pt on release.
+  const endScaleX = vertical ? target.offsetHeight / current.width : 1;
+  const endScaleY = vertical ? target.offsetWidth / current.height : 1;
   const elapsed = (tapElapsed ?? 0) / 1000;
   const duration = tapElapsed === undefined ? 450 : 800 - tapElapsed;
   let frames = samples.map(([time, remaining]) => ({
     offset: time / 0.45,
     x: x + (current.x - x) * remaining,
     y: y + (current.y - y) * remaining,
-    sx: 1 + (scale.a - 1) * remaining,
-    sy: 1 + (scale.d - 1) * remaining,
+    sx: endScaleX + (scale.a - endScaleX) * remaining,
+    sy: endScaleY + (scale.d - endScaleY) * remaining,
   }));
-  if (tapElapsed !== undefined) {
+  if (tapElapsed !== undefined && !vertical) {
     const nextIndex = tabBarTapFrames.findIndex(([time]) => time > elapsed);
     const previous = tabBarTapFrames[Math.max(0, nextIndex - 1)];
     const next = tabBarTapFrames[nextIndex];
@@ -221,7 +225,7 @@ export const createTabBarReleaseAnimation = (
       { offset: 1, backgroundColor: selectedBackground },
     ]);
   const release = createAnimation().duration(duration).addAnimation([stretch, move, glass, selected]);
-  if (tapElapsed !== undefined) {
+  if (tapElapsed !== undefined && !vertical) {
     // A short UIKit tap keeps expanding after lift-off, then settles independently of the lens.
     // Width deltas from the 50ms tap; preserve the rendered size for an uninterrupted handoff.
     const width = mainSize(bar, vertical);

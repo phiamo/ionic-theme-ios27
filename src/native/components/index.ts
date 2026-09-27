@@ -31,7 +31,12 @@ export const isVerticalBarsCandidate = isVerticalBarsSource;
 
 export const readCandidate = (element: HTMLElement, id: Identify): Candidate | undefined => {
   const verticalBars = isVerticalBarsCandidate(element);
-  if ((!element.classList.contains('ios') && !verticalBars) || !visible(element, verticalBars) || element.closest('ion-modal, ion-popover'))
+  if (
+    (!element.classList.contains('ios') && !verticalBars) ||
+    !visible(element, verticalBars) ||
+    element.closest('ion-popover') ||
+    (element.closest('ion-modal') && !verticalBars)
+  )
     return;
   const style = getComputedStyle(element);
   if (

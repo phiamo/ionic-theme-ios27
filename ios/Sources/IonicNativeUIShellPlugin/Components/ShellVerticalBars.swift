@@ -5,7 +5,7 @@ import UIKit
 protocol ShellVerticalBarsControlling: AnyObject {
     var view: UIView { get }
     func attach(to owner: UIViewController, in parent: UIView)
-    func apply(_ controls: [ShellControl], rendering: ShellRendering, edge: String)
+    @MainActor func apply(_ controls: [ShellControl], rendering: ShellRendering, edge: String)
     func detach()
 }
 
@@ -16,6 +16,9 @@ final class ShellVerticalBarsModel: ObservableObject {
         let label: String
         let accessibilityLabel: String
         let image: UIImage?
+        let background: Color?
+        let borderColor: Color?
+        let borderWidth: CGFloat
         let badge: ShellBadge?
         let disabled: Bool
         var selected: Bool
@@ -41,7 +44,11 @@ final class ShellVerticalBarsModel: ObservableObject {
         func item(_ source: ShellItem) -> Item {
             Item(id: source.id, label: source.content.label,
                  accessibilityLabel: source.content.accessibilityLabel,
-                 image: rendering.image(source.content), badge: source.content.badge, disabled: source.content.disabled,
+                 image: rendering.image(source.content),
+                 background: source.content.backgroundColor.map { Color(uiColor: rendering.color($0)) },
+                 borderColor: source.content.borderColor.map { Color(uiColor: rendering.color($0)) },
+                 borderWidth: source.content.borderWidth ?? 0,
+                 badge: source.content.badge, disabled: source.content.disabled,
                  selected: source.content.selected)
         }
         withAnimation(.smooth(duration: 0.3)) {
@@ -99,11 +106,21 @@ private struct ShellVerticalBarsLabel: View {
 }
 
 @available(iOS 26.0, *)
+@ViewBuilder
 private func verticalBarsButton(_ item: ShellVerticalBarsModel.Item, model: ShellVerticalBarsModel) -> some View {
-    Button { model.activate(item.id) } label: { ShellVerticalBarsLabel(item: item) }
+    let button = Button { model.activate(item.id) } label: { ShellVerticalBarsLabel(item: item) }
         .disabled(item.disabled)
         .accessibilityLabel(item.accessibilityLabel)
         .accessibilityIdentifier(item.id)
+    if let background = item.background {
+        button.buttonStyle(.glassProminent).tint(background)
+    } else {
+        button.overlay {
+            if let borderColor = item.borderColor {
+                Capsule().strokeBorder(borderColor, lineWidth: item.borderWidth).allowsHitTesting(false)
+            }
+        }
+    }
 }
 
 @available(iOS 26.0, *)
@@ -340,10 +357,12 @@ final class ShellVerticalBarsController: ShellVerticalBarsControlling {
         controller.didMove(toParent: owner)
     }
 
-    func apply(_ controls: [ShellControl], rendering: ShellRendering, edge: String) {
+    @MainActor func apply(_ controls: [ShellControl], rendering: ShellRendering, edge: String) {
         container.railEdge = edge
         controller.railEdge = edge
+        let tabsAppear = model.tabs.isEmpty && controls.contains { $0.kind == .tabBar && !$0.items.isEmpty }
         model.apply(controls, rendering: rendering)
+        if tabsAppear { ShellCrossfade.enter(container, duration: ShellCrossfade.duration(180)) }
         controller.overrideUserInterfaceStyle = controls.contains(where: \.dark) ? .dark : .light
     }
 

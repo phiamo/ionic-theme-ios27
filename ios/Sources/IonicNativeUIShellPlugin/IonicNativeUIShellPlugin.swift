@@ -218,6 +218,11 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                 let rail = self.verticalBars ?? ShellVerticalBarsController(activate: { [weak self] id in self?.activate(id) })
                 self.verticalBars = rail
                 rail.attach(to: owner, in: owner.view)
+                if let frame = snapshot.verticalBarFrame {
+                    rail.view.frame = webView.convert(frame.rect.applying(CGAffineTransform(scaleX: scale, y: scale)), to: owner.view)
+                } else {
+                    rail.view.frame = owner.view.bounds
+                }
                 rail.apply(verticalBars, rendering: self.rendering, edge: snapshot.verticalBarEdge ?? "right")
                 rail.view.isHidden = false
             } else {

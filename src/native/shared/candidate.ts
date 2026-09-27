@@ -54,6 +54,10 @@ export const appendItem = (
   const labelStyle = getComputedStyle(labelElement);
   const badge = child.querySelector<HTMLElement>('ion-badge');
   const badgeStyle = badge && visible(badge) ? getComputedStyle(badge) : undefined;
+  const outline =
+    isVerticalBarsSource(child) && child.matches('ion-button') && (child as HTMLIonButtonElement).fill === 'outline'
+      ? getComputedStyle(native ?? child)
+      : undefined;
   const item: ShellItem = {
     id: id(child),
     ...frame(child.getBoundingClientRect(), candidate.element.getBoundingClientRect()),
@@ -71,6 +75,12 @@ export const appendItem = (
     fontSize: parseFloat(labelStyle.fontSize),
     fontWeight: parseInt(labelStyle.fontWeight, 10) || 400,
     color: getComputedStyle(native ?? child).color,
+    backgroundColor:
+      isVerticalBarsSource(child) && child.matches('ion-button') && (child as HTMLIonButtonElement).fill === 'solid'
+        ? getComputedStyle(native ?? child).backgroundColor
+        : undefined,
+    borderColor: outline?.borderTopColor,
+    borderWidth: outline ? parseFloat(outline.borderTopWidth) : undefined,
     badge: badgeStyle
       ? { value: badge!.textContent?.trim() ?? '', color: badgeStyle.backgroundColor, textColor: badgeStyle.color }
       : undefined,

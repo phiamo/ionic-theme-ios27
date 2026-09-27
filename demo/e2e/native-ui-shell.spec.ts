@@ -454,6 +454,10 @@ test('standalone vertical bars keep searchable tabs usable on the Web', async ({
 test('verticalBars back navigation and toolbar slots request native rail placement', async ({ page }) => {
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   const app = page.locator('ion-app');
   const source = page.locator('app-native-ui-shell ion-back-button').first();
   const projection = page.locator('ion-app > ion-back-button.ios-theme-vertical-bars-back-button-projection');
@@ -566,6 +570,10 @@ test('native verticalBars toolbar returns with Index after a pushed page', async
 test('native verticalBars actions follow WillEnter and stay enabled during navigation', async ({ page }) => {
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('ion-app').evaluate((app) => app.classList.add('ios-theme-vertical-bars'));
   const source = page.locator('app-native-ui-shell ion-back-button');
   await expect(source).toHaveAttribute('data-native-ui-shell', '');
@@ -623,6 +631,10 @@ test('native verticalBars actions follow WillEnter and stay enabled during navig
 test('verticalBars toolbar sources are hidden before ownership and restored with their lifecycle', async ({ page }) => {
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
   const source = page.locator('app-native-ui-shell ion-button[type=submit]');
   await expect(source).toHaveAttribute('data-native-ui-shell', '');
@@ -695,6 +707,10 @@ test('verticalBars toolbar sources are hidden before ownership and restored with
 test('rejected verticalBars control returns to an operable Web source', async ({ page }) => {
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
   const save = page.locator('app-native-ui-shell ion-button[type=submit]');
   await expect(save).toHaveAttribute('data-native-ui-shell', '');
@@ -713,6 +729,10 @@ test('verticalBars rail remains native while its Ionic menu is open', async ({ p
   await page.setViewportSize({ width: 390, height: 844 });
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('app-native-ui-shell ion-menu-button').evaluate((element: HTMLIonMenuButtonElement) => (element.autoHide = false));
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
   const menu = page.locator('ion-menu');
@@ -804,6 +824,10 @@ test('verticalBars controls stay operable on Web when the reported rail edge dif
   await page.setViewportSize({ width: 390, height: 844 });
   await mockNative(page, false, 'leading');
   await page.goto('/main/index/native-ui-shell');
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('app-native-ui-shell ion-menu-button').evaluate((element: HTMLIonMenuButtonElement) => (element.autoHide = false));
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
 
@@ -2762,6 +2786,10 @@ test('rejected search retries when tab content changes without resizing', async 
 test('verticalBars return to native projection when the requested edge matches after rotation', async ({ page }) => {
   await mockNative(page, false, 'leading');
   await page.goto('/main/index/native-ui-shell');
+  await page.locator('app-native-ui-shell ion-button[type=submit] ion-icon').evaluate((icon) => {
+    icon.setAttribute('slot', 'icon-only');
+    icon.parentElement!.querySelector('[data-label]')?.remove();
+  });
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
   const source = page.locator('app-native-ui-shell ion-button[type=submit]');
   const clone = page.locator('ion-app > ion-button.ios-theme-vertical-bars-toolbar-projection[aria-label=Save]');
@@ -2781,3 +2809,201 @@ test('verticalBars return to native projection when the requested edge matches a
   await expect(clone).toHaveCount(0);
   await expect(source).toHaveAttribute('data-native-ui-shell', '');
 });
+
+for (const type of ['normal', 'card', 'sheet']) {
+  test(`verticalBars native controls follow the foreground ${type} modal`, async ({ page }) => {
+    await page.setViewportSize({ width: 700, height: 900 });
+    await mockNative(page);
+    await page.goto('/main/index/modal');
+    await page.locator('ion-app').evaluate((app) => app.classList.add('ios-theme-vertical-bars'));
+    await page.getByText(`present:${type}`, { exact: true }).click();
+    const modal = page.locator('ion-modal');
+    const close = modal.locator('ion-toolbar ion-button').first();
+    await expect(close).toHaveAttribute('data-native-ui-shell', '');
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const snapshot = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').updates.at(-1)!;
+          return snapshot.controls.flatMap((control) => control.items.map((item) => item.accessibilityLabel));
+        }),
+      )
+      .toEqual(['Close', 'Done']);
+    await expect(modal.locator('ion-toolbar ion-button').nth(1)).toHaveAttribute('data-native-ui-shell', '');
+    if (type === 'sheet') {
+      await modal.evaluate((element: HTMLIonModalElement) => element.setCurrentBreakpoint(0.5));
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const frame = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').updates.at(-1)?.verticalBarFrame;
+            const modal = document.querySelector('ion-modal')!;
+            const top = modal.shadowRoot!.querySelector('[part~="content"]')!.getBoundingClientRect().top;
+            return !!frame && Math.abs(frame.y - top) < 1 && frame.height < innerHeight;
+          }),
+        )
+        .toBe(true);
+    }
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await expect(close).not.toHaveAttribute('data-native-ui-shell');
+    await expect(close).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').updates.at(-1)?.controls.length))
+      .toBe(0);
+    // A delayed tap from the old native modal surface must not dismiss it.
+    await activate(page, 'Close');
+    await expect(modal).toBeVisible();
+    await page.setViewportSize({ width: 700, height: 900 });
+    await expect(close).toHaveAttribute('data-native-ui-shell', '');
+    await modal.evaluate((element: HTMLIonModalElement) => {
+      element.canDismiss = false;
+    });
+    await activate(page, 'Close', true);
+    await expect(modal).toBeVisible();
+    await modal.evaluate((element: HTMLIonModalElement) => {
+      element.canDismiss = true;
+    });
+    await activate(page, 'Done', true);
+    await expect(modal).toHaveCount(0);
+    await expect(page.locator('app-modal ion-back-button')).toHaveAttribute('data-native-ui-shell', '');
+  });
+}
+
+test('vertical tab bar fades only when its Web fallback appears', async ({ page }) => {
+  await page.setViewportSize({ width: 700, height: 900 });
+  await mockNative(page);
+  await page.goto('/main/index/modal');
+  await page.locator('ion-app').evaluate((app) => app.classList.add('ios-theme-vertical-bars'));
+  const bar = page.locator('ion-tab-bar');
+  await expect(bar).toHaveAttribute('data-native-ui-shell', '');
+  await expect(bar).not.toHaveAttribute('data-native-ui-shell-fading');
+  await bar.evaluate((element) => {
+    const animate = element.animate.bind(element);
+    element.animate = (frames, options) => {
+      element.setAttribute('data-fade-frames', JSON.stringify(frames));
+      element.setAttribute('data-fade-count', String(Number(element.getAttribute('data-fade-count') ?? 0) + 1));
+      return animate(frames, options);
+    };
+  });
+  await page.getByText('present:normal', { exact: true }).click();
+  await expect(bar).toHaveAttribute('data-fade-frames', JSON.stringify([{ opacity: 0 }, { opacity: 1 }]));
+  await expect(bar).toHaveAttribute('data-fade-count', '1');
+  await expect(page.locator('ion-modal ion-toolbar ion-button').nth(1)).toHaveAttribute('data-native-ui-shell', '');
+  await activate(page, 'Done', true);
+  await expect(page.locator('ion-modal')).toHaveCount(0);
+  await expect(bar).toHaveAttribute('data-native-ui-shell', '');
+  await expect(bar).toHaveAttribute('data-fade-count', '1');
+});
+
+for (const { fill, native, grouped } of [
+  { fill: 'solid', native: true, grouped: false },
+  { fill: 'outline', native: true, grouped: true },
+  { fill: 'solid', native: false, grouped: true },
+  { fill: 'outline', native: false, grouped: false },
+] as const) {
+  test(`${fill} icon-only rail button preserves external form submit: native=${native}, grouped=${grouped}`, async ({ page }) => {
+    await mockNative(page, !native);
+    await page.goto('/main/index/native-ui-shell');
+    await page.locator('ion-app').evaluate((app) => app.classList.add('ios-theme-vertical-bars'));
+    await page.locator('app-native-ui-shell').evaluate(
+      (root, { fill, grouped }) => {
+        const button = document.createElement('ion-button');
+        button.id = 'rail-submit';
+        button.type = 'submit';
+        button.fill = fill;
+        button.color = 'primary';
+        button.setAttribute('aria-label', 'Confirm');
+        Object.assign(button, { form: root.querySelector('form') });
+        const icon = root.querySelector('ion-button[type=submit] ion-icon')!.cloneNode(true) as HTMLElement;
+        icon.setAttribute('slot', 'icon-only');
+        button.append(icon);
+        const group = document.createElement('ion-buttons');
+        group.slot = 'end';
+        group.append(button);
+        if (grouped) {
+          const peer = button.cloneNode(true) as HTMLIonButtonElement;
+          peer.removeAttribute('id');
+          peer.type = 'button';
+          peer.setAttribute('aria-label', 'Peer');
+          group.append(peer);
+        }
+        root.querySelector('ion-toolbar')!.append(group);
+      },
+      { fill, grouped },
+    );
+    const button = page.locator('#rail-submit');
+    const border = await button.evaluate((element) => {
+      const style = getComputedStyle(element.shadowRoot!.querySelector('[part=native]')!);
+      return { color: style.borderTopColor, width: parseFloat(style.borderTopWidth) };
+    });
+    if (native) {
+      await expect(grouped ? button.locator('..') : button).toHaveAttribute('data-native-ui-shell', '');
+      if (fill === 'solid' || fill === 'outline')
+        await expect
+          .poll(() =>
+            page.evaluate(
+              ({ fill, border }) => {
+                const item = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell')
+                  .updates.at(-1)
+                  ?.controls.flatMap((control) => control.items)
+                  .find((item) => item.accessibilityLabel === 'Confirm');
+                return fill === 'solid'
+                  ? !!item?.backgroundColor && item.backgroundColor !== 'rgba(0, 0, 0, 0)'
+                  : item?.borderColor === border.color && item?.borderWidth === border.width && border.width > 0;
+              },
+              { fill, border },
+            ),
+          )
+          .toBe(true);
+      await activate(page, 'Confirm', true);
+    } else {
+      const projection = page.locator(
+        grouped
+          ? 'ion-app > ion-buttons.ios-theme-vertical-bars-toolbar-projection > ion-button[aria-label=Confirm]'
+          : 'ion-app > ion-button.ios-theme-vertical-bars-toolbar-projection[aria-label=Confirm]',
+      );
+      await expect(projection).toHaveClass(new RegExp(`button-${fill}`));
+      if (fill === 'outline') {
+        await expect(projection.locator('[part=native]')).toHaveCSS('border-top-color', border.color);
+        await expect(projection.locator('[part=native]')).toHaveCSS('border-top-width', `${border.width}px`);
+      }
+      await projection.click();
+    }
+    await expect(page.locator('[data-save-count]')).toHaveText('1');
+  });
+}
+
+for (const native of [true, false]) {
+  test(`verticalBars placement requires the icon-only slot for every fill: native=${native}`, async ({ page }) => {
+    await mockNative(page, !native);
+    await page.goto('/main/index/native-ui-shell');
+    await page.locator('ion-app').evaluate((app) => app.classList.add('ios-theme-vertical-bars'));
+    await page.locator('app-native-ui-shell').evaluate((root) => {
+      for (const fill of ['default', 'clear', 'solid', 'outline'] as const) {
+        const group = document.createElement('ion-buttons');
+        group.slot = 'end';
+        for (const slot of ['', 'start', 'end', 'icon-only']) {
+          const button = document.createElement('ion-button');
+          button.id = `shape-${fill}-${slot || 'none'}`;
+          button.fill = fill;
+          button.setAttribute('aria-label', button.id);
+          const icon = root.querySelector('ion-icon')!.cloneNode(true) as HTMLElement;
+          icon.slot = slot;
+          button.append(icon);
+          if (slot === 'start' || slot === 'end') {
+            const span = document.createElement('span');
+            span.textContent = 'Save';
+            button.append(span);
+          }
+          group.append(button);
+        }
+        root.querySelector('ion-toolbar')!.append(group);
+      }
+    });
+    for (const fill of ['default', 'clear', 'solid', 'outline']) {
+      await expect(page.locator(`#shape-${fill}-icon-only`)).toHaveAttribute('data-native-ui-shell', '');
+      for (const slot of ['none', 'start', 'end']) {
+        await expect(page.locator(`#shape-${fill}-${slot}`)).not.toHaveAttribute('data-native-ui-shell');
+        await expect(page.locator(`#shape-${fill}-${slot}`)).toHaveCSS('visibility', 'visible');
+      }
+    }
+  });
+}

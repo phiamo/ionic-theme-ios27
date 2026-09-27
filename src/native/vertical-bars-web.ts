@@ -1,3 +1,4 @@
+import { inVerticalBarsSurface, topModal } from './shared/modal';
 import type { NativeUIShellHandle, NativeUIShellOptions, NativeUIShellStatus } from './definitions';
 import { VERTICAL_BARS_TRANSITION_CANCELED } from '../native-integration';
 import {
@@ -74,11 +75,13 @@ export const createVerticalBarsWebProjection = (
     });
   const inEligibleToolbar = (element: HTMLElement) =>
     !!verticalBarsRoot()?.contains(element) &&
+    inVerticalBarsSurface(element) &&
     verticalBarsActionCandidate(element) &&
     !isExcluded(element, verticalBarsEnteringPage(element)) &&
     !verticalBarsPages.isDeparted(element);
   const isEligibleBack = (element: HTMLIonBackButtonElement) =>
     !!verticalBarsRoot()?.contains(element) &&
+    inVerticalBarsSurface(element) &&
     verticalBarsOwned(element) &&
     verticalBarsBackCandidate(element) &&
     !isExcluded(element, verticalBarsEnteringPage(element)) &&
@@ -151,7 +154,10 @@ export const createVerticalBarsWebProjection = (
   const syncAction = (target: HTMLElement, original: HTMLElement) => {
     copyAttributes(target, original);
     target.classList.add('ios-theme-vertical-bars-toolbar-action', 'ion-cloned-element');
-    const label = original.getAttribute('aria-label') ?? original.textContent?.trim();
+    const label =
+      original.getAttribute('aria-label') ??
+      original.shadowRoot?.querySelector('[part~=native]')?.getAttribute('aria-label') ??
+      original.textContent?.trim();
     if (label) target.setAttribute('aria-label', label);
     if ('disabled' in original) (target as HTMLIonButtonElement).disabled = (original as HTMLIonButtonElement).disabled;
     if (original.matches('ion-button')) {
@@ -185,7 +191,7 @@ export const createVerticalBarsWebProjection = (
     }
   };
   const project = (nextBack: HTMLIonBackButtonElement | undefined, groups: ToolbarSource[]) => {
-    root = verticalBarsRoot()!;
+    root = topModal(doc) ?? verticalBarsRoot()!;
     let topOffset = 0;
     if (nextBack) {
       backSource = nextBack;
@@ -269,7 +275,7 @@ export const createVerticalBarsWebProjection = (
     const nextBack = findBack();
     const groups = findToolbarGroups();
     if (!nextBack && !groups.length) return restore();
-    if (sameSources(nextBack, groups)) return syncExisting();
+    if (root === (topModal(doc) ?? currentRoot) && sameSources(nextBack, groups)) return syncExisting();
     restore();
     project(nextBack, groups);
     updates++;
@@ -287,6 +293,8 @@ export const createVerticalBarsWebProjection = (
   };
   const schedule = (): Promise<void> => {
     if (stopped) return Promise.resolve();
+    // Release Web ownership before the native runtime can acknowledge its next frame.
+    if (!enabled()) restore();
     const done = new Promise<void>((resolve) => waiters.push(resolve));
     if (!frame) frame = win.requestAnimationFrame(update);
     return done;
@@ -336,6 +344,7 @@ export const createVerticalBarsWebProjection = (
   doc.addEventListener(VERTICAL_BARS_TRANSITION_CANCELED, pageLifecycle, { capture: true, signal: listeners.signal });
   for (const name of ['ionModalWillPresent', 'ionModalDidDismiss'])
     doc.addEventListener(name, schedule, { capture: true, signal: listeners.signal });
+  win.addEventListener('resize', schedule, { signal: listeners.signal });
   win.addEventListener('nativeUIShellRefresh', schedule, { signal: listeners.signal });
   schedule();
 
