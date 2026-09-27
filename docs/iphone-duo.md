@@ -41,7 +41,7 @@ The `/vertical-bars` entry point imports `@capacitor/core` at module load, so in
 Install the device-state plugin in the application, then sync the native project:
 
 ```bash
-npm install @erkamyaman/capacitor-foldable@^8.3.2
+npm install @erkamyaman/capacitor-foldable@8
 npx cap sync
 ```
 
@@ -80,7 +80,7 @@ The theme never reads UIKit bar-placement traits. The application supplies `nati
 
 The plugin does not report a safe-area inset with bar placement. The theme uses CSS safe-area values with its 80px rail fallback; an application can still pass `{ edge, inset }` to `setPlacement()` when it supplies an explicit width. WebView corner radius remains a rendering concern: `configureNativeTransition()` uses the shell's `getWebViewMetrics()` API, independently of `Foldable`.
 
-**Migration:** the theme's former `DeviceLayout`, `HingeStatus`, `getDeviceLayout()`, `deviceLayoutChange`, and start/stop device-layout monitoring APIs have been removed. Replace device subscriptions with the `Foldable` APIs above; use `getWebViewMetrics()` for one-shot radius reads. With Foldable 8.3.2 or later, apps built without the iOS 27.1 SDK can infer Duo bar placement from safe-area insets. Hinge data still requires the newer SDK. Apps can also request a fixed rail placement independently of the reported edge.
+**Migration:** the theme's former `DeviceLayout`, `HingeStatus`, `getDeviceLayout()`, `deviceLayoutChange`, and start/stop device-layout monitoring APIs have been removed. Replace device subscriptions with the `Foldable` APIs above; use `getWebViewMetrics()` for one-shot radius reads. Foldable can infer Duo bar placement from safe-area insets when the app is built without the iOS 27.1 SDK. Hinge data still requires the newer SDK. Apps can also request a fixed rail placement independently of the reported edge.
 
 ## Reserve the vertical rail
 

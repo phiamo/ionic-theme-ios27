@@ -128,7 +128,7 @@ Keep your existing Ionic theme and move tabs and supported toolbar actions into 
 Device state is supplied by [`@erkamyaman/capacitor-foldable`](https://github.com/erkamyaman/capacitor-foldable), installed in your app:
 
 ```bash
-npm install @erkamyaman/capacitor-foldable@^8.3.2
+npm install @erkamyaman/capacitor-foldable@8
 npx cap sync
 ```
 

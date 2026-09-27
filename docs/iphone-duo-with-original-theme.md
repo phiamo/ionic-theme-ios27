@@ -125,7 +125,7 @@ When the application owner is disposed, call `await rail.destroy()` to restore t
 Install [`@erkamyaman/capacitor-foldable`](https://github.com/erkamyaman/capacitor-foldable) for device state:
 
 ```bash
-npm install @erkamyaman/capacitor-foldable@^8.3.2
+npm install @erkamyaman/capacitor-foldable@8
 npx cap sync ios
 ```
 
@@ -156,7 +156,7 @@ const stopVerticalArea = async () => {
 };
 ```
 
-`setPlacement()` resolves the logical edge through the document direction. Rail width comes from the theme’s CSS safe-area rules; `Foldable` does not supply an inset. A `null` edge restores the ordinary layout. Devices without a reported rail return `null`, so this example restores the ordinary layout there. With Foldable 8.3.2 or later, apps built with older SDKs can infer Duo bar placement from safe-area insets on iOS 27.1 or later. To deliberately request a rail when the plugin reports no edge, have your application choose a fixed edge with `rail.setPlacement('trailing')` instead of applying that null placement. This simulates the layout; it does not provide a real system rail or hinge measurements.
+`setPlacement()` resolves the logical edge through the document direction. Rail width comes from the theme’s CSS safe-area rules; `Foldable` does not supply an inset. A `null` edge restores the ordinary layout. Devices without a reported rail return `null`, so this example restores the ordinary layout there. On iOS 27.1 or later, Foldable can infer Duo bar placement from safe-area insets when the app is built with an older SDK. To deliberately request a rail when the plugin reports no edge, have your application choose a fixed edge with `rail.setPlacement('trailing')` instead of applying that null placement. This simulates the layout; it does not provide a real system rail or hinge measurements.
 
 On supported iOS, controls in the rail use the system SwiftUI appearance; your custom Web styling still applies to ordinary content and horizontal controls. Web and Android use Web clones.
 
