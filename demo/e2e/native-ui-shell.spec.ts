@@ -53,15 +53,6 @@ const mockNative = async (page: Page, fail = false, nativeEdge: 'leading' | 'tra
       async getWebViewMetrics() {
         return { radius: 0 };
       },
-      async getDeviceLayout() {
-        return {
-          placement: { edge: nativeEdge, inset: nativeEdge ? 84 : 0 },
-          hingeStatus: null,
-          webViewMetrics: { radius: 0 },
-        };
-      },
-      async startDeviceLayoutMonitoring() {},
-      async stopDeviceLayoutMonitoring() {},
       async update(options: ShellSnapshot) {
         this.updates.push(options);
         if (this.hang) await new Promise(() => {});
@@ -91,6 +82,18 @@ const mockNative = async (page: Page, fail = false, nativeEdge: 'leading' | 'tra
       },
     };
 
+    const foldable = {
+      async getBarPlacement() {
+        return { verticalBarEdge: nativeEdge };
+      },
+      async getFoldState() {
+        return { state: 'flat', isSeparating: false, posture: 'flat' };
+      },
+      listeners: {} as Record<string, ((event: never) => void)[]>,
+      addListener: mock.addListener,
+      notifyListeners: mock.notifyListeners,
+    };
+
     window.CapacitorCustomPlatform = { name: 'ios' };
     // Substitute the mock as the plugin implementation when @capacitor/core
     // initialises its global, before the app registers 'IonicNativeUIShell'.
@@ -101,7 +104,7 @@ const mockNative = async (page: Page, fail = false, nativeEdge: 'leading' | 'tra
       set: (instance) => {
         const registerPlugin = instance.registerPlugin;
         instance.registerPlugin = (name: string, implementations?: Record<string, unknown>) =>
-          name === 'IonicNativeUIShell' ? mock : registerPlugin(name, implementations);
+          name === 'IonicNativeUIShell' ? mock : name === 'Foldable' ? foldable : registerPlugin(name, implementations);
         capacitor = instance;
       },
     });
@@ -796,11 +799,10 @@ test('verticalBars rail remains native while its Ionic menu is open', async ({ p
   await expect(morphedCancel).toBeVisible();
 });
 
-// An OS-reported edge that disagrees with the DOM strip is the only supported
-// "native rail unavailable" state; the Web fallback then owns the rail.
-test('verticalBars controls stay operable on Web when the reported rail edge differs', async ({ page }) => {
+// If native projection fails, the Web fallback still owns the application-selected rail.
+test('verticalBars controls stay operable on Web when native projection fails', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await mockNative(page, false, 'leading');
+  await mockNative(page, true, 'leading');
   await page.goto('/main/index/native-ui-shell');
   await page.locator('app-native-ui-shell ion-menu-button').evaluate((element: HTMLIonMenuButtonElement) => (element.autoHide = false));
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
@@ -2755,4 +2757,32 @@ test('rejected search retries when tab content changes without resizing', async 
     .evaluate((el) => (el.textContent = 'Index'));
   await expect(footer).toHaveAttribute('data-native-ui-shell', '');
   expect(await page.locator('ion-tab-bar').boundingBox()).toEqual(before);
+});
+
+test('demo applies Foldable placement and fold events while keeping the rail toggle app-owned', async ({ page }) => {
+  await mockNative(page, false, 'leading');
+  await page.goto('/main/index');
+  const app = page.locator('ion-app');
+  const toggle = page.getByRole('switch', { name: 'iPhone Duo Mode' });
+  await toggle.click();
+  await expect(app).toHaveClass(/ios-theme-vertical-bars-left/);
+  await page.evaluate(() => {
+    const foldable = Capacitor.registerPlugin<{ notifyListeners(name: string, value: unknown): void }>('Foldable');
+    foldable.notifyListeners('barPlacementChange', { verticalBarEdge: 'trailing' });
+    foldable.notifyListeners('foldStateChange', {
+      state: 'half-opened',
+      posture: 'book',
+      isSeparating: true,
+      hingeBounds: { x: 450, y: 0, width: 0, height: 900 },
+    });
+  });
+  await expect(app).not.toHaveClass(/ios-theme-vertical-bars-left/);
+  await expect(page.locator('ion-split-pane')).toHaveClass(/ios-theme-split-pane-half-open/);
+  await toggle.click();
+  await page.evaluate(() =>
+    Capacitor.registerPlugin<{ notifyListeners(name: string, value: unknown): void }>('Foldable').notifyListeners('barPlacementChange', {
+      verticalBarEdge: 'leading',
+    }),
+  );
+  await expect(app).not.toHaveClass(/ios-theme-vertical-bars/);
 });

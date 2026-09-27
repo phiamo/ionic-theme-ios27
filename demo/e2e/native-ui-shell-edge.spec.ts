@@ -52,15 +52,6 @@ const mockNative = async (page: Page) => {
       async getWebViewMetrics() {
         return { radius: 0 };
       },
-      async getDeviceLayout() {
-        return {
-          placement: { edge: 'trailing' as const, inset: 84 },
-          hingeStatus: null,
-          webViewMetrics: { radius: 0 },
-        };
-      },
-      async startDeviceLayoutMonitoring() {},
-      async stopDeviceLayoutMonitoring() {},
       async update(options: ShellSnapshot) {
         this.updates.push(options);
         return this.settle(options);
@@ -84,6 +75,18 @@ const mockNative = async (page: Page) => {
       },
     };
 
+    const foldable = {
+      async getBarPlacement() {
+        return { verticalBarEdge: 'trailing' };
+      },
+      async getFoldState() {
+        return { state: 'flat', isSeparating: false, posture: 'flat' };
+      },
+      listeners: {} as Record<string, ((event: never) => void)[]>,
+      addListener: mock.addListener,
+      notifyListeners: mock.notifyListeners,
+    };
+
     window.CapacitorCustomPlatform = { name: 'ios' };
     // Substitute the mock as the plugin implementation when @capacitor/core
     // initialises its global, before the app registers 'IonicNativeUIShell'.
@@ -94,7 +97,7 @@ const mockNative = async (page: Page) => {
       set: (instance) => {
         const registerPlugin = instance.registerPlugin;
         instance.registerPlugin = (name: string, implementations?: Record<string, unknown>) =>
-          name === 'IonicNativeUIShell' ? mock : registerPlugin(name, implementations);
+          name === 'IonicNativeUIShell' ? mock : name === 'Foldable' ? foldable : registerPlugin(name, implementations);
         capacitor = instance;
       },
     });

@@ -2,8 +2,9 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { createAppConfig, type IonicAnimationOptions } from './app/app.config';
 import { AppComponent } from './app/app.component';
 import { enableNativeUIShell } from '../../src/native';
-import { IonicNativeUIShell, enableVerticalControlArea, setVerticalControlAreaPlacement } from '../../src/vertical-bars';
+import { enableVerticalControlArea, setVerticalControlAreaPlacement } from '../../src/vertical-bars';
 import { Capacitor } from '@capacitor/core';
+import { Foldable } from '@erkamyaman/capacitor-foldable';
 import { iosTransitionAnimation, popoverEnterAnimation, popoverLeaveAnimation } from '@rdlabo/ionic-theme-ios27';
 
 /**
@@ -25,13 +26,12 @@ function loadIOSAnimations(): IonicAnimationOptions {
 void bootstrapApplication(AppComponent, createAppConfig(loadIOSAnimations()))
   .then(async () => {
     if (Capacitor.getPlatform() !== 'ios') return;
-    await IonicNativeUIShell.startDeviceLayoutMonitoring();
-    await IonicNativeUIShell.addListener('deviceLayoutChange', ({ placement }) => {
+    await Foldable.addListener('barPlacementChange', ({ verticalBarEdge }) => {
       const app = document.querySelector('ion-app.ios-theme-vertical-bars');
       if (!app) return;
       const rtl = app.closest('[dir]')?.getAttribute('dir') === 'rtl';
       const current = app.classList.contains('ios-theme-vertical-bars-left') !== rtl ? 'leading' : 'trailing';
-      setVerticalControlAreaPlacement(placement.edge ? placement : current);
+      setVerticalControlAreaPlacement(verticalBarEdge ?? current);
     });
   })
   .catch((err) => console.error(err));

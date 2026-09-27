@@ -19,13 +19,11 @@ export type {
   NativeUIShellOptions,
   NativeUIShellStatus,
   NativeUIShellSuspension,
-  DeviceLayout,
   VerticalBarEdge,
   VerticalBarPlacement,
   VerticalControlAreaHandle,
   WebViewMetrics,
 } from './definitions';
-export { HingeStatus } from './definitions';
 
 const plugin = registerPlugin<NativeUIShellPlugin>('IonicNativeUIShell');
 export const IonicNativeUIShell = plugin;
@@ -97,8 +95,7 @@ const manage = (
 
 /** Reads the current native WebView geometry and applies it to page transitions. */
 export const configureNativeTransition = async (): Promise<WebViewMetrics> => {
-  const metrics =
-    typeof document !== 'undefined' && Capacitor.getPlatform() === 'ios' ? (await plugin.getDeviceLayout()).webViewMetrics : { radius: 0 };
+  const metrics = typeof document !== 'undefined' && Capacitor.getPlatform() === 'ios' ? await plugin.getWebViewMetrics() : { radius: 0 };
   setConfig({ radius: metrics.radius });
   return metrics;
 };
@@ -181,31 +178,18 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
     (async () => {
       if (Capacitor.getPlatform() !== 'ios') return fallback('Requires Capacitor iOS');
       let runtime: NativeUIShellHandle | undefined;
-      let placementListener: Awaited<ReturnType<typeof plugin.addListener>> | undefined;
-      let monitoring = false;
+      let metricsListener: Awaited<ReturnType<typeof plugin.addListener>> | undefined;
       try {
-        if (!options.verticalBarsOnly) await configureNativeTransition().catch(() => undefined);
         const capabilities = await plugin.configure({ verticalBarsOnly: options.verticalBarsOnly === true });
         if (!capabilities.supported) return fallback('Requires iOS 26 or later');
-        let nativeEdge: VerticalBarEdge = null;
-        const nativeVerticalBars = () => {
-          const root = document.querySelector('ion-app.ios-theme-vertical-bars');
-          if (!root) return false;
-          // The trait stays unspecified when the OS cannot report a rail — for
-          // example an app linked against an SDK older than 27.1 — so the DOM
-          // class is trusted there. When the OS does report an edge, the native
-          // rail only takes over once the app has applied the matching class.
-          const domEdge = root.classList.contains('ios-theme-vertical-bars-left') ? 'left' : 'right';
-          return nativeEdge === null || physicalVerticalBarEdge(nativeEdge, elementRtl(root)) === domEdge;
-        };
-        await plugin.startDeviceLayoutMonitoring();
-        monitoring = true;
-        placementListener = await plugin.addListener('deviceLayoutChange', ({ placement, webViewMetrics }) => {
-          nativeEdge = placement.edge;
-          if (!options.verticalBarsOnly) setConfig({ radius: webViewMetrics.radius });
-          document.defaultView?.dispatchEvent(new Event('nativeUIShellRefresh'));
-        });
-        nativeEdge = (await plugin.getDeviceLayout()).placement.edge;
+        // The application owns device state and selects the rail through placement classes.
+        const nativeVerticalBars = () => !!document.querySelector('ion-app.ios-theme-vertical-bars');
+        if (!options.verticalBarsOnly) {
+          metricsListener = await plugin.addListener('webViewMetricsChange', (metrics) => {
+            setConfig({ radius: metrics.radius });
+          });
+          await configureNativeTransition().catch(() => undefined);
+        }
         const native = await createRuntime(document, plugin, options, nativeVerticalBars, options.verticalBarsOnly === true);
         runtime = combine(
           native,
@@ -215,15 +199,13 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
           suspend: () => prehide?.suspend(),
           release,
           destroy: async () => {
-            await placementListener?.remove().catch(() => {});
-            if (monitoring) await plugin.stopDeviceLayoutMonitoring().catch(() => {});
+            await metricsListener?.remove().catch(() => {});
             prehide?.stop();
           },
         });
       } catch (error) {
         await runtime?.destroy();
-        await placementListener?.remove().catch(() => {});
-        if (monitoring) await plugin.stopDeviceLayoutMonitoring().catch(() => {});
+        await metricsListener?.remove().catch(() => {});
         return fallback(error instanceof Error ? error.message : String(error));
       }
     })());

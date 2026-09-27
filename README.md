@@ -125,6 +125,15 @@ Use this markup to preview the inset grouped list look. For the list structure t
 
 Keep your existing Ionic theme and move tabs and supported toolbar actions into a vertical side area. **Start in Chrome** with one stylesheet, an app class, and `enableVerticalControlArea()`; then connect the layout to iPhone Duo device events for the system rail and hinge posture.
 
+Device state is supplied by [`@erkamyaman/capacitor-foldable`](https://github.com/erkamyaman/capacitor-foldable), installed in your app:
+
+```bash
+npm install @erkamyaman/capacitor-foldable@^8.3.1
+npx cap sync
+```
+
+Use its `getBarPlacement()` / `barPlacementChange` and `getFoldState()` / `foldStateChange` APIs to drive the theme's layout. Device monitoring is not bundled with the theme.
+
 Follow [iPhone Duo with your existing theme](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme) for the browser preview and iOS setup. For shared layout rules and APIs, see [iPhone Duo support](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo). Available in `1.2.0-0` as an experimental feature; APIs and supported behavior may change.
 
 ### Use only the iOS 27 theme

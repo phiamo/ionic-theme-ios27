@@ -122,23 +122,30 @@ When the application owner is disposed, call `await rail.destroy()` to restore t
 
 ## Connect an iPhone Duo
 
-For Capacitor iOS, run `npx cap sync ios`. Build with Xcode 27.1 or newer and link against the iOS 27.1 SDK or later to receive the actual rail edge, safe-area inset, and hinge posture. The plugin uses Swift Package Manager; existing CocoaPods apps can follow [Native UI Shell setup](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell#enable-the-shell).
+Install [`@erkamyaman/capacitor-foldable`](https://github.com/erkamyaman/capacitor-foldable) for device state:
+
+```bash
+npm install @erkamyaman/capacitor-foldable@^8.3.1
+npx cap sync ios
+```
+
+Use Capacitor 8.5 or later and build with Xcode 27.1 or newer for actual rail placement and hinge posture on iOS 27.1. Native UI Shell uses Swift Package Manager; existing CocoaPods apps can follow [Native UI Shell setup](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell#enable-the-shell). Keep this package's `vertical-bars.css`; the device plugin's `ionic-tabs.css` is not needed with our rail projection.
 
 Replace the browser-only startup above with this after `ion-app` is mounted:
 
 ```ts
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
-import { enableVerticalControlArea, IonicNativeUIShell } from '@rdlabo/ionic-theme-ios27/vertical-bars';
+import { enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-bars';
+import { Foldable } from '@erkamyaman/capacitor-foldable';
 
 const rail = await enableVerticalControlArea();
 let layoutListener: PluginListenerHandle | undefined;
 
 if (Capacitor.getPlatform() === 'ios') {
-  // The runtime already monitors device layout; only subscribe.
-  layoutListener = await IonicNativeUIShell.addListener('deviceLayoutChange', ({ placement }) =>
-    rail.setPlacement(placement),
+  layoutListener = await Foldable.addListener('barPlacementChange', ({ verticalBarEdge }) =>
+    rail.setPlacement(verticalBarEdge),
   );
-  rail.setPlacement((await IonicNativeUIShell.getDeviceLayout()).placement);
+  rail.setPlacement((await Foldable.getBarPlacement()).verticalBarEdge);
 }
 
 // Call when the application owner is disposed.
@@ -148,13 +155,13 @@ const stopVerticalArea = async () => {
 };
 ```
 
-`setPlacement()` applies the measured inset and resolves the logical edge through the document direction. A `null` edge restores the ordinary layout. Devices without a rail and apps built with older SDKs report `null`, so this example restores the ordinary layout there. To deliberately preview a DOM rail on such an iOS build, have your application choose a fixed edge with `rail.setPlacement('trailing')` instead of applying that null placement. This simulates the layout; it does not provide a real system rail or hinge measurements.
+`setPlacement()` resolves the logical edge through the document direction. Rail width comes from the theme’s CSS safe-area rules; `Foldable` does not supply an inset. A `null` edge restores the ordinary layout. Devices without a rail and apps built with older SDKs report `null`, so this example restores the ordinary layout there. To deliberately preview a DOM rail on such an iOS build, have your application choose a fixed edge with `rail.setPlacement('trailing')` instead of applying that null placement. This simulates the layout; it does not provide a real system rail or hinge measurements.
 
 On supported iOS, controls in the rail use the system SwiftUI appearance; your custom Web styling still applies to ordinary content and horizontal controls. Web and Android use Web clones.
 
 ## Use hinge posture without projecting controls
 
-If your existing theme needs only a posture-driven split pane or a layout switch, do not start a projection runtime or add `.ios-theme-vertical-bars`. Use `getDeviceLayout()` and `deviceLayoutChange` directly, pairing `startDeviceLayoutMonitoring()` with `stopDeviceLayoutMonitoring()` and removing the listener when finished.
+If your existing theme needs only a posture-driven split pane or a layout switch, do not start a projection runtime or add `.ios-theme-vertical-bars`. Use `Foldable.getFoldState()` and `foldStateChange` directly, removing the listener when finished. There is no separate start/stop monitoring call.
 
 See [Read the device layout](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#read-the-device-layout) for the subscription example, null values, and monitoring lifetime. See [Adapt the split pane](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#adapt-the-split-pane) for the opt-in width rules and half-open state.
 

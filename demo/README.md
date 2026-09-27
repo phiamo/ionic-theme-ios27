@@ -15,6 +15,17 @@ This is an Angular-based demo application for the Ionic iOS27 Theme Library.
 npm install
 ```
 
+### iPhone Duo device state
+
+The demo depends on [`@erkamyaman/capacitor-foldable`](https://github.com/erkamyaman/capacitor-foldable) for bar placement and fold state. `npm install` installs it; after building, run `npx cap sync ios` to register it in the iOS app. For your own app:
+
+```bash
+npm install @erkamyaman/capacitor-foldable@^8.3.1
+npx cap sync
+```
+
+Use Capacitor 8.5+ and Xcode 27.1+ for iPhone Duo on iOS 27.1+. The Vertical Bars toggle still allows a browser preview when no native edge is reported.
+
 ### Development Server
 
 ```bash
