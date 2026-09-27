@@ -143,9 +143,10 @@ let layoutListener: PluginListenerHandle | undefined;
 
 if (Capacitor.getPlatform() === 'ios') {
   layoutListener = await Foldable.addListener('barPlacementChange', ({ verticalBarEdge }) =>
-    rail.setPlacement(verticalBarEdge),
+    rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge }),
   );
-  rail.setPlacement((await Foldable.getBarPlacement()).verticalBarEdge);
+  const { verticalBarEdge } = await Foldable.getBarPlacement();
+  rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge });
 }
 
 // Call when the application owner is disposed.

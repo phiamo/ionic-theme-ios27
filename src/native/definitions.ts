@@ -44,8 +44,10 @@ export type VerticalBarEdge = 'leading' | 'trailing' | null;
 
 export interface VerticalBarPlacement {
   edge: VerticalBarEdge;
-  /** UIKit safe-area inset on the vertical-bar edge, in points. */
-  inset: number;
+  /** Explicit rail width in CSS pixels; omitted to use the stylesheet's safe-area rules. */
+  inset?: number;
+  /** Native logical edge reported by the application's device plugin. Null means unavailable; omission keeps the last supplied value. */
+  nativeEdge?: VerticalBarEdge;
 }
 
 export interface VerticalControlAreaHandle extends NativeUIShellHandle {
@@ -155,13 +157,7 @@ export interface WebViewMetrics {
 export interface NativeUIShellPlugin {
   configure(options?: { verticalBarsOnly?: boolean }): Promise<{ supported: boolean }>;
   getWebViewMetrics(): Promise<WebViewMetrics>;
-  update(snapshot: ShellSnapshot): Promise<{
-    revision: number;
-    rejectedSearches?: string[];
-    rejectedControls?: string[];
-    /** Whether the renderer can honor this snapshot's requested rail edge. */
-    verticalBarsSupported?: boolean;
-  }>;
+  update(snapshot: ShellSnapshot): Promise<{ revision: number; rejectedSearches?: string[]; rejectedControls?: string[] }>;
   clear(options: { revision: number }): Promise<void>;
   addListener(name: 'activate', listener: (event: ShellActivation) => void): Promise<PluginListenerHandle>;
   addListener(name: 'search', listener: (event: ShellSearchEvent) => void): Promise<PluginListenerHandle>;

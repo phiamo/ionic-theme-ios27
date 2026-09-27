@@ -340,25 +340,6 @@ final class ShellVerticalBarsController: ShellVerticalBarsControlling {
         controller.didMove(toParent: owner)
     }
 
-    // A rendering capability check, not device-state reporting or observation.
-    // SwiftUI chooses its rail from UIKit traits; edge only selects our hit region.
-    static func supports(edge: String?, in view: UIView) -> Bool {
-        guard let edge else { return true }
-        #if canImport(UIKit, _underlyingVersion: 9127.0.85) && !targetEnvironment(macCatalyst)
-        if #available(iOS 27.1, *) {
-            let leading: Bool
-            switch view.traitCollection.verticalBarEdge {
-            case .leading: leading = true
-            case .trailing: leading = false
-            default: return true
-            }
-            let rtl = view.effectiveUserInterfaceLayoutDirection == .rightToLeft
-            return edge == (leading != rtl ? "left" : "right")
-        }
-        #endif
-        return true
-    }
-
     func apply(_ controls: [ShellControl], rendering: ShellRendering, edge: String) {
         container.railEdge = edge
         controller.railEdge = edge

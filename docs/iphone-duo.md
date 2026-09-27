@@ -66,7 +66,9 @@ applyFold(await Foldable.getFoldState());
 
 `getFoldState()` and `foldStateChange` report `state` (`'flat'`, `'half-opened'`, or `'closed'`), `posture`, and optional hinge geometry. Without fold information, the plugin returns a flat state without `hingeBounds`; restore the ordinary split-pane breakpoint in that case. The Web implementation also returns a flat state.
 
-`getBarPlacement()` and `barPlacementChange` report `{ verticalBarEdge: 'leading' | 'trailing' | null }`. The edge is **logical**: leading is the physical left in LTR and the physical right in RTL. Pass `verticalBarEdge` to `setPlacement()`. No start/stop monitoring calls are needed; remove each listener when its owner is disposed.
+`getBarPlacement()` and `barPlacementChange` report `{ verticalBarEdge: 'leading' | 'trailing' | null }`. The edge is **logical**: leading is the physical left in LTR and the physical right in RTL. Pass `{ edge: verticalBarEdge, nativeEdge: verticalBarEdge }` to `setPlacement()`. No start/stop monitoring calls are needed; remove each listener when its owner is disposed.
+
+The theme never reads UIKit bar-placement traits. The application supplies `nativeEdge` on the initial read and each event, even when choosing a fixed `edge`. Omit `nativeEdge` to keep the last supplied value; pass `null` when the plugin reports no edge. Without a reported edge, the runtime follows the application's classes for previews and older SDKs. Passing `{ edge: null, nativeEdge }` updates the reported edge while keeping the rail disabled.
 
 The plugin does not report a safe-area inset with bar placement. The theme uses CSS safe-area values with its 80px rail fallback; an application can still pass `{ edge, inset }` to `setPlacement()` when it supplies an explicit width. WebView corner radius remains a rendering concern: `configureNativeTransition()` uses the shell's `getWebViewMetrics()` API, independently of `Foldable`.
 
@@ -104,8 +106,11 @@ const rail = await enableVerticalControlArea();
 let layoutListener: PluginListenerHandle | undefined;
 
 if (Capacitor.getPlatform() === 'ios') {
-  layoutListener = await Foldable.addListener('barPlacementChange', ({ verticalBarEdge }) => rail.setPlacement(verticalBarEdge));
-  rail.setPlacement((await Foldable.getBarPlacement()).verticalBarEdge);
+  layoutListener = await Foldable.addListener('barPlacementChange', ({ verticalBarEdge }) =>
+    rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge }),
+  );
+  const { verticalBarEdge } = await Foldable.getBarPlacement();
+  rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge });
 }
 
 // Call when the application owner is disposed.
@@ -117,11 +122,11 @@ const stopVerticalArea = async () => {
 
 `setPlacement` on the handle and the exported `setVerticalControlAreaPlacement` are the same function; either applies the application's chosen placement to the CSS layout and both projections. It requires a mounted `ion-app` — call it after the app root exists.
 
-- Pass `verticalBarEdge` from `getBarPlacement()`/`barPlacementChange`, a logical edge: `'leading'` or `'trailing'`. The logical edge resolves to a physical side through the nearest `dir` attribute, or through an explicit `rtl` second argument when the app already knows its direction.
+- Pass `{ edge, nativeEdge }`: `edge` is the application's chosen logical edge; `nativeEdge` is `verticalBarEdge` from `Foldable.getBarPlacement()`/`barPlacementChange`. They resolve through the nearest `dir` attribute, or the explicit `rtl` argument.
 - Pass `null` to restore the ordinary layout.
-- The device-layout listener reports what iOS chose; the application decides whether to apply it. The native renderer checks whether it can draw on the requested edge; a mismatch uses the Web rail until the edges match again. An app that wants a fixed edge regardless of the report can simply pass its own `'leading'` or `'trailing'`.
+- The device-layout listener reports what iOS chose; the application decides whether to apply it. The theme compares the application's chosen edge with its supplied `nativeEdge`; a mismatch uses the Web rail until the edges match again. For a fixed right-in-LTR rail, pass `{ edge: 'trailing', nativeEdge: verticalBarEdge }` on each `Foldable` update.
 
-Start either `enableVerticalControlArea()` or the full `enableNativeUIShell()` — not both. Repeating the same configuration returns the shared runtime; starting a different configuration while it is active throws an error. The application should have one owner responsible for destroying that runtime. If the app already uses `enableNativeUIShell()`, keep that single runtime and call `setVerticalControlAreaPlacement(verticalBarEdge)` from its listener.
+Start either `enableVerticalControlArea()` or the full `enableNativeUIShell()` — not both. Repeating the same configuration returns the shared runtime; starting a different configuration while it is active throws an error. The application should have one owner responsible for destroying that runtime. If the app already uses `enableNativeUIShell()`, keep that single runtime and call `setVerticalControlAreaPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge })` from its listener.
 
 On supported iOS versions the runtime hands eligible tabs, back navigation, menu buttons, and fixed-toolbar actions to a native SwiftUI `TabView` and toolbar; on Web, Android, or when native projection is unavailable, Web clones remain the fallback. Back navigation can come from outside a fixed toolbar; other actions still require one. Fixed-toolbar actions need an icon or SVG, no direct text node, and standard `fill="default"` or `fill="clear"` — text-only actions stay in the original Web toolbar. Add `.ios-theme-horizontal-only` to an `ion-buttons` group or individual `ion-button` to keep it in the horizontal toolbar. Placement is chosen when a routed page enters; changing an existing button's content does not move it between the toolbar and rail until the page leaves and re-enters. Menus, modals, and popovers retain their own toolbar layout.
 
@@ -231,10 +236,11 @@ Stops synchronization, restores Web controls and releases native resources.
 
 #### VerticalBarPlacement
 
-| Prop        | Type                                                        | Description                                                |
-| ----------- | ----------------------------------------------------------- | ---------------------------------------------------------- |
-| **`edge`**  | <code><a href="#verticalbaredge">VerticalBarEdge</a></code> |                                                            |
-| **`inset`** | <code>number</code>                                         | UIKit safe-area inset on the vertical-bar edge, in points. |
+| Prop             | Type                                                        | Description                                                                                                                      |
+| ---------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **`edge`**       | <code><a href="#verticalbaredge">VerticalBarEdge</a></code> |                                                                                                                                  |
+| **`inset`**      | <code>number</code>                                         | Explicit rail width in CSS pixels; omitted to use the stylesheet's safe-area rules.                                              |
+| **`nativeEdge`** | <code><a href="#verticalbaredge">VerticalBarEdge</a></code> | Native logical edge reported by the application's device plugin. Null means unavailable; omission keeps the last supplied value. |
 
 
 #### NativeUIShellStatus

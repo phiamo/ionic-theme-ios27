@@ -9,7 +9,6 @@ import type { ShellMockCore, TestAppElement } from './native-shell-mock';
 const importer = new NodePackageImporter(resolve(__dirname, '../../'));
 
 interface ShellMock extends ShellMockCore {
-  nativeEdge: 'leading' | 'trailing' | null;
   delay: number;
   hang: boolean;
   rejectInactiveSearch: boolean;
@@ -26,7 +25,6 @@ const mockNative = async (page: Page, fail = false, nativeEdge: 'leading' | 'tra
     const mock = {
       updates: [] as ShellSnapshot[],
       sequence: 0,
-      nativeEdge,
       delay: 0,
       hang: false,
       rejectInactiveSearch: false,
@@ -58,13 +56,7 @@ const mockNative = async (page: Page, fail = false, nativeEdge: 'leading' | 'tra
       async update(options: ShellSnapshot) {
         this.updates.push(options);
         if (this.hang) await new Promise(() => {});
-        const root = document.querySelector('ion-app');
-        const rtl = root?.closest('[dir]')?.getAttribute('dir') === 'rtl';
-        const physicalEdge = (this.nativeEdge === 'leading') !== rtl ? 'left' : 'right';
-        return {
-          ...(await this.rejections(options)),
-          verticalBarsSupported: !options.verticalBarEdge || this.nativeEdge === null || options.verticalBarEdge === physicalEdge,
-        };
+        return this.rejections(options);
       },
       async clear(options: { revision: number }) {
         this.updates.push({ revision: options.revision, viewportWidth: 0, controls: [] });
@@ -2776,8 +2768,9 @@ test('verticalBars return to native projection when the requested edge matches a
   await expect(clone).toBeVisible();
   const rotate = () =>
     page.evaluate(() => {
-      Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').nativeEdge = 'trailing';
-      window.dispatchEvent(new Event('nativeUIShellRefresh'));
+      Capacitor.registerPlugin<{ notifyListeners(name: string, value: unknown): void }>('Foldable').notifyListeners('barPlacementChange', {
+        verticalBarEdge: 'trailing',
+      });
     });
   await rotate();
   await expect(clone).toHaveCount(0);
