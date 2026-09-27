@@ -58,7 +58,10 @@ ion-app.ios-theme-vertical-bars .ios-transition-shade {
 }
 
 // Keep page backgrounds and the router full width; move only their foregrounds.
-ion-app.ios-theme-vertical-bars ion-content:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(:where(ion-menu *, ion-popover *)) {
+ion-app.ios-theme-vertical-bars
+  ion-content:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(
+    :where(ion-menu *, ion-modal:not(.ios-theme-vertical-bars-modal) *, ion-popover *)
+  ) {
   --ion-safe-area-left: 0px;
   --ion-safe-area-right: 0px;
 
@@ -73,7 +76,10 @@ ion-app.ios-theme-vertical-bars ion-content:is(.ios, .md):not(.ios-theme-disable
   }
 }
 
-ion-app.ios-theme-vertical-bars ion-toolbar:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(:where(ion-menu *, ion-popover *)) {
+ion-app.ios-theme-vertical-bars
+  ion-toolbar:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(
+    :where(ion-menu *, ion-modal:not(.ios-theme-vertical-bars-modal) *, ion-popover *)
+  ) {
   --ion-safe-area-left: 0px;
   --ion-safe-area-right: 0px;
 

@@ -76,7 +76,7 @@ for (const direction of ['ltr', 'rtl'] as const) {
     );
     expect(result.safeAreaLeft).toBe('0px');
     expect(result.safeAreaRight).toBe('0px');
-    expect(result.modalSafeAreaRight).toBe('0px');
+    expect(result.modalSafeAreaRight).toBe('12px');
   });
 }
 
@@ -97,6 +97,10 @@ for (const direction of ['ltr', 'rtl'] as const) {
         await page.getByText(`present:${type}`, { exact: true }).click();
         const modal = page.locator('ion-modal');
         await expect(modal).toBeVisible();
+        // Ionic 9 updates inline safe areas on resize; keep the author's override explicit.
+        await page.addStyleTag({
+          content: 'ion-modal { --ion-safe-area-left: 12px !important; --ion-safe-area-right: 18px !important; }',
+        });
         for (const tag of ['ion-toolbar', 'ion-content']) {
           const component = modal.locator(tag).first();
           await component.evaluate((element) => {
@@ -138,6 +142,10 @@ for (const direction of ['ltr', 'rtl'] as const) {
         await expect(done).toHaveCount(0);
         await expect(modal.locator('ion-toolbar').getByRole('button', { name: 'Done', exact: true })).toBeVisible();
         await expect(modal.locator('ion-toolbar').getByRole('button', { name: 'Close', exact: true })).toBeVisible();
+        for (const tag of ['ion-toolbar', 'ion-content']) {
+          await expect(modal.locator(tag).first()).toHaveCSS('--ion-safe-area-left', '12px');
+          await expect(modal.locator(tag).first()).toHaveCSS('--ion-safe-area-right', '18px');
+        }
         await expect
           .poll(() =>
             modal
