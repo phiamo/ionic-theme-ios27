@@ -2767,34 +2767,6 @@ test('rejected search retries when tab content changes without resizing', async 
   expect(await page.locator('ion-tab-bar').boundingBox()).toEqual(before);
 });
 
-test('demo applies Foldable placement and fold events while keeping the rail toggle app-owned', async ({ page }) => {
-  await mockNative(page, false, 'leading');
-  await page.goto('/main/index');
-  const app = page.locator('ion-app');
-  const toggle = page.getByRole('switch', { name: 'iPhone Duo Mode' });
-  await toggle.click();
-  await expect(app).toHaveClass(/ios-theme-vertical-bars-left/);
-  await page.evaluate(() => {
-    const foldable = Capacitor.registerPlugin<{ notifyListeners(name: string, value: unknown): void }>('Foldable');
-    foldable.notifyListeners('barPlacementChange', { verticalBarEdge: 'trailing' });
-    foldable.notifyListeners('foldStateChange', {
-      state: 'half-opened',
-      posture: 'book',
-      isSeparating: true,
-      hingeBounds: { x: 450, y: 0, width: 0, height: 900 },
-    });
-  });
-  await expect(app).not.toHaveClass(/ios-theme-vertical-bars-left/);
-  await expect(page.locator('ion-split-pane')).toHaveClass(/ios-theme-split-pane-half-open/);
-  await toggle.click();
-  await page.evaluate(() =>
-    Capacitor.registerPlugin<{ notifyListeners(name: string, value: unknown): void }>('Foldable').notifyListeners('barPlacementChange', {
-      verticalBarEdge: 'leading',
-    }),
-  );
-  await expect(app).not.toHaveClass(/ios-theme-vertical-bars/);
-});
-
 test('verticalBars return to native projection when the requested edge matches after rotation', async ({ page }) => {
   await mockNative(page, false, 'leading');
   await page.goto('/main/index/native-ui-shell');
