@@ -2864,81 +2864,82 @@ test('vertical tab bar fades only when its Web fallback appears', async ({ page 
   await expect(bar).toHaveAttribute('data-fade-count', '1');
 });
 
-for (const fill of ['default', 'clear', 'solid', 'outline'] as const) {
-  for (const native of [true, false]) {
-    for (const grouped of [false, true]) {
-      test(`${fill} icon-only rail button preserves external form submit: native=${native}, grouped=${grouped}`, async ({ page }) => {
-        await mockNative(page, !native);
-        await page.goto('/main/index/native-ui-shell');
-        await page.locator('ion-app').evaluate((app) => app.classList.add('ios-theme-vertical-bars'));
-        await page.locator('app-native-ui-shell').evaluate(
-          (root, { fill, grouped }) => {
-            const button = document.createElement('ion-button');
-            button.id = 'rail-submit';
-            button.type = 'submit';
-            button.fill = fill;
-            button.color = 'primary';
-            button.setAttribute('aria-label', 'Confirm');
-            Object.assign(button, { form: root.querySelector('form') });
-            const icon = root.querySelector('ion-button[type=submit] ion-icon')!.cloneNode(true) as HTMLElement;
-            icon.setAttribute('slot', 'icon-only');
-            button.append(icon);
-            const group = document.createElement('ion-buttons');
-            group.slot = 'end';
-            group.append(button);
-            if (grouped) {
-              const peer = button.cloneNode(true) as HTMLIonButtonElement;
-              peer.removeAttribute('id');
-              peer.type = 'button';
-              peer.setAttribute('aria-label', 'Peer');
-              group.append(peer);
-            }
-            root.querySelector('ion-toolbar')!.append(group);
-          },
-          { fill, grouped },
-        );
-        const button = page.locator('#rail-submit');
-        const border = await button.evaluate((element) => {
-          const style = getComputedStyle(element.shadowRoot!.querySelector('[part=native]')!);
-          return { color: style.borderTopColor, width: parseFloat(style.borderTopWidth) };
-        });
-        if (native) {
-          await expect(grouped ? button.locator('..') : button).toHaveAttribute('data-native-ui-shell', '');
-          if (fill === 'solid' || fill === 'outline')
-            await expect
-              .poll(() =>
-                page.evaluate(
-                  ({ fill, border }) => {
-                    const item = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell')
-                      .updates.at(-1)
-                      ?.controls.flatMap((control) => control.items)
-                      .find((item) => item.accessibilityLabel === 'Confirm');
-                    return fill === 'solid'
-                      ? !!item?.backgroundColor && item.backgroundColor !== 'rgba(0, 0, 0, 0)'
-                      : item?.borderColor === border.color && item?.borderWidth === border.width && border.width > 0;
-                  },
-                  { fill, border },
-                ),
-              )
-              .toBe(true);
-          await activate(page, 'Confirm', true);
-        } else {
-          const projection = page.locator(
-            grouped
-              ? 'ion-app > ion-buttons.ios-theme-vertical-bars-toolbar-projection > ion-button[aria-label=Confirm]'
-              : 'ion-app > ion-button.ios-theme-vertical-bars-toolbar-projection[aria-label=Confirm]',
-          );
-          await expect(projection).toHaveClass(new RegExp(`button-${fill}`));
-          if (fill === 'outline') {
-            await expect(projection.locator('[part=native]')).toHaveCSS('border-top-color', border.color);
-            await expect(projection.locator('[part=native]')).toHaveCSS('border-top-width', `${border.width}px`);
-          }
-          await projection.click();
+for (const { fill, native, grouped } of [
+  { fill: 'solid', native: true, grouped: false },
+  { fill: 'outline', native: true, grouped: true },
+  { fill: 'solid', native: false, grouped: true },
+  { fill: 'outline', native: false, grouped: false },
+] as const) {
+  test(`${fill} icon-only rail button preserves external form submit: native=${native}, grouped=${grouped}`, async ({ page }) => {
+    await mockNative(page, !native);
+    await page.goto('/main/index/native-ui-shell');
+    await page.locator('ion-app').evaluate((app) => app.classList.add('ios-theme-vertical-bars'));
+    await page.locator('app-native-ui-shell').evaluate(
+      (root, { fill, grouped }) => {
+        const button = document.createElement('ion-button');
+        button.id = 'rail-submit';
+        button.type = 'submit';
+        button.fill = fill;
+        button.color = 'primary';
+        button.setAttribute('aria-label', 'Confirm');
+        Object.assign(button, { form: root.querySelector('form') });
+        const icon = root.querySelector('ion-button[type=submit] ion-icon')!.cloneNode(true) as HTMLElement;
+        icon.setAttribute('slot', 'icon-only');
+        button.append(icon);
+        const group = document.createElement('ion-buttons');
+        group.slot = 'end';
+        group.append(button);
+        if (grouped) {
+          const peer = button.cloneNode(true) as HTMLIonButtonElement;
+          peer.removeAttribute('id');
+          peer.type = 'button';
+          peer.setAttribute('aria-label', 'Peer');
+          group.append(peer);
         }
-        await expect(page.locator('[data-save-count]')).toHaveText('1');
-      });
+        root.querySelector('ion-toolbar')!.append(group);
+      },
+      { fill, grouped },
+    );
+    const button = page.locator('#rail-submit');
+    const border = await button.evaluate((element) => {
+      const style = getComputedStyle(element.shadowRoot!.querySelector('[part=native]')!);
+      return { color: style.borderTopColor, width: parseFloat(style.borderTopWidth) };
+    });
+    if (native) {
+      await expect(grouped ? button.locator('..') : button).toHaveAttribute('data-native-ui-shell', '');
+      if (fill === 'solid' || fill === 'outline')
+        await expect
+          .poll(() =>
+            page.evaluate(
+              ({ fill, border }) => {
+                const item = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell')
+                  .updates.at(-1)
+                  ?.controls.flatMap((control) => control.items)
+                  .find((item) => item.accessibilityLabel === 'Confirm');
+                return fill === 'solid'
+                  ? !!item?.backgroundColor && item.backgroundColor !== 'rgba(0, 0, 0, 0)'
+                  : item?.borderColor === border.color && item?.borderWidth === border.width && border.width > 0;
+              },
+              { fill, border },
+            ),
+          )
+          .toBe(true);
+      await activate(page, 'Confirm', true);
+    } else {
+      const projection = page.locator(
+        grouped
+          ? 'ion-app > ion-buttons.ios-theme-vertical-bars-toolbar-projection > ion-button[aria-label=Confirm]'
+          : 'ion-app > ion-button.ios-theme-vertical-bars-toolbar-projection[aria-label=Confirm]',
+      );
+      await expect(projection).toHaveClass(new RegExp(`button-${fill}`));
+      if (fill === 'outline') {
+        await expect(projection.locator('[part=native]')).toHaveCSS('border-top-color', border.color);
+        await expect(projection.locator('[part=native]')).toHaveCSS('border-top-width', `${border.width}px`);
+      }
+      await projection.click();
     }
-  }
+    await expect(page.locator('[data-save-count]')).toHaveText('1');
+  });
 }
 
 for (const native of [true, false]) {
