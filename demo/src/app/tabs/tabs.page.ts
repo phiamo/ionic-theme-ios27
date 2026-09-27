@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, inject, OnDestroy, OnInit, viewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, InjectionToken, OnDestroy, OnInit, viewChild } from '@angular/core';
 import {
   IonContent,
   IonIcon,
@@ -19,8 +19,11 @@ import { filter } from 'rxjs';
 
 // import { registerTabBarEffect } from '@rdlabo/ionic-theme-ios27';
 import { registeredEffect, registerTabBarEffect } from '../../../../src';
-import { Foldable, type FoldState } from '@erkamyaman/capacitor-foldable';
+import { Foldable, type FoldablePlugin, type FoldState } from '@erkamyaman/capacitor-foldable';
 import { Capacitor } from '@capacitor/core';
+
+// Inject the plugin so Angular tests can replace the bridge without module mocking.
+export const FOLDABLE = new InjectionToken<FoldablePlugin>('Foldable', { providedIn: 'root', factory: () => Foldable });
 
 @Component({
   selector: 'app-tabs',
@@ -43,6 +46,7 @@ import { Capacitor } from '@capacitor/core';
 })
 export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter, ViewDidLeave {
   readonly #router = inject(Router);
+  readonly #foldable = inject(FOLDABLE);
   readonly #el = inject(ElementRef);
   readonly splitPane = viewChild.required<IonSplitPane, ElementRef<HTMLIonSplitPaneElement>>('splitPane', { read: ElementRef });
   #hingeListener?: { remove(): Promise<void> };
@@ -75,11 +79,11 @@ export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter,
 
   async observeHinge() {
     if (Capacitor.getPlatform() !== 'ios') return;
-    this.#hingeListener = await Foldable.addListener('foldStateChange', (fold) => {
+    this.#hingeListener = await this.#foldable.addListener('foldStateChange', (fold) => {
       if (!this.#destroyed) this.setFoldState(fold);
     });
     if (this.#destroyed) return this.#releaseHinge();
-    const fold = await Foldable.getFoldState();
+    const fold = await this.#foldable.getFoldState();
     if (!this.#destroyed) this.setFoldState(fold);
   }
 

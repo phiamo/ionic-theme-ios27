@@ -1,24 +1,25 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Capacitor } from '@capacitor/core';
-import { Foldable, type FoldState } from '@erkamyaman/capacitor-foldable';
-import { vi } from 'vitest';
+import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
+import type { FoldState } from '@erkamyaman/capacitor-foldable';
+import { vi, type Mock } from 'vitest';
 
-vi.mock('@erkamyaman/capacitor-foldable', () => ({
-  Foldable: { addListener: vi.fn(), getFoldState: vi.fn() },
-}));
-
-import { TabsPage } from './tabs.page';
+import { FOLDABLE, TabsPage } from './tabs.page';
 import { testConfig } from '../../../util/test.config';
 
 describe('TabsPage', () => {
   let component: TabsPage;
   let fixture: ComponentFixture<TabsPage>;
+  let foldable: {
+    addListener: Mock<(event: 'foldStateChange', listener: (fold: FoldState) => void) => Promise<PluginListenerHandle>>;
+    getFoldState: Mock<() => Promise<FoldState>>;
+  };
 
   beforeEach(async () => {
+    foldable = { addListener: vi.fn(), getFoldState: vi.fn() };
     await TestBed.configureTestingModule({
       imports: [TabsPage],
-      providers: testConfig.providers,
+      providers: [...testConfig.providers, { provide: FOLDABLE, useValue: foldable }],
     }).compileComponents();
   });
 
@@ -38,11 +39,11 @@ describe('TabsPage', () => {
     vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('ios');
     const remove = vi.fn().mockResolvedValue(undefined);
     let emit!: (fold: FoldState) => void;
-    vi.mocked(Foldable.addListener).mockImplementation(async (_event, listener) => {
-      emit = listener as unknown as (fold: FoldState) => void;
+    foldable.addListener.mockImplementation(async (_event, listener) => {
+      emit = listener;
       return { remove };
     });
-    vi.mocked(Foldable.getFoldState).mockResolvedValue({
+    foldable.getFoldState.mockResolvedValue({
       state: 'half-opened',
       posture: 'book',
       isSeparating: true,
@@ -63,7 +64,7 @@ describe('TabsPage', () => {
     vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('ios');
     const remove = vi.fn().mockResolvedValue(undefined);
     let registered!: (handle: { remove: typeof remove }) => void;
-    vi.mocked(Foldable.addListener).mockReturnValue(
+    foldable.addListener.mockReturnValue(
       new Promise((resolve) => {
         registered = resolve;
       }),
