@@ -166,19 +166,6 @@ The example uses Ionic's standard collapsible large-title structure. Scroll the 
 
 The `.ion-page` wrapper makes this embedded preview behave like a complete routed page. An application using `ion-router-outlet` normally receives that page container automatically. The inset list and its items only provide enough content to demonstrate scrolling; they are not required by `.searchbar-classic`.
 
-## Search-bar toolbars
-
-Add `.toolbar-searchbar` when an `ion-toolbar` combines a search bar with start or end buttons. The class centers the slotted controls and adjusts the spacing around the search field.
-
-```html preview
-<ion-toolbar class="toolbar-searchbar">
-  <ion-buttons slot="start">
-    <ion-button>Cancel</ion-button>
-  </ion-buttons>
-  <ion-searchbar></ion-searchbar>
-</ion-toolbar>
-```
-
 ## Opting out
 
 Add `.ios-theme-disabled` to an individual Ionic component when it must retain Ionic's standard iOS styling.
