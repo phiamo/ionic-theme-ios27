@@ -193,13 +193,15 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             self.notifyWebViewMetricsChange()
             let duration = ShellCrossfade.duration(snapshot.transitionDuration)
             let existing = Set(self.controls.keys)
-            let verticalBars = snapshot.controls.filter { $0.placement == .verticalBars }
+            let verticalBarsSupported = ShellVerticalBarsController.supports(
+                edge: snapshot.verticalBarEdge, in: self.bridge?.viewController?.view ?? webView)
+            let verticalBars = verticalBarsSupported ? snapshot.controls.filter { $0.placement == .verticalBars } : []
             let snapshots = snapshot.controls.filter { $0.placement != .verticalBars }
             let width = snapshot.viewportWidth
             self.revision = next
             if snapshots.isEmpty && verticalBars.isEmpty {
                 self.removeControls(duration: duration)
-                call.resolve(["revision": next]); return
+                call.resolve(["revision": next, "verticalBarsSupported": verticalBarsSupported]); return
             }
             let scale = webView.bounds.width / width
             let retained = Set(snapshots.map(\.id))
@@ -226,7 +228,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             if snapshots.isEmpty {
                 self.host?.removeFromSuperview()
                 self.host = nil
-                call.resolve(["revision": next, "rejectedControls": rejectedControls])
+                call.resolve(["revision": next, "rejectedControls": rejectedControls, "verticalBarsSupported": verticalBarsSupported])
                 return
             }
             let host = self.host ?? ShellHost()
@@ -356,7 +358,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             for (id, control) in self.controls where !existing.contains(id) && self.searchControllers[id] == nil {
                 ShellCrossfade.enter(control, duration: duration)
             }
-            let complete = { call.resolve(["revision": next, "rejectedSearches": rejectedSearches, "rejectedControls": rejectedControls]) }
+            let complete = { call.resolve(["revision": next, "rejectedSearches": rejectedSearches, "rejectedControls": rejectedControls, "verticalBarsSupported": verticalBarsSupported]) }
             if let coordinator = searches.first?.0.transitionCoordinator,
                coordinator.animate(alongsideTransition: nil, completion: { _ in complete() }) { return }
             complete()

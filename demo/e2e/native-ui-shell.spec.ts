@@ -9,6 +9,7 @@ import type { ShellMockCore, TestAppElement } from './native-shell-mock';
 const importer = new NodePackageImporter(resolve(__dirname, '../../'));
 
 interface ShellMock extends ShellMockCore {
+  nativeEdge: 'leading' | 'trailing' | null;
   delay: number;
   hang: boolean;
   rejectInactiveSearch: boolean;
@@ -25,6 +26,7 @@ const mockNative = async (page: Page, fail = false, nativeEdge: 'leading' | 'tra
     const mock = {
       updates: [] as ShellSnapshot[],
       sequence: 0,
+      nativeEdge,
       delay: 0,
       hang: false,
       rejectInactiveSearch: false,
@@ -56,7 +58,13 @@ const mockNative = async (page: Page, fail = false, nativeEdge: 'leading' | 'tra
       async update(options: ShellSnapshot) {
         this.updates.push(options);
         if (this.hang) await new Promise(() => {});
-        return this.rejections(options);
+        const root = document.querySelector('ion-app');
+        const rtl = root?.closest('[dir]')?.getAttribute('dir') === 'rtl';
+        const physicalEdge = (this.nativeEdge === 'leading') !== rtl ? 'left' : 'right';
+        return {
+          ...(await this.rejections(options)),
+          verticalBarsSupported: !options.verticalBarEdge || this.nativeEdge === null || options.verticalBarEdge === physicalEdge,
+        };
       },
       async clear(options: { revision: number }) {
         this.updates.push({ revision: options.revision, viewportWidth: 0, controls: [] });
@@ -799,10 +807,10 @@ test('verticalBars rail remains native while its Ionic menu is open', async ({ p
   await expect(morphedCancel).toBeVisible();
 });
 
-// If native projection fails, the Web fallback still owns the application-selected rail.
-test('verticalBars controls stay operable on Web when native projection fails', async ({ page }) => {
+// A renderer that cannot honor the requested edge hands the rail back to the Web.
+test('verticalBars controls stay operable on Web when the reported rail edge differs', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await mockNative(page, true, 'leading');
+  await mockNative(page, false, 'leading');
   await page.goto('/main/index/native-ui-shell');
   await page.locator('app-native-ui-shell ion-menu-button').evaluate((element: HTMLIonMenuButtonElement) => (element.autoHide = false));
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
@@ -826,9 +834,9 @@ test('verticalBars controls stay operable on Web when native projection fails', 
   await expect
     .poll(() =>
       page.evaluate(() =>
-        Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').updates.every((snapshot: ShellSnapshot) =>
-          snapshot.controls.every((control: ShellControl) => control.placement !== 'vertical-bars'),
-        ),
+        Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell')
+          .updates.at(-1)
+          ?.controls.every((control: ShellControl) => control.placement !== 'vertical-bars'),
       ),
     )
     .toBe(true);
@@ -2785,4 +2793,26 @@ test('demo applies Foldable placement and fold events while keeping the rail tog
     }),
   );
   await expect(app).not.toHaveClass(/ios-theme-vertical-bars/);
+});
+
+test('verticalBars return to native projection when the requested edge matches after rotation', async ({ page }) => {
+  await mockNative(page, false, 'leading');
+  await page.goto('/main/index/native-ui-shell');
+  await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
+  const source = page.locator('app-native-ui-shell ion-button[type=submit]');
+  const clone = page.locator('ion-app > ion-button.ios-theme-vertical-bars-toolbar-projection[aria-label=Save]');
+  await expect(clone).toBeVisible();
+  const rotate = () =>
+    page.evaluate(() => {
+      Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').nativeEdge = 'trailing';
+      window.dispatchEvent(new Event('nativeUIShellRefresh'));
+    });
+  await rotate();
+  await expect(clone).toHaveCount(0);
+  await expect(source).toHaveAttribute('data-native-ui-shell', '');
+  await page.locator('ion-app').evaluate((element) => element.setAttribute('dir', 'rtl'));
+  await expect(clone).toBeVisible();
+  await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars-left'));
+  await expect(clone).toHaveCount(0);
+  await expect(source).toHaveAttribute('data-native-ui-shell', '');
 });

@@ -44,6 +44,7 @@ export const createRuntime = async (
   options: NativeUIShellOptions = {},
   nativeVerticalBars: () => boolean = () => true,
   verticalBarsOnly = false,
+  onVerticalBarsSupport?: (supported: boolean) => void,
 ): Promise<NativeUIShellHandle> => {
   const win = doc.defaultView!;
   const icons = createIconRenderer();
@@ -344,6 +345,7 @@ export const createRuntime = async (
       const result = await bounded(plugin.update(snapshot));
       if (stopped) return;
       if (result.revision !== snapshot.revision) throw new Error('Native UI Shell revision mismatch');
+      onVerticalBarsSupport?.(result.verticalBarsSupported !== false);
       if (`${win.innerWidth}:${win.innerHeight}` !== size) {
         lastSnapshot = '';
         dirty = true;

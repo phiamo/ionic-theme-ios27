@@ -119,7 +119,7 @@ const stopVerticalArea = async () => {
 
 - Pass `verticalBarEdge` from `getBarPlacement()`/`barPlacementChange`, a logical edge: `'leading'` or `'trailing'`. The logical edge resolves to a physical side through the nearest `dir` attribute, or through an explicit `rtl` second argument when the app already knows its direction.
 - Pass `null` to restore the ordinary layout.
-- The device-layout listener reports what iOS chose; the application decides whether to apply it. An app that wants a fixed edge regardless of the report can simply pass its own `'leading'` or `'trailing'`.
+- The device-layout listener reports what iOS chose; the application decides whether to apply it. The native renderer checks whether it can draw on the requested edge; a mismatch uses the Web rail until the edges match again. An app that wants a fixed edge regardless of the report can simply pass its own `'leading'` or `'trailing'`.
 
 Start either `enableVerticalControlArea()` or the full `enableNativeUIShell()` — not both. Repeating the same configuration returns the shared runtime; starting a different configuration while it is active throws an error. The application should have one owner responsible for destroying that runtime. If the app already uses `enableNativeUIShell()`, keep that single runtime and call `setVerticalControlAreaPlacement(verticalBarEdge)` from its listener.
 

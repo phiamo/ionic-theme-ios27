@@ -155,7 +155,13 @@ export interface WebViewMetrics {
 export interface NativeUIShellPlugin {
   configure(options?: { verticalBarsOnly?: boolean }): Promise<{ supported: boolean }>;
   getWebViewMetrics(): Promise<WebViewMetrics>;
-  update(snapshot: ShellSnapshot): Promise<{ revision: number; rejectedSearches?: string[]; rejectedControls?: string[] }>;
+  update(snapshot: ShellSnapshot): Promise<{
+    revision: number;
+    rejectedSearches?: string[];
+    rejectedControls?: string[];
+    /** Whether the renderer can honor this snapshot's requested rail edge. */
+    verticalBarsSupported?: boolean;
+  }>;
   clear(options: { revision: number }): Promise<void>;
   addListener(name: 'activate', listener: (event: ShellActivation) => void): Promise<PluginListenerHandle>;
   addListener(name: 'search', listener: (event: ShellSearchEvent) => void): Promise<PluginListenerHandle>;

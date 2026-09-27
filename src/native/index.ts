@@ -183,14 +183,26 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
         const capabilities = await plugin.configure({ verticalBarsOnly: options.verticalBarsOnly === true });
         if (!capabilities.supported) return fallback('Requires iOS 26 or later');
         // The application owns device state and selects the rail through placement classes.
-        const nativeVerticalBars = () => !!document.querySelector('ion-app.ios-theme-vertical-bars');
+        let verticalBarsSupported = true;
+        const nativeVerticalBars = () => verticalBarsSupported && !!document.querySelector('ion-app.ios-theme-vertical-bars');
         if (!options.verticalBarsOnly) {
           metricsListener = await plugin.addListener('webViewMetricsChange', (metrics) => {
             setConfig({ radius: metrics.radius });
           });
           await configureNativeTransition().catch(() => undefined);
         }
-        const native = await createRuntime(document, plugin, options, nativeVerticalBars, options.verticalBarsOnly === true);
+        const native = await createRuntime(
+          document,
+          plugin,
+          options,
+          nativeVerticalBars,
+          options.verticalBarsOnly === true,
+          (supported) => {
+            if (verticalBarsSupported === supported) return;
+            verticalBarsSupported = supported;
+            document.defaultView?.dispatchEvent(new Event('nativeUIShellRefresh'));
+          },
+        );
         runtime = combine(
           native,
           createVerticalBarsWebProjection(document, options, () => !nativeVerticalBars() || native.getStatus().state === 'stopped'),
