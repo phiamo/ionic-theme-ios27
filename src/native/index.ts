@@ -109,6 +109,36 @@ const elementRtl = (element: Element): boolean => element.closest('[dir]')?.getA
 
 // Device facts are supplied by the application; the theme only compares placement.
 const nativePlacements = new WeakMap<HTMLElement, { edge: VerticalBarEdge; rtl?: boolean }>();
+const horizontalFallbackAttribute = 'data-native-ui-shell-vertical-bars-suspended';
+
+// Keep the requested rail while ordinary Native UI Shell temporarily uses its
+// horizontal layout. Removing the effective class restores normal measurements,
+// toolbar ownership and safe areas throughout the existing rendering pipeline.
+const observeNativeVerticalBarsLayout = (doc: Document): (() => void) => {
+  const reconcile = () => {
+    const app = doc.querySelector<HTMLElement>('ion-app');
+    if (!app) return;
+    const requested = app.classList.contains('ios-theme-vertical-bars') || app.hasAttribute(horizontalFallbackAttribute);
+    const suspended = requested && nativePlacements.get(app)?.edge == null;
+    if (app.hasAttribute(horizontalFallbackAttribute) !== suspended) app.toggleAttribute(horizontalFallbackAttribute, suspended);
+    if (app.classList.contains('ios-theme-vertical-bars') !== (requested && !suspended)) {
+      app.classList.toggle('ios-theme-vertical-bars', requested && !suspended);
+    }
+  };
+  const observer = new MutationObserver(reconcile);
+  observer.observe(doc.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  doc.defaultView?.addEventListener('nativeUIShellRefresh', reconcile);
+  reconcile();
+  return () => {
+    observer.disconnect();
+    doc.defaultView?.removeEventListener('nativeUIShellRefresh', reconcile);
+    const app = doc.querySelector<HTMLElement>(`ion-app[${horizontalFallbackAttribute}]`);
+    if (app) {
+      app.removeAttribute(horizontalFallbackAttribute);
+      app.classList.add('ios-theme-vertical-bars');
+    }
+  };
+};
 
 /**
  * Applies one placement to the CSS layout and both Web/native projections.
@@ -122,6 +152,7 @@ export const setVerticalControlAreaPlacement = (placement: VerticalBarEdge | Ver
   if (placement && typeof placement === 'object' && placement.nativeEdge !== undefined) {
     nativePlacements.set(app, { edge: placement.nativeEdge, rtl });
   }
+  app.removeAttribute(horizontalFallbackAttribute);
   app.classList.toggle('ios-theme-vertical-bars', edge !== null);
   app.classList.toggle('ios-theme-vertical-bars-left', edge !== null && physicalVerticalBarEdge(edge, rtl ?? elementRtl(app)) === 'left');
   if (edge && Number.isFinite(inset) && inset > 0) app.style.setProperty('--ios-theme-vertical-bars-native-inset', `${inset}px`);
@@ -191,15 +222,17 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
       if (Capacitor.getPlatform() !== 'ios') return fallback('Requires Capacitor iOS');
       let runtime: NativeUIShellHandle | undefined;
       let metricsListener: Awaited<ReturnType<typeof plugin.addListener>> | undefined;
+      let stopVerticalBarsLayout: (() => void) | undefined;
       try {
         const capabilities = await plugin.configure({ verticalBarsOnly: options.verticalBarsOnly === true });
         if (!capabilities.supported) return fallback('Requires iOS 26 or later');
+        if (!options.verticalBarsOnly) stopVerticalBarsLayout = observeNativeVerticalBarsLayout(document);
         // The application owns device state and selects the rail through placement classes.
         const nativeVerticalBars = () => {
           const app = document.querySelector<HTMLElement>('ion-app.ios-theme-vertical-bars');
           if (!app) return false;
           const reported = nativePlacements.get(app);
-          if (!reported?.edge) return true;
+          if (!reported?.edge) return false;
           const physicalEdge = app.classList.contains('ios-theme-vertical-bars-left') ? 'left' : 'right';
           return physicalEdge === physicalVerticalBarEdge(reported.edge, reported.rtl ?? elementRtl(app));
         };
@@ -219,6 +252,7 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
           release,
           destroy: async () => {
             await metricsListener?.remove().catch(() => {});
+            stopVerticalBarsLayout?.();
             prehide?.stop();
             stopModals();
           },
@@ -226,6 +260,7 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
       } catch (error) {
         await runtime?.destroy();
         await metricsListener?.remove().catch(() => {});
+        stopVerticalBarsLayout?.();
         return fallback(error instanceof Error ? error.message : String(error));
       }
     })());

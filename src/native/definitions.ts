@@ -46,7 +46,7 @@ export interface VerticalBarPlacement {
   edge: VerticalBarEdge;
   /** Explicit rail width in CSS pixels; omitted to use the stylesheet's safe-area rules. */
   inset?: number;
-  /** Native logical edge reported by the application's device plugin. Null means unavailable; omission keeps the last supplied value. */
+  /** Native logical edge reported by the application's device plugin. Null or an unregistered edge uses a Web rail in verticalBarsOnly mode, or the ordinary Native UI Shell layout otherwise. Omission keeps the last supplied value. */
   nativeEdge?: VerticalBarEdge;
 }
 
