@@ -7,6 +7,7 @@ import type {
   VerticalBarEdge,
   VerticalBarPlacement,
   VerticalControlAreaHandle,
+  VerticalControlAreaOptions,
   WebViewMetrics,
 } from './definitions';
 import { createRuntime } from './runtime';
@@ -23,6 +24,7 @@ export type {
   VerticalBarEdge,
   VerticalBarPlacement,
   VerticalControlAreaHandle,
+  VerticalControlAreaOptions,
   WebViewMetrics,
 } from './definitions';
 
@@ -160,9 +162,18 @@ export const setVerticalControlAreaPlacement = (placement: VerticalBarEdge | Ver
   document.defaultView?.dispatchEvent(new Event('nativeUIShellRefresh'));
 };
 
-/** Call once at application startup. Ionic markup remains the source of truth. */
-export const enableVerticalControlArea = async (): Promise<VerticalControlAreaHandle> => {
-  const handle = await enableNativeUIShell({ controls: { tabs: true, toolbar: true }, verticalBarsOnly: true });
+/**
+ * Call once after ion-app is mounted. Ionic markup remains the source of truth.
+ * Set buttonDefaultFill to `solid` for Ionic's default design, or `null` for this
+ * theme's glass design. Omitting it is equivalent to `null` (existing behavior).
+ * This default affects native vertical projection only; explicit button fills win.
+ */
+export const enableVerticalControlArea = async (options: VerticalControlAreaOptions = {}): Promise<VerticalControlAreaHandle> => {
+  const handle = await enableNativeUIShell({
+    buttonDefaultFill: options.buttonDefaultFill,
+    controls: { tabs: true, toolbar: true },
+    verticalBarsOnly: true,
+  });
   return {
     getStatus: () => handle.getStatus(),
     suspend: () => handle.suspend(),
@@ -188,6 +199,7 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
   const controls = options.controls;
   const configuration = JSON.stringify([
     options.verticalBarsOnly === true,
+    options.buttonDefaultFill ?? null,
     ...(['tabs', 'toolbar', 'segment', 'fab'] as const).map((component) => !controls || controls[component] === true),
   ]);
   if (active && activeConfiguration !== configuration)

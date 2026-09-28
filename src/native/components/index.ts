@@ -1,3 +1,4 @@
+import type { VerticalControlAreaOptions } from '../definitions';
 import * as button from './ion-button';
 import * as buttons from './ion-buttons';
 import * as backButton from './ion-back-button';
@@ -29,7 +30,7 @@ export const motionSelector = [
 
 export const isVerticalBarsCandidate = isVerticalBarsSource;
 
-export const readCandidate = (element: HTMLElement, id: Identify): Candidate | undefined => {
+export const readCandidate = (element: HTMLElement, id: Identify, options: VerticalControlAreaOptions = {}): Candidate | undefined => {
   const verticalBars = isVerticalBarsCandidate(element);
   if (
     (!element.classList.contains('ios') && !verticalBars) ||
@@ -47,5 +48,5 @@ export const readCandidate = (element: HTMLElement, id: Identify): Candidate | u
   )
     return;
   if (element.contains(element.ownerDocument.activeElement)) return;
-  return components.find((component) => component.tag === element.localName)?.read(element, id);
+  return components.find((component) => component.tag === element.localName)?.read(element, id, options);
 };

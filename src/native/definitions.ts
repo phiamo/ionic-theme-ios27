@@ -10,7 +10,16 @@ export interface NativeUIShellStatus {
   reason?: string;
 }
 
-export interface NativeUIShellOptions {
+export interface VerticalControlAreaOptions {
+  /** Default fill for native vertical button projection when Ionic's fill is omitted or `default`.
+   * Use `solid` for Ionic's default design, or `null` for the iOS theme's glass design.
+   * Omitted is equivalent to `null` and preserves existing behavior.
+   * Explicit button fills take precedence. Source buttons and Web clones are unchanged.
+   */
+  buttonDefaultFill?: 'solid' | null;
+}
+
+export interface NativeUIShellOptions extends VerticalControlAreaOptions {
   /** Enables Native UI Shell globally. Defaults to `true`. */
   enabled?: boolean;
   /** Controls eligible for native projection. Omit to enable every control; when present, only `true` controls are enabled. */

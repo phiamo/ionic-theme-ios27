@@ -1,8 +1,9 @@
-import type { ShellControl, ShellItem, NativeUIShellComponent } from '../definitions';
+import type { ShellControl, ShellItem, NativeUIShellComponent, VerticalControlAreaOptions } from '../definitions';
 import { frame, isDark, isVerticalBarsSource, text, visible } from './dom';
 import { iconSource } from './icons';
 
 export interface Candidate {
+  buttonDefaultFill?: VerticalControlAreaOptions['buttonDefaultFill'];
   element: HTMLElement;
   sources?: HTMLElement[];
   control: ShellControl;
@@ -13,11 +14,17 @@ export interface Candidate {
 export type Identify = (element: HTMLElement) => string;
 type ItemElement = HTMLElement & { disabled?: boolean; selected?: boolean };
 
-export const createCandidate = (element: HTMLElement, kind: NativeUIShellComponent, id: Identify): Candidate => {
+export const createCandidate = (
+  element: HTMLElement,
+  kind: NativeUIShellComponent,
+  id: Identify,
+  options: VerticalControlAreaOptions = {},
+): Candidate => {
   const rect = element.getBoundingClientRect();
   const style = getComputedStyle(element);
   return {
     element,
+    buttonDefaultFill: options.buttonDefaultFill,
     control: {
       id: id(element),
       kind,
@@ -54,10 +61,10 @@ export const appendItem = (
   const labelStyle = getComputedStyle(labelElement);
   const badge = child.querySelector<HTMLElement>('ion-badge');
   const badgeStyle = badge && visible(badge) ? getComputedStyle(badge) : undefined;
+  const sourceFill = (child as HTMLIonButtonElement).fill;
+  const fill = !sourceFill || sourceFill === 'default' ? candidate.buttonDefaultFill : sourceFill;
   const outline =
-    isVerticalBarsSource(child) && child.matches('ion-button') && (child as HTMLIonButtonElement).fill === 'outline'
-      ? getComputedStyle(native ?? child)
-      : undefined;
+    isVerticalBarsSource(child) && child.matches('ion-button') && fill === 'outline' ? getComputedStyle(native ?? child) : undefined;
   const item: ShellItem = {
     id: id(child),
     ...frame(child.getBoundingClientRect(), candidate.element.getBoundingClientRect()),
@@ -76,7 +83,7 @@ export const appendItem = (
     fontWeight: parseInt(labelStyle.fontWeight, 10) || 400,
     color: getComputedStyle(native ?? child).color,
     backgroundColor:
-      isVerticalBarsSource(child) && child.matches('ion-button') && (child as HTMLIonButtonElement).fill === 'solid'
+      isVerticalBarsSource(child) && child.matches('ion-button') && fill === 'solid'
         ? getComputedStyle(native ?? child).backgroundColor
         : undefined,
     borderColor: outline?.borderTopColor,

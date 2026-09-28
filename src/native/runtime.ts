@@ -172,14 +172,14 @@ export const createRuntime = async (
       measuringPointerPages.add(pointerPage);
       pointerPage.style.setProperty('pointer-events', 'auto', 'important');
       try {
-        candidate = readCandidate(element, id);
+        candidate = readCandidate(element, id, options);
       } finally {
         if (previous) pointerPage.style.setProperty('pointer-events', previous, priority);
         else pointerPage.style.removeProperty('pointer-events');
         if (!hadStyle && !pointerPage.style.length) pointerPage.removeAttribute('style');
         win.setTimeout(() => measuringPointerPages.delete(pointerPage), 0);
       }
-    } else candidate = readCandidate(element, id);
+    } else candidate = readCandidate(element, id, options);
     if (candidate && isVerticalBarsCandidate(element)) {
       if (!nativeVerticalBars()) return undefined;
       candidate.control.placement = 'vertical-bars';

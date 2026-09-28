@@ -106,6 +106,14 @@ import { enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-ba
 const rail = await enableVerticalControlArea();
 ```
 
+If your existing theme gives buttons a CSS background without an explicit `fill="solid"`, opt into background projection:
+
+```ts
+const rail = await enableVerticalControlArea({ buttonDefaultFill: 'solid' });
+```
+
+`buttonDefaultFill` accepts `'solid'` (Ionic's default design) or `null` (the iOS theme's glass design). Omitting it is equivalent to `null`. It applies only to native vertical button projection when Ionic's `fill` is omitted or `default`. Explicit `clear`, `solid`, and `outline` values take precedence. Solid projection reads the existing computed foreground and background colors; outline projection reads the computed border. Source buttons and Web clones are unchanged. Omitting the option preserves the existing behavior. Native Liquid Glass tinting may differ visually from the CSS background, especially for translucent colors.
+
 **What you should see:** your existing tab bar moves to the side, and fixed-toolbar buttons with an `ion-icon` or SVG using `slot="icon-only"` appear there too. Content keeps its existing theme and leaves room for the controls. The Web tab rail displays icons; pressing and dragging reveals tab labels.
 
 Use your existing Ionic click handlers, routing, and form associations. All button fills (`default`, `clear`, `solid`, and `outline`) use the same `icon-only` rule, including submit buttons. Actions without that slot remain horizontal. Add `.ios-theme-horizontal-only` to an `ion-buttons` group or individual `ion-button` to keep an action in the horizontal toolbar.

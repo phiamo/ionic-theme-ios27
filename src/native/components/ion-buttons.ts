@@ -1,3 +1,4 @@
+import type { VerticalControlAreaOptions } from '../definitions';
 import { modalUsesVerticalBars } from '../shared/modal';
 import { createCandidate, appendItem } from '../shared/candidate';
 import type { Candidate, Identify } from '../shared/candidate';
@@ -7,7 +8,7 @@ import * as menuButton from './ion-menu-button';
 export const tag = 'ion-buttons';
 export const tracksMotion = true;
 
-export const read = (element: HTMLElement, id: Identify): Candidate | undefined => {
+export const read = (element: HTMLElement, id: Identify, options: VerticalControlAreaOptions = {}): Candidate | undefined => {
   if (!inFixedToolbar(element)) return;
   let children = childElements(element);
   if (children.length === 1) return menuButton.read(element, id);
@@ -25,7 +26,7 @@ export const read = (element: HTMLElement, id: Identify): Candidate | undefined 
     )
   )
     return;
-  const candidate = createCandidate(element, tag, id);
+  const candidate = createCandidate(element, tag, id, options);
   if (verticalBars && children.length !== childElements(element).length) candidate.sources = children;
   for (const child of children) {
     const supported = child.matches(menuButton.tag)

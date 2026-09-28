@@ -162,6 +162,8 @@ This rule applies to `fill="default"`, `clear`, `solid`, and `outline`, includin
 </ion-header>
 ```
 
+For existing themes that style a button background through CSS while leaving `fill` omitted or `default`, use `enableVerticalControlArea({ buttonDefaultFill: 'solid' })`. The option accepts `'solid'` (Ionic's default design) or `null` (the iOS theme's glass design); omission is equivalent to `null`. Explicit button fills take precedence. It affects native vertical projection only and never changes source buttons or Web clones. Omit it to retain the existing behavior. The full `enableNativeUIShell()` also accepts this option for its vertical buttons. Restart the runtime before changing the option.
+
 Give icon-only actions an accessible name, such as `aria-label="Done"`. Keep the original Ionic event handler or form association on the source button.
 
 The same rule applies to individual buttons and buttons inside `ion-buttons`, on ordinary pages and in the topmost full-width modal. Centered modals, menus, and popovers keep their own toolbar layout. Add `.ios-theme-horizontal-only` to a group or individual button to keep it horizontal. Placement is chosen when a routed page enters; changing an existing button's content or icon slot does not move it between the toolbar and rail until the page leaves and re-enters.

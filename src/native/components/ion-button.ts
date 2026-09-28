@@ -1,3 +1,4 @@
+import type { VerticalControlAreaOptions } from '../definitions';
 import { modalUsesVerticalBars } from '../shared/modal';
 import { createCandidate, appendItem } from '../shared/candidate';
 import type { Candidate, Identify } from '../shared/candidate';
@@ -5,7 +6,7 @@ import { inFixedToolbar, isVerticalBarsToolbarAction, isVerticalBarsToolbarGroup
 
 export const tag = 'ion-button';
 
-export const read = (element: HTMLElement, id: Identify): Candidate | undefined => {
+export const read = (element: HTMLElement, id: Identify, options: VerticalControlAreaOptions = {}): Candidate | undefined => {
   const button = element as HTMLIonButtonElement;
   const verticalBars =
     !element.closest('ion-menu, ion-popover') && modalUsesVerticalBars(element) && !!element.closest('ion-app.ios-theme-vertical-bars');
@@ -18,6 +19,6 @@ export const read = (element: HTMLElement, id: Identify): Candidate | undefined 
     (!verticalBars && button.classList.contains('ion-color'))
   )
     return;
-  const candidate = createCandidate(element, tag, id);
+  const candidate = createCandidate(element, tag, id, options);
   return appendItem(candidate, element, id) ? candidate : undefined;
 };
