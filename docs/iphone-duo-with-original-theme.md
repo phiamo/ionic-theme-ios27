@@ -17,7 +17,7 @@ Available in `1.2.0` as a **preview** feature. APIs and supported behavior may c
 This guide assumes an existing Ionic app with Ionic `>=8.8.1 <10` and Capacitor Core `>=8 <9`. Keep your existing Capacitor 8 installation. If your app uses another Capacitor major, migrate its Core, CLI, and platform packages together before following this guide. For a Web-only app without Capacitor, also install `@capacitor/core@^8`; the JavaScript entry point needs it even in Chrome.
 
 ```bash
-npm install @rdlabo/ionic-theme-ios27@1.2.0-1
+npm install @rdlabo/ionic-theme-ios27@1.2.0
 ```
 
 Keep your existing theme imports. Add this to your global Sass file:
@@ -93,8 +93,6 @@ const configureNavigation = (existingTransition: AnimationBuilder) => ({
 The adapter returns the original `Animation`, preserving its effects, duration, and easing. Use it only for navigation, not modal or popover animations. The builder must return a fresh `Animation` for each navigation; Ionic destroys it after the transition. Keep lifecycle events for control registration and transitions without animation.
 
 The adapter keeps the builder's animation targets, including any horizontal back-button effect. If you need the iOS 27 transition with that effect excluded in vertical layouts, use `iosTransitionAnimation` from `@rdlabo/ionic-theme-ios27` as your `navAnimation` instead. It already includes the adapter, so no wrapper is needed.
-
-`withNativeUIShellTransition()` is available in `1.2.0-1` and later.
 
 ### 4. Start the controls after the app root is mounted
 
