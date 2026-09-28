@@ -9,4 +9,3 @@ export type {
 } from './native';
 
 export { applyFoldStateClasses } from './native/foldable/fold-state';
-export { applyVerticalBarPlacement } from './native/foldable/placement';

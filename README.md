@@ -132,7 +132,7 @@ npm install @erkamyaman/capacitor-foldable
 npx cap sync
 ```
 
-Pass its initial state and events to `applyVerticalBarPlacement(root, placement)` and `applyFoldStateClasses(root, fold)` to drive the theme's layout. Device monitoring is not bundled with the theme.
+Apply its fold state with `applyFoldStateClasses(root, fold)` and its bar placement with `setVerticalControlAreaPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset })`. Device monitoring is not bundled with the theme.
 
 Follow [iPhone Duo with your existing theme](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme) for the browser preview and iOS setup. For shared layout rules and APIs, see [iPhone Duo support](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo). Available in `1.2.0-0` as an experimental feature; APIs and supported behavior may change.
 
