@@ -57,7 +57,11 @@ const root = document.querySelector('ion-app')!;
 const listener = await Foldable.addListener('foldStateChange', (fold) => applyFoldableState(root, fold));
 applyFoldableState(root, await Foldable.getFoldState());
 
-// Call when the application owner is disposed.
+```
+
+When the application owner is disposed:
+
+```ts
 await listener.remove();
 ```
 
@@ -102,7 +106,11 @@ const rail = await enableVerticalControlArea();
 const listener = await Foldable.addListener('barPlacementChange', (placement) => applyFoldablePlacement(root, placement));
 applyFoldablePlacement(root, await Foldable.getBarPlacement());
 
-// Call when the application owner is disposed.
+```
+
+When the application owner is disposed:
+
+```ts
 await listener.remove();
 await rail.destroy();
 ```
