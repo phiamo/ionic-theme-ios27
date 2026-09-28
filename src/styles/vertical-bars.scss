@@ -57,6 +57,14 @@ ion-app.ios-theme-vertical-bars .ios-transition-shade {
   clip-path: inset(0 var(--ios-theme-vertical-bars-safe-area-right-resolved) 0 var(--ios-theme-vertical-bars-safe-area-left-resolved));
 }
 
+// A vertical system rail can leave no top inset for the page header.
+ion-app.ios-theme-vertical-bars
+  ion-header.ios:not(.header-collapse-condense, .ios-theme-disabled, .ios26-disabled):not(
+    :where(ion-menu *, ion-modal:not(.ios-theme-vertical-bars-modal) *, ion-popover *)
+  ) {
+  --ion-safe-area-top: max(24px, env(safe-area-inset-top, 0px));
+}
+
 // Keep page backgrounds and the router full width; move only their foregrounds.
 ion-app.ios-theme-vertical-bars
   ion-content:is(.ios, .md):not(.ios-theme-disabled, .ios26-disabled):not(
