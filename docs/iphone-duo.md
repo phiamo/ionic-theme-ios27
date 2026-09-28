@@ -47,38 +47,39 @@ npx cap sync
 
 Use Capacitor 8.5 or later and build with Xcode 27.1 or newer for iPhone Duo's iOS 27.1 APIs. The dependency is needed for device-driven layout, not for the theme's CSS, browser simulation, or native control projection alone. Do not import the plugin's `ionic-tabs.css` alongside this package's rail projection; both would reposition the same tabs.
 
-For a posture-driven split pane, subscribe directly without starting a projection runtime:
+After `ion-app` is mounted, pass device state to `applyFoldableState`. The application owns subscriptions, so event logging and cleanup remain explicit. No projection runtime is needed for posture-driven layout.
 
 ```ts
 import { Foldable, type FoldState } from '@erkamyaman/capacitor-foldable';
+import { applyFoldableState } from '@rdlabo/ionic-theme-ios27/vertical-bars';
 
-const applyFold = (fold: FoldState) => {
-  const pane = document.querySelector('ion-split-pane');
-  pane?.classList.toggle('ios-theme-split-pane-half-open', fold.state === 'half-opened');
-  const expanded = fold.state === 'half-opened' || (fold.state === 'flat' && !!fold.hingeBounds);
-  pane?.setAttribute('when', expanded ? '(min-width: 900px)' : '(min-width: 992px)');
+const root = document.querySelector('ion-app')!;
+const initial = new AbortController();
+const updateFold = (fold: FoldState) => {
+  console.debug('Fold state:', fold);
+  applyFoldableState(root, fold);
 };
-let receivedEvent = false;
-let disposed = false;
 const listener = await Foldable.addListener('foldStateChange', (fold) => {
-  receivedEvent = true;
-  if (!disposed) applyFold(fold);
+  initial.abort();
+  updateFold(fold);
 });
-const initialFold = await Foldable.getFoldState();
-if (!disposed && !receivedEvent) applyFold(initialFold);
+const fold = await Foldable.getFoldState();
+if (!initial.signal.aborted) updateFold(fold);
 
-// When the consumer goes away:
-// disposed = true;
-// await listener.remove();
+// Call when the application owner is disposed.
+const stopFold = async () => {
+  initial.abort();
+  await listener.remove();
+};
 ```
 
-`getFoldState()` and `foldStateChange` report `state` (`'flat'`, `'half-opened'`, or `'closed'`), `posture`, and optional hinge geometry. Without fold information, the plugin returns a flat state without `hingeBounds`; restore the ordinary split-pane breakpoint in that case. The Web implementation also returns a flat state. A half-opened state uses the 900px breakpoint even without hinge geometry; a flat state with hinge geometry also uses 900px. A closed state restores the ordinary 992px breakpoint. Events received during initialization take precedence over the initial read.
+The initial read is applied only if no newer event arrived. The controller cancels adoption of that result, not the plugin request. The same helper handles initial values and events.
 
-`getBarPlacement()` and `barPlacementChange` report `{ verticalBarEdge: 'leading' | 'trailing' | null, inset: number }`. The edge is **logical**: leading is the physical left in LTR and the physical right in RTL. Pass `{ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset }` to `setPlacement()`. No start/stop monitoring calls are needed; remove each listener when its owner is disposed.
+`applyFoldableState` keeps one of `ios-theme-fold-flat`, `ios-theme-fold-half-opened`, and `ios-theme-fold-closed` on the supplied root, preserving unrelated classes. It also sets `ios-theme-fold-expanded` for a half-opened state or a flat state with hinge geometry. A flat state without geometry (including the Web fallback) and a closed state clear that class. The helpers do not subscribe to the plugin or change Ionic's split-pane `when` property.
 
-The theme never reads UIKit bar-placement traits. The application supplies `nativeEdge` on the initial read and each event, even when choosing a fixed `edge`. Omit `nativeEdge` to keep the last supplied value; pass `null` when the plugin reports no edge. An explicit `nativeEdge: null` or an initial unregistered edge prevents native vertical projection: `enableVerticalControlArea()` keeps the requested Web rail, while the full Native UI Shell temporarily restores its ordinary horizontal layout. The requested rail is retained so a later reported edge can restore vertical layout. Native vertical projection starts only after a matching non-null edge is supplied. Omitting `nativeEdge` after supplying it preserves that value, including `null`. Passing `{ edge: null, nativeEdge }` updates the reported edge while keeping the rail disabled.
+For rail placement, use `applyFoldablePlacement` as shown below. It forwards the reported logical edge as both the requested and native edge, and includes the measured inset. Leading is the physical left in LTR and the physical right in RTL. A null edge restores the ordinary layout; an inset of zero clears the explicit width. No start/stop monitoring calls are needed.
 
-Foldable reports the measured width reserved by the native bar as `inset` and notifies changes through `barPlacementChange`. Pass this value to `setPlacement()` when following the reported edge, rather than assuming a fixed width. When no bar is reported, `inset` is `0`; the theme clears the explicit width and uses its CSS safe-area rules if the application still requests a Web rail. Applications choosing a different edge can supply their own width or use the CSS fallback. WebView corner radius remains a rendering concern: `configureNativeTransition()` uses the shell's `getWebViewMetrics()` API, independently of `Foldable`.
+WebView corner radius remains a rendering concern: `configureNativeTransition()` uses the shell's `getWebViewMetrics()` API, independently of `Foldable`.
 
 **Migration:** the theme's former `DeviceLayout`, `HingeStatus`, `getDeviceLayout()`, `deviceLayoutChange`, and start/stop device-layout monitoring APIs have been removed. Replace device subscriptions with the `Foldable` APIs above; use `getWebViewMetrics()` for one-shot radius reads. Foldable can infer Duo bar placement from safe-area insets when the app is built without the iOS 27.1 SDK. Hinge data still requires the newer SDK. Apps can also request a fixed rail placement independently of the reported edge.
 
@@ -90,9 +91,9 @@ Add `.ios-theme-vertical-bars` to `ion-app` to reserve the rail region on the ph
 <ion-app class="ios-theme-vertical-bars">...</ion-app>
 ```
 
-The classes are physical — `-left` always means the physical left edge — because CSS and the native renderer work in physical coordinates. `setPlacement` (below) is the usual way to apply them: it accepts the logical `verticalBarEdge` reported by `Foldable` and resolves it through the document's direction, so an RTL app does not need its own conversion.
+The classes are physical — `-left` always means the physical left edge — because CSS and the native renderer work in physical coordinates. `applyFoldablePlacement` (below) applies the logical `verticalBarEdge` reported by `Foldable` and resolves it through the document's direction, so an RTL app does not need its own conversion.
 
-For Chrome development, no native plugin is needed — the class alone reserves `80px` to simulate iPhone Duo. When `setPlacement` receives an explicit `{ edge, inset }`, that inset replaces the fallback width, even when it is less than `80px`. Override `--ios-theme-vertical-bars-safe-area-left` or `--ios-theme-vertical-bars-safe-area-right` when simulating a different layout.
+For Chrome development, no native plugin is needed — the class alone reserves `80px` to simulate iPhone Duo. When `applyFoldablePlacement` receives the reported placement, its inset replaces the fallback width, even when it is less than `80px`. Override `--ios-theme-vertical-bars-safe-area-left` or `--ios-theme-vertical-bars-safe-area-right` when simulating a different layout.
 
 This keeps routers and component backgrounds full-viewport. `ion-content` moves its scroll foreground, `ion-toolbar` moves its container foreground, and `ion-fab` adjusts only when placed beside the system UI. The corresponding Ionic safe-area variable is reset inside those foreground components so descendants do not add the inset again.
 
@@ -100,68 +101,39 @@ This keeps routers and component backgrounds full-viewport. `ion-content` moves 
 
 The mode is component-mode independent: an app can keep Ionic `mode: 'md'` on iOS and still enable Vertical Bars. No component needs `mode="ios"`.
 
-## Apply Foldable events with small helpers
-
-The optional `applyFoldableState` and `applyFoldablePlacement` helpers accept the plugin's values directly. They only apply layout state; your app owns initial reads, subscriptions, logging, and listener removal. They do not start the projection runtime or import the Foldable plugin.
-
-```ts
-import { applyFoldableState, applyFoldablePlacement } from '@rdlabo/ionic-theme-ios27/vertical-bars';
-
-const root = document.querySelector('ion-app')!;
-const foldListener = await Foldable.addListener('foldStateChange', (fold) => {
-  console.debug('Fold state:', fold);
-  applyFoldableState(root, fold);
-});
-const placementListener = await Foldable.addListener('barPlacementChange', (placement) => {
-  console.debug('Bar placement:', placement);
-  applyFoldablePlacement(root, placement);
-});
-
-// On application teardown:
-await Promise.all([foldListener.remove(), placementListener.remove()]);
-```
-
-This snippet shows change notifications only. Pass initial getter results to the same helpers, taking care not to overwrite a newer event with a late initial result.
-
-`applyFoldablePlacement` supplies both `edge` and `nativeEdge`, preserving the reported inset. `applyFoldableState` maintains one of `ios-theme-fold-flat`, `ios-theme-fold-half-opened`, and `ios-theme-fold-closed` on the supplied root. It also sets `ios-theme-fold-expanded` when half-opened or flat with hinge geometry. Other application classes are preserved.
-
-With `vertical-bars.css`, `ios-theme-fold-half-opened` on `ion-app` sets descendant split panes' `--ios-theme-split-pane-width` to `50vw`. Keep the split-pane width bindings described below. The helpers do not change Ionic's `when` property; the application still chooses its visibility breakpoint.
-
 ## Project controls into the rail
 
-Start the standalone runtime once at application startup:
+Start the standalone runtime once after `ion-app` is mounted, and apply the plugin's placement with `applyFoldablePlacement`:
 
 ```ts
-import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
-import { enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-bars';
-import { Foldable } from '@erkamyaman/capacitor-foldable';
+import { Foldable, type BarPlacement } from '@erkamyaman/capacitor-foldable';
+import { applyFoldablePlacement, enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-bars';
 
-// Start on Chrome too; the Web projection stays idle until the class is present.
+const root = document.querySelector('ion-app')!;
 const rail = await enableVerticalControlArea();
-let layoutListener: PluginListenerHandle | undefined;
-
-if (Capacitor.getPlatform() === 'ios') {
-  layoutListener = await Foldable.addListener('barPlacementChange', ({ verticalBarEdge, inset }) =>
-    rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset }),
-  );
-  const { verticalBarEdge, inset } = await Foldable.getBarPlacement();
-  rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset });
-}
+const initial = new AbortController();
+const updatePlacement = (placement: BarPlacement) => {
+  console.debug('Bar placement:', placement);
+  applyFoldablePlacement(root, placement);
+};
+const listener = await Foldable.addListener('barPlacementChange', (placement) => {
+  initial.abort();
+  updatePlacement(placement);
+});
+const placement = await Foldable.getBarPlacement();
+if (!initial.signal.aborted) updatePlacement(placement);
 
 // Call when the application owner is disposed.
 const stopVerticalArea = async () => {
-  await layoutListener?.remove();
+  initial.abort();
+  await listener.remove();
   await rail.destroy();
 };
 ```
 
-`setPlacement` on the handle and the exported `setVerticalControlAreaPlacement` are the same function; either applies the application's chosen placement to the CSS layout and both projections. It requires a mounted `ion-app` — call it after the app root exists.
+The helper supplies `nativeEdge` automatically, so the renderer knows which rail the system actually provides. The measured `inset` is passed through instead of assuming a fixed width. Devices without a reported rail, including Web and Android, return a null edge and retain the ordinary layout. For browser simulation, use the class-based preview above without connecting device placement.
 
-- Pass `{ edge, nativeEdge }`: `edge` is the application's chosen logical edge; `nativeEdge` is `verticalBarEdge` from `Foldable.getBarPlacement()`/`barPlacementChange`. They resolve through the nearest `dir` attribute, or the explicit `rtl` argument.
-- Pass `null` to restore the ordinary layout.
-- The device-layout listener reports what iOS chose; the application decides whether to apply it. The theme compares the application's chosen edge with its supplied `nativeEdge`; a mismatch uses the Web rail until the edges match again. For a fixed right-in-LTR rail, pass `{ edge: 'trailing', nativeEdge: verticalBarEdge }` on each `Foldable` update.
-
-Start either `enableVerticalControlArea()` or the full `enableNativeUIShell()` — not both. Repeating the same configuration returns the shared runtime; starting a different configuration while it is active throws an error. The application should have one owner responsible for destroying that runtime. If the app already uses `enableNativeUIShell()`, keep that single runtime and call `setVerticalControlAreaPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset })` from its listener.
+Start either `enableVerticalControlArea()` or the full `enableNativeUIShell()` — not both. If the app already uses Native UI Shell, keep that runtime and use the same `applyFoldablePlacement` callback. The application owner removes its listeners and destroys its runtime on teardown.
 
 On supported iOS versions the runtime hands eligible tabs, back navigation, menu buttons, and fixed-toolbar actions to a native SwiftUI `TabView` and toolbar; on Web, Android, or when native projection is unavailable, Web clones remain the fallback. Back navigation can come from outside a fixed toolbar; menu buttons and other toolbar actions still require one.
 
@@ -205,7 +177,6 @@ For a side-by-side menu on iPhone Duo, opt the `ion-split-pane` into the separat
 
 ```html
 <ion-split-pane
-  [class.ios-theme-split-pane-half-open]="halfOpened"
   contentId="main-content"
   when="(min-width: 900px)"
 >
@@ -225,7 +196,9 @@ ion-split-pane {
 }
 ```
 
-The registered `--ios-theme-split-pane-width` defaults to `320px`; `.ios-theme-split-pane-half-open` sets it to `50vw`. Set `halfOpened` when `foldStateChange` reports `state === 'half-opened'` (and read the initial value with `getFoldState()`). Ionic's `when` decides whether the menu is a persistent side pane; use the 900px breakpoint for a half-opened state or a flat state with hinge geometry, and the ordinary 992px breakpoint when closed or flat without geometry. Missing `hingeBounds` alone does not mean the device is flat. The application chooses where to apply this width rule; an ordinary split pane elsewhere is unchanged. This layout does not enable Vertical Bars or move an overlay menu.
+The registered `--ios-theme-split-pane-width` defaults to `320px`. `applyFoldableState` sets `ios-theme-fold-half-opened` on `ion-app`; the stylesheet then sets descendant split panes to `50vw`. No per-pane class binding is needed.
+
+Ionic's `when` still controls whether the menu is persistent. The example chooses a fixed 900px breakpoint. If your app needs different breakpoints for folded and ordinary displays, use the `ios-theme-fold-expanded` class applied by the helper to select that policy in your application's layout code. The helper only updates state classes, not `when`. This layout does not enable Vertical Bars or move an overlay menu.
 
 ## Vertical Control Area API
 

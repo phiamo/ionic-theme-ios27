@@ -139,38 +139,15 @@ npx cap sync ios
 
 Use Capacitor 8.5 or later and build with Xcode 27.1 or newer for actual rail placement and hinge posture on iOS 27.1. Native UI Shell uses Swift Package Manager; existing CocoaPods apps can follow [Native UI Shell setup](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell#enable-the-shell). Keep this package's `vertical-bars.css`; the device plugin's `ionic-tabs.css` is not needed with our rail projection.
 
-Replace the browser-only startup above with this after `ion-app` is mounted:
+Replace the browser-only startup with the [device placement setup](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#project-controls-into-the-rail). That setup sends initial values and `barPlacementChange` events to `applyFoldablePlacement(root, placement)`, with event logging and listener cleanup kept in your application.
 
-```ts
-import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
-import { enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-bars';
-import { Foldable } from '@erkamyaman/capacitor-foldable';
-
-const rail = await enableVerticalControlArea();
-let layoutListener: PluginListenerHandle | undefined;
-
-if (Capacitor.getPlatform() === 'ios') {
-  layoutListener = await Foldable.addListener('barPlacementChange', ({ verticalBarEdge, inset }) =>
-    rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset }),
-  );
-  const { verticalBarEdge, inset } = await Foldable.getBarPlacement();
-  rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset });
-}
-
-// Call when the application owner is disposed.
-const stopVerticalArea = async () => {
-  await layoutListener?.remove();
-  await rail.destroy();
-};
-```
-
-`setPlacement()` resolves the logical edge through the document direction. Pass Foldable’s measured `inset` with the reported edge so the theme reserves the actual bar width and follows width changes. An inset of `0` clears the explicit width; manually requested rails then use the theme’s CSS safe-area rules. A `null` edge restores the ordinary layout. Devices without a reported rail return `null`, so this example restores the ordinary layout there. On iOS 27.1 or later, Foldable can infer Duo bar placement from safe-area insets when the app is built with an older SDK. To deliberately request a rail when the plugin reports no edge, have your application choose a fixed edge with `rail.setPlacement('trailing')` instead of applying that null placement. This simulates the layout; it does not provide a real system rail or hinge measurements.
+The helper passes both the requested and native edge, resolves RTL, and applies Foldable's measured inset. A null edge restores the ordinary layout. Keep `buttonDefaultFill: 'solid'` on `enableVerticalControlArea()` if your existing theme needs CSS background projection.
 
 On supported iOS, controls in the rail use the system SwiftUI appearance; your custom Web styling still applies to ordinary content and horizontal controls. Web and Android use Web clones.
 
 ## Use hinge posture without projecting controls
 
-If your existing theme needs only a posture-driven split pane or a layout switch, do not start a projection runtime or add `.ios-theme-vertical-bars`. Use `Foldable.getFoldState()` and `foldStateChange` directly, removing the listener when finished. There is no separate start/stop monitoring call.
+If your existing theme needs only a posture-driven split pane or a layout switch, do not start a projection runtime or add `.ios-theme-vertical-bars`. Pass `Foldable.getFoldState()` results and `foldStateChange` events to `applyFoldableState(root, fold)`, removing the listener when finished. There is no separate start/stop monitoring call.
 
 See [Read the device layout](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#read-the-device-layout) for the subscription example, null values, and monitoring lifetime. See [Adapt the split pane](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#adapt-the-split-pane) for the opt-in width rules and half-open state.
 
