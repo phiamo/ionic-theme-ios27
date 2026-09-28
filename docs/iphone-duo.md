@@ -58,7 +58,7 @@ const listener = await Foldable.addListener('foldStateChange', (fold) => applyFo
 applyFoldableState(root, await Foldable.getFoldState());
 
 // Call when the application owner is disposed.
-const stopFold = () => listener.remove();
+await listener.remove();
 ```
 
 Subscribe to changes, then read the current state. The same helper handles initial values and events.
@@ -103,10 +103,8 @@ const listener = await Foldable.addListener('barPlacementChange', (placement) =>
 applyFoldablePlacement(root, await Foldable.getBarPlacement());
 
 // Call when the application owner is disposed.
-const stopVerticalArea = async () => {
-  await listener.remove();
-  await rail.destroy();
-};
+await listener.remove();
+await rail.destroy();
 ```
 
 The helper supplies `nativeEdge` automatically, so the renderer knows which rail the system actually provides. The measured `inset` is passed through instead of assuming a fixed width. Devices without a reported rail, including Web and Android, return a null edge and retain the ordinary layout. For browser simulation, use the class-based preview above without connecting device placement.
