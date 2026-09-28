@@ -45,7 +45,7 @@ describe('TabsPage', () => {
 
   it('uses the fold state without requiring hinge geometry and restores the ordinary layout', () => {
     const pane = component.splitPane().nativeElement;
-    expect(pane.classList.contains('ios-theme-fold-layout')).toBe(true);
+    expect(pane.classList.contains('split-pane-fold-layout')).toBe(true);
     component.setFoldState(halfOpened);
     expect(pane.getAttribute('when')).toBe('(min-width: 900px)');
     expect(root.classList.contains('ios-theme-fold-half-opened')).toBe(true);
