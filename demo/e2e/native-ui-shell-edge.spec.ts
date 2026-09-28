@@ -440,11 +440,11 @@ test('native geometry rejection paints Web before retirement and retries after l
   expect(retirement.frame - retirement.visibleFrame).toBeGreaterThanOrEqual(2);
   const counts = await page.evaluate(async () => {
     const state = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell');
-    // Let the restoration's mutation notification settle, then re-read identical data.
+    // Re-read identical data without a resize, which explicitly retries native geometry.
     for (let frame = 0; frame < 4; frame++) await new Promise(requestAnimationFrame);
     const before = state.updates.length;
     for (let frame = 0; frame < 12; frame++) {
-      window.dispatchEvent(new Event('resize'));
+      window.dispatchEvent(new Event('scroll'));
       await new Promise(requestAnimationFrame);
     }
     return { before, after: state.updates.length };
