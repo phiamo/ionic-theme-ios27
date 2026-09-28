@@ -11,7 +11,7 @@
   initial-value: 320px;
 }
 
-ion-app.ios-theme-fold-half-opened ion-split-pane,
+ion-app.ios-theme-fold-half-opened ion-split-pane.ios-theme-fold-layout,
 ion-split-pane.ios-theme-split-pane-half-open {
   --ios-theme-split-pane-width: 50vw;
 }

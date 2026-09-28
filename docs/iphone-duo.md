@@ -161,6 +161,7 @@ For a side-by-side menu on iPhone Duo, opt the `ion-split-pane` into the separat
 
 ```html
 <ion-split-pane
+  class="ios-theme-fold-layout"
   contentId="main-content"
   when="(min-width: 900px)"
 >
@@ -172,7 +173,7 @@ For a side-by-side menu on iPhone Duo, opt the `ion-split-pane` into the separat
 Set the ordinary split-pane width to 320pt in the application's stylesheet, and let the half-open class change only the width value:
 
 ```css
-ion-split-pane {
+ion-split-pane.ios-theme-fold-layout {
   --ios-theme-menu-width: var(--ios-theme-split-pane-width);
   --side-width: var(--ios-theme-menu-width);
   --side-max-width: var(--ios-theme-menu-width);
@@ -180,7 +181,7 @@ ion-split-pane {
 }
 ```
 
-The registered `--ios-theme-split-pane-width` defaults to `320px`. `applyFoldableState` sets `ios-theme-fold-half-opened` on `ion-app`; the stylesheet then sets descendant split panes to `50vw`. No per-pane class binding is needed.
+The registered `--ios-theme-split-pane-width` defaults to `320px`. `applyFoldableState` sets `ios-theme-fold-half-opened` on `ion-app`; the stylesheet then sets only descendant split panes with `ios-theme-fold-layout` to `50vw`. Add this opt-in class once; no state-dependent class binding is needed. Other split panes retain their existing width.
 
 Ionic's `when` still controls whether the menu is persistent. The example chooses a fixed 900px breakpoint. If your app needs different breakpoints for folded and ordinary displays, use the `ios-theme-fold-expanded` class applied by the helper to select that policy in your application's layout code. The helper only updates state classes, not `when`. This layout does not enable Vertical Bars or move an overlay menu.
 
