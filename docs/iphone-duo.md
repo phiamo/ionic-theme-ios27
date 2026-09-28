@@ -54,22 +54,14 @@ import { Foldable } from '@erkamyaman/capacitor-foldable';
 import { applyFoldableState } from '@rdlabo/ionic-theme-ios27/vertical-bars';
 
 const root = document.querySelector('ion-app')!;
-const initial = new AbortController();
-const listener = await Foldable.addListener('foldStateChange', (fold) => {
-  initial.abort();
-  applyFoldableState(root, fold);
-});
-const fold = await Foldable.getFoldState();
-if (!initial.signal.aborted) applyFoldableState(root, fold);
+const listener = await Foldable.addListener('foldStateChange', (fold) => applyFoldableState(root, fold));
+applyFoldableState(root, await Foldable.getFoldState());
 
 // Call when the application owner is disposed.
-const stopFold = async () => {
-  initial.abort();
-  await listener.remove();
-};
+const stopFold = () => listener.remove();
 ```
 
-The initial read is applied only if no newer event arrived. The controller cancels adoption of that result, not the plugin request. The same helper handles initial values and events.
+Subscribe to changes, then read the current state. The same helper handles initial values and events.
 
 `applyFoldableState` keeps one of `ios-theme-fold-flat`, `ios-theme-fold-half-opened`, and `ios-theme-fold-closed` on the supplied root, preserving unrelated classes. It also sets `ios-theme-fold-expanded` for a half-opened state or a flat state with hinge geometry. A flat state without geometry (including the Web fallback) and a closed state clear that class. The helpers do not subscribe to the plugin or change Ionic's split-pane `when` property.
 
@@ -107,17 +99,11 @@ import { applyFoldablePlacement, enableVerticalControlArea } from '@rdlabo/ionic
 
 const root = document.querySelector('ion-app')!;
 const rail = await enableVerticalControlArea();
-const initial = new AbortController();
-const listener = await Foldable.addListener('barPlacementChange', (placement) => {
-  initial.abort();
-  applyFoldablePlacement(root, placement);
-});
-const placement = await Foldable.getBarPlacement();
-if (!initial.signal.aborted) applyFoldablePlacement(root, placement);
+const listener = await Foldable.addListener('barPlacementChange', (placement) => applyFoldablePlacement(root, placement));
+applyFoldablePlacement(root, await Foldable.getBarPlacement());
 
 // Call when the application owner is disposed.
 const stopVerticalArea = async () => {
-  initial.abort();
   await listener.remove();
   await rail.destroy();
 };
