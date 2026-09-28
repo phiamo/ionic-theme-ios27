@@ -1,14 +1,14 @@
 ---
-title: iPhone Duo with your existing theme (experimental)
+title: iPhone Duo with your existing theme (preview)
 ---
 
-# iPhone Duo with your existing theme (experimental)
+# iPhone Duo with your existing theme (preview)
 
 Add a vertical navigation area to your Ionic app while keeping its existing theme. Tabs and supported toolbar actions move to the side of the screen; your content and horizontal controls keep their current appearance. Both Ionic `ios` and `md` modes are supported.
 
 **Try it in Chrome first.** You can preview the layout with Web controls before setting up an iPhone Duo or an iOS build. On supported Capacitor iOS, the same Ionic markup supplies native SwiftUI controls in the system rail.
 
-Available in `1.2.0-0` as an **experimental** feature. APIs and supported behavior may change.
+Available in `1.2.0` as a **preview** feature. APIs and supported behavior may change.
 
 ## Try it in your existing Ionic app
 

@@ -1,6 +1,6 @@
 # Ionic Theme iOS27
 
-A theme for Ionic apps that brings iOS 27 Liquid Glass and motion to the Web. Capacitor iOS apps can also opt into an experimental Native UI Shell for supported controls.
+A theme for Ionic apps that brings iOS 27 Liquid Glass and motion to the Web. Capacitor iOS apps can also opt into a preview Native UI Shell for supported controls.
 
 **[Ionic 9 demo](https://ionic-theme-ios27.rdlabo.dev/) · [Ionic 8 demo](https://ionic8-theme-ios27.rdlabo.dev/) · [Documentation](https://docs.rdlabo.dev/projects/ionic-theme-ios27)**
 
@@ -22,7 +22,7 @@ Give familiar Ionic screens the iOS 27 visual language: Liquid Glass, styled too
 
 ### Project your Ionic UI into Native UI
 
-On Capacitor iOS, the optional, experimental [Native UI Shell](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell) reads supported fixed controls from your existing Ionic markup. It projects their text, resolved `ion-icon` artwork or supported static SVGs, and selection state into UIKit controls with system Liquid Glass. Changes and native actions flow through the original Ionic components, so the Web and native presentations share one UI definition. Page content and routing stay in the WebView; unsupported layouts keep their Web presentation.
+On Capacitor iOS, the optional [Native UI Shell](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell) reads supported fixed controls from your existing Ionic markup. It is available as a preview in `1.2.0`. It projects their text, resolved `ion-icon` artwork or supported static SVGs, and selection state into UIKit controls with system Liquid Glass. Changes and native actions flow through the original Ionic components, so the Web and native presentations share one UI definition. Page content and routing stay in the WebView; unsupported layouts keep their Web presentation.
 
 **Tab drag on iOS 27:** The same Library screen with Native UI Shell off (Web) and on (UIKit). Both frames were captured while dragging the selected tab; the lower panels enlarge the glass around the tab bar.
 
@@ -121,7 +121,7 @@ Use this markup to preview the inset grouped list look. For the list structure t
 
 ## Optional setups
 
-### Support iPhone Duo without the iOS 27 theme (experimental)
+### Support iPhone Duo without the iOS 27 theme (preview)
 
 Keep your existing Ionic theme and move tabs and supported toolbar actions into a vertical side area. **Start in Chrome** with one stylesheet, an app class, and `enableVerticalControlArea()`; then connect the layout to iPhone Duo device events for the system rail and hinge posture.
 
@@ -134,7 +134,7 @@ npx cap sync
 
 Use its `getBarPlacement()` / `barPlacementChange` and `getFoldState()` / `foldStateChange` APIs to drive the theme's layout. Device monitoring is not bundled with the theme.
 
-Follow [iPhone Duo with your existing theme](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme) for the browser preview and iOS setup. For shared layout rules and APIs, see [iPhone Duo support](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo). Available in `1.2.0-0` as an experimental feature; APIs and supported behavior may change.
+Follow [iPhone Duo with your existing theme](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme) for the browser preview and iOS setup. For shared layout rules and APIs, see [iPhone Duo support](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo). Available in `1.2.0` as a preview feature; APIs and supported behavior may change.
 
 ### Use only the iOS 27 theme
 
@@ -221,9 +221,9 @@ For Ionic 9 Angular, import `isPlatform` and `provideIonicAngular` from `@ionic/
 - [Special markup and classes](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/special-markup) — opt-in markup and utility classes used by the theme.
 - [ESLint](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/eslint) — check list structure with ESLint rules.
 - [Features](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/features) — CSS variables, Liquid Glass, selective imports, and dark mode.
-- [Native UI Shell (Experimental)](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell) — project supported Ionic controls, text, and icons into UIKit.
-- [iPhone Duo support (experimental)](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo) — vertical system rail, hinge posture, and split-pane layout; usable without the theme or the shell.
-- [iPhone Duo with your existing theme (experimental)](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme) — standalone setup that keeps your existing Web theme.
+- [Native UI Shell (Preview)](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell) — project supported Ionic controls, text, and icons into UIKit.
+- [iPhone Duo support (preview)](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo) — vertical system rail, hinge posture, and split-pane layout; usable without the theme or the shell.
+- [iPhone Duo with your existing theme (preview)](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme) — standalone setup that keeps your existing Web theme.
 - [Animation](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/animation) — tab, segment, and searchable effects.
 - [Migration from iOS 26](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/migration) — upgrade an existing app, including stylesheet, class, and CSS variable changes.
 - [iOS 26 migration history](https://docs.rdlabo.dev/projects/ionic-theme-ios26/docs/migration) — earlier major-version changes for the previous package.

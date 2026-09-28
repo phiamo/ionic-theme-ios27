@@ -47,9 +47,9 @@ Add one of `tab-bar-position-start`, `tab-bar-position-center`, or `tab-bar-posi
 
 These classes do not reposition a separate `ion-fab`; leave room for it when choosing the bar's position.
 
-## Support iPhone Duo (experimental)
+## Support iPhone Duo (preview)
 
-iPhone Duo support is experimental. It is available in the `1.2.0-0` prerelease alongside Native UI Shell. Its APIs and supported behavior may change.
+iPhone Duo support, including standalone vertical bars, is available as a **preview** in `1.2.0` alongside Native UI Shell. Its APIs and supported behavior may change.
 
 iPhone Duo support — the vertical system rail, hinge posture, and the posture-driven split-pane layout — is independent of the iOS 27 theme and the full Native UI Shell. See [iPhone Duo support](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo) for the complete setup, including device-layout monitoring without a projection runtime.
 

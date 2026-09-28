@@ -1,10 +1,10 @@
 ---
-title: Native UI Shell (Experimental)
+title: Native UI Shell (Preview)
 ---
 
-# Native UI Shell (Experimental)
+# Native UI Shell (Preview)
 
-Native UI Shell is experimental. Its API and supported controls may change.
+Native UI Shell is available as a **preview** in `1.2.0`. Its API and supported controls may change before stable status. Stable status is planned after the official release of Xcode 27.1.
 
 Native UI Shell gives an Ionic app native navigation and action controls around its Web content. The optional Capacitor iOS plugin renders supported fixed Ionic controls with UIKit or SwiftUI and the system's Liquid Glass material. Page content, scrolling, application state and routing remain in Ionic's WebView.
 
@@ -171,9 +171,9 @@ Suspensions are nestable and `resume()` is idempotent. Native projection resumes
 
 The native material and control appearance follow the running iOS version; an iOS 26 device does not acquire iOS 27's appearance merely by installing this theme.
 
-## Support iPhone Duo (experimental)
+## Support iPhone Duo (preview)
 
-iPhone Duo support is experimental, including standalone use without Native UI Shell. It is available in the `1.2.0-0` prerelease alongside Native UI Shell. Its APIs and supported behavior may change.
+iPhone Duo support, including standalone vertical bars without Native UI Shell, is available as a **preview** in `1.2.0` alongside Native UI Shell. Its APIs and supported behavior may change.
 
 The standalone Vertical Control Area entry point (`@rdlabo/ionic-theme-ios27/vertical-bars`) and `dist/css/vertical-bars.css` work without loading the iOS 27 theme. Call `enableVerticalControlArea()` for this use case; it projects only controls placed in the vertical area. Apps already calling `enableNativeUIShell()` should keep that single runtime rather than starting both. See [iPhone Duo support](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo) for the complete setup, including hinge posture and the split-pane layout for apps that do not use this shell at all.
 

@@ -13,7 +13,7 @@ final class NativeUIShellTests: XCTestCase {
         let toggle = app.webViews.switches["Dark Mode"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 15), app.debugDescription)
         toggle.tap()
-        let entry = app.webViews.buttons["native-ui-shell (Experimental)"]
+        let entry = app.webViews.buttons["native-ui-shell (Preview)"]
         for _ in 0..<8 {
             if entry.isHittable { break }
             app.swipeUp()
@@ -65,7 +65,7 @@ final class NativeUIShellTests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication(bundleIdentifier: "io.ionic.theme.ios27")
         app.launch()
-        let entry = app.webViews.buttons["native-ui-shell (Experimental)"]
+        let entry = app.webViews.buttons["native-ui-shell (Preview)"]
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
         for _ in 0..<8 {
             if entry.isHittable { break }
@@ -100,7 +100,7 @@ final class NativeUIShellTests: XCTestCase {
         let app = XCUIApplication(bundleIdentifier: "io.ionic.theme.ios27")
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
-        let entry = app.webViews.buttons["native-ui-shell (Experimental)"]
+        let entry = app.webViews.buttons["native-ui-shell (Preview)"]
         for _ in 0..<8 {
             if entry.isHittable { break }
             app.swipeUp()
@@ -176,7 +176,7 @@ final class NativeUIShellTests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication(bundleIdentifier: "io.ionic.theme.ios27")
         app.launch()
-        let entry = app.webViews.buttons["native-ui-shell (Experimental)"]
+        let entry = app.webViews.buttons["native-ui-shell (Preview)"]
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
         for _ in 0..<8 {
             if entry.isHittable { break }
@@ -431,7 +431,7 @@ final class NativeUIShellTests: XCTestCase {
     }
 
     private func openPage(_ app: XCUIApplication, name: String) {
-        let entry = app.webViews.buttons[name == "native-ui-shell" ? "native-ui-shell (Experimental)" : name]
+        let entry = app.webViews.buttons[name == "native-ui-shell" ? "native-ui-shell (Preview)" : name]
         // WebKit's isHittable does not account for a sibling native tab bar.
         func unobscured() -> Bool {
             entry.isHittable && entry.frame.midY > app.frame.minY + 130 && entry.frame.midY < app.frame.maxY - 120

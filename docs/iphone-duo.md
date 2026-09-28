@@ -1,14 +1,14 @@
 ---
-title: iPhone Duo support (experimental)
+title: iPhone Duo support (preview)
 ---
 
-# iPhone Duo support (experimental)
+# iPhone Duo support (preview)
 
 Adapt your Ionic app to iPhone Duo: place navigation and actions in its vertical system rail, and adjust your split pane as the device opens and closes. Existing Ionic markup remains the source of labels, icons, routing, and click handlers.
 
 **New here?** Start with [iPhone Duo with your existing theme](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme) to preview the side layout in Chrome. This page explains device events, placement, split panes, and the API.
 
-Available in `1.2.0-0` as an **experimental** feature alongside [Native UI Shell](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell). APIs and supported behavior may change. The real system rail and hinge reporting require iOS 27.1 or later and an app built with Xcode 27.1 or newer.
+Available in `1.2.0` as a **preview** feature alongside [Native UI Shell](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell). APIs and supported behavior may change before stable status. Stable status is planned after the official release of Xcode 27.1. The real system rail and hinge reporting require iOS 27.1 or later and an app built with Xcode 27.1 or newer.
 
 This package provides two independent pieces for that hardware. Each works **without the iOS 27 theme stylesheets** and **without the full Native UI Shell**:
 
