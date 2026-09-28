@@ -608,24 +608,29 @@ export const createRuntime = async (
     'focusout',
   ])
     on(doc, name);
-  on(doc, 'visibilitychange', () => {
-    if (doc.hidden) getNativeSearchBindings(doc).forEach((binding) => search.retire(binding));
+  const refreshLayout = () => {
+    rejected = new WeakMap();
+    forceRefresh = true;
     schedule();
+  };
+  on(doc, 'visibilitychange', () => {
+    if (doc.hidden) {
+      getNativeSearchBindings(doc).forEach((binding) => search.retire(binding));
+      schedule();
+    } else refreshLayout();
   });
-  on(win, 'resize');
+  on(win, 'resize', refreshLayout);
   on(win, 'keyboardWillShow', () => search.keyboard(true));
   on(win, 'keyboardWillHide', () => search.keyboard(false));
   on(win, 'scroll');
   on(win.matchMedia('(prefers-color-scheme: dark)'), 'change');
   on(win, 'nativeUIShellRefresh', (event) => {
-    rejected = new WeakMap();
     if ((event as Event & { retireSearch?: boolean }).retireSearch)
       getNativeSearchBindings(doc).forEach((binding) => search.retire(binding));
-    forceRefresh = true;
-    schedule();
+    refreshLayout();
   });
   if (win.visualViewport) {
-    on(win.visualViewport, 'resize');
+    on(win.visualViewport, 'resize', refreshLayout);
     on(win.visualViewport, 'scroll');
   }
   const handle: NativeUIShellHandle = {

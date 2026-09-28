@@ -1242,6 +1242,29 @@ test('delayed response cannot reclaim a hidden source', async ({ page }) => {
     .toBe(false);
 });
 
+for (const event of ['foreground', 'window-resize', 'visual-viewport-resize'] as const) {
+  test(`${event} restores native tabs even when the control snapshot is unchanged`, async ({ page }) => {
+    await mockNative(page);
+    await page.goto('/main/index');
+    await expect(page.locator('ion-tab-bar')).toHaveAttribute('data-native-ui-shell', '');
+    // Wait for the selected-tab icon animation to finish before comparing snapshots.
+    await page.waitForTimeout(750);
+    const previous = await page.evaluate((event) => {
+      const snapshot = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').updates.at(-1)!;
+      if (event === 'foreground') document.dispatchEvent(new Event('visibilitychange'));
+      else if (event === 'window-resize') window.dispatchEvent(new Event('resize'));
+      else window.visualViewport!.dispatchEvent(new Event('resize'));
+      return snapshot;
+    }, event);
+    await expect
+      .poll(() => page.evaluate(() => Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').updates.at(-1)!.revision))
+      .toBeGreaterThan(previous.revision);
+    const restored = await page.evaluate(() => Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').updates.at(-1)!);
+    expect(restored.controls).toEqual(previous.controls);
+    await expect(page.locator('ion-tab-bar')).toHaveAttribute('data-native-ui-shell', '');
+  });
+}
+
 test('native refresh during a pending acknowledgement resends unchanged controls', async ({ page }) => {
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');
