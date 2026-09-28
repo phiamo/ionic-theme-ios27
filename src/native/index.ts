@@ -150,6 +150,15 @@ export const setVerticalControlAreaPlacement = (placement: VerticalBarEdge | Ver
   if (typeof document === 'undefined') return;
   const app = document.querySelector<HTMLElement>('ion-app');
   if (!app) throw new Error('Vertical Control Area requires ion-app');
+  applyVerticalControlAreaPlacement(app, placement, rtl);
+};
+
+/** @internal Applies placement to an explicitly supplied application root. */
+export const applyVerticalControlAreaPlacement = (
+  app: HTMLElement,
+  placement: VerticalBarEdge | VerticalBarPlacement,
+  rtl?: boolean,
+): void => {
   const { edge, inset = 0 } = placement && typeof placement === 'object' ? placement : { edge: placement, inset: 0 };
   if (placement && typeof placement === 'object' && placement.nativeEdge !== undefined) {
     nativePlacements.set(app, { edge: placement.nativeEdge, rtl });

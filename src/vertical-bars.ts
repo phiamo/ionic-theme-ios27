@@ -7,3 +7,6 @@ export type {
   VerticalControlAreaHandle,
   VerticalControlAreaOptions,
 } from './native';
+
+export { applyFoldableState } from './native/foldable/fold-state';
+export { applyFoldablePlacement } from './native/foldable/placement';

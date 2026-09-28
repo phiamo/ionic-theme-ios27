@@ -100,6 +100,33 @@ This keeps routers and component backgrounds full-viewport. `ion-content` moves 
 
 The mode is component-mode independent: an app can keep Ionic `mode: 'md'` on iOS and still enable Vertical Bars. No component needs `mode="ios"`.
 
+## Apply Foldable events with small helpers
+
+The optional `applyFoldableState` and `applyFoldablePlacement` helpers accept the plugin's values directly. They only apply layout state; your app owns initial reads, subscriptions, logging, and listener removal. They do not start the projection runtime or import the Foldable plugin.
+
+```ts
+import { applyFoldableState, applyFoldablePlacement } from '@rdlabo/ionic-theme-ios27/vertical-bars';
+
+const root = document.querySelector('ion-app')!;
+const foldListener = await Foldable.addListener('foldStateChange', (fold) => {
+  console.debug('Fold state:', fold);
+  applyFoldableState(root, fold);
+});
+const placementListener = await Foldable.addListener('barPlacementChange', (placement) => {
+  console.debug('Bar placement:', placement);
+  applyFoldablePlacement(root, placement);
+});
+
+// On application teardown:
+await Promise.all([foldListener.remove(), placementListener.remove()]);
+```
+
+This snippet shows change notifications only. Pass initial getter results to the same helpers, taking care not to overwrite a newer event with a late initial result.
+
+`applyFoldablePlacement` supplies both `edge` and `nativeEdge`, preserving the reported inset. `applyFoldableState` maintains one of `ios-theme-fold-flat`, `ios-theme-fold-half-opened`, and `ios-theme-fold-closed` on the supplied root. It also sets `ios-theme-fold-expanded` when half-opened or flat with hinge geometry. Other application classes are preserved.
+
+With `vertical-bars.css`, `ios-theme-fold-half-opened` on `ion-app` sets descendant split panes' `--ios-theme-split-pane-width` to `50vw`. Keep the split-pane width bindings described below. The helpers do not change Ionic's `when` property; the application still chooses its visibility breakpoint.
+
 ## Project controls into the rail
 
 Start the standalone runtime once at application startup:
