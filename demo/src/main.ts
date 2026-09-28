@@ -29,7 +29,7 @@ void bootstrapApplication(AppComponent, createAppConfig(loadIOSAnimations()))
     const applyPlacement = ({ verticalBarEdge }: BarPlacement) => {
       const app = document.querySelector('ion-app');
       if (!app) return;
-      const enabled = app.classList.contains('ios-theme-vertical-bars');
+      const enabled = app.classList.contains('ios-theme-vertical-bars') || app.hasAttribute('data-native-ui-shell-vertical-bars-suspended');
       const rtl = app.closest('[dir]')?.getAttribute('dir') === 'rtl';
       const current = app.classList.contains('ios-theme-vertical-bars-left') !== rtl ? 'leading' : 'trailing';
       setVerticalControlAreaPlacement({ edge: enabled ? (verticalBarEdge ?? current) : null, nativeEdge: verticalBarEdge });
