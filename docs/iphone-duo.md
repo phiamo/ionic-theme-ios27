@@ -47,24 +47,20 @@ npx cap sync
 
 Use Capacitor 8.5 or later and build with Xcode 27.1 or newer for iPhone Duo's iOS 27.1 APIs. The dependency is needed for device-driven layout, not for the theme's CSS, browser simulation, or native control projection alone. Do not import the plugin's `ionic-tabs.css` alongside this package's rail projection; both would reposition the same tabs.
 
-After `ion-app` is mounted, pass device state to `applyFoldableState`. The application owns subscriptions, so event logging and cleanup remain explicit. No projection runtime is needed for posture-driven layout.
+After `ion-app` is mounted, pass device state to `applyFoldableState`. The application owns subscriptions and cleanup. No projection runtime is needed for posture-driven layout.
 
 ```ts
-import { Foldable, type FoldState } from '@erkamyaman/capacitor-foldable';
+import { Foldable } from '@erkamyaman/capacitor-foldable';
 import { applyFoldableState } from '@rdlabo/ionic-theme-ios27/vertical-bars';
 
 const root = document.querySelector('ion-app')!;
 const initial = new AbortController();
-const updateFold = (fold: FoldState) => {
-  console.debug('Fold state:', fold);
-  applyFoldableState(root, fold);
-};
 const listener = await Foldable.addListener('foldStateChange', (fold) => {
   initial.abort();
-  updateFold(fold);
+  applyFoldableState(root, fold);
 });
 const fold = await Foldable.getFoldState();
-if (!initial.signal.aborted) updateFold(fold);
+if (!initial.signal.aborted) applyFoldableState(root, fold);
 
 // Call when the application owner is disposed.
 const stopFold = async () => {
@@ -106,22 +102,18 @@ The mode is component-mode independent: an app can keep Ionic `mode: 'md'` on iO
 Start the standalone runtime once after `ion-app` is mounted, and apply the plugin's placement with `applyFoldablePlacement`:
 
 ```ts
-import { Foldable, type BarPlacement } from '@erkamyaman/capacitor-foldable';
+import { Foldable } from '@erkamyaman/capacitor-foldable';
 import { applyFoldablePlacement, enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-bars';
 
 const root = document.querySelector('ion-app')!;
 const rail = await enableVerticalControlArea();
 const initial = new AbortController();
-const updatePlacement = (placement: BarPlacement) => {
-  console.debug('Bar placement:', placement);
-  applyFoldablePlacement(root, placement);
-};
 const listener = await Foldable.addListener('barPlacementChange', (placement) => {
   initial.abort();
-  updatePlacement(placement);
+  applyFoldablePlacement(root, placement);
 });
 const placement = await Foldable.getBarPlacement();
-if (!initial.signal.aborted) updatePlacement(placement);
+if (!initial.signal.aborted) applyFoldablePlacement(root, placement);
 
 // Call when the application owner is disposed.
 const stopVerticalArea = async () => {
