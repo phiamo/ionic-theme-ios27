@@ -19,6 +19,7 @@ import { filter } from 'rxjs';
 
 // import { registerTabBarEffect } from '@rdlabo/ionic-theme-ios27';
 import { registeredEffect, registerTabBarEffect } from '../../../../src';
+import { applyFoldStateClasses } from '../../../../src/vertical-bars';
 import { Foldable, type FoldState } from '@erkamyaman/capacitor-foldable';
 import { Capacitor } from '@capacitor/core';
 
@@ -67,23 +68,23 @@ export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter,
   }
 
   setFoldState(fold: FoldState) {
-    const splitPane = this.splitPane().nativeElement;
-    // The width rules key off the `when` attribute, so go through setAttribute.
-    const expanded = fold.state === 'half-opened' || (fold.state === 'flat' && !!fold.hingeBounds);
-    splitPane.setAttribute('when', expanded ? '(min-width: 900px)' : '(min-width: 992px)');
-    splitPane.classList.toggle('ios-theme-split-pane-half-open', fold.state === 'half-opened');
+    const root = this.#el.nativeElement.closest('ion-app') as HTMLElement;
+    applyFoldStateClasses(root, fold);
+    // Visibility remains an application choice; the helper controls state classes.
+    this.splitPane().nativeElement.setAttribute(
+      'when',
+      root.classList.contains('ios-theme-fold-expanded') ? '(min-width: 900px)' : '(min-width: 992px)',
+    );
   }
 
   async observeHinge() {
     if (Capacitor.getPlatform() !== 'ios') return;
-    let receivedEvent = false;
     this.#hingeListener = await Foldable.addListener('foldStateChange', (fold) => {
-      receivedEvent = true;
       if (!this.#destroyed) this.setFoldState(fold);
     });
     if (this.#destroyed) return this.#releaseHinge();
     const fold = await Foldable.getFoldState();
-    if (!this.#destroyed && !receivedEvent) this.setFoldState(fold);
+    if (!this.#destroyed) this.setFoldState(fold);
   }
 
   #releaseHinge() {

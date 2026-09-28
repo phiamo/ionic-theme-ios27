@@ -19,7 +19,7 @@ import {
   ToggleCustomEvent,
 } from '@demo/ionic';
 import { ActivatedRoute, Router } from '@angular/router';
-import { setVerticalControlAreaPlacement } from '../../../../src/vertical-bars';
+import { applyVerticalBarPlacement, setVerticalControlAreaPlacement } from '../../../../src/vertical-bars';
 import { Foldable } from '@erkamyaman/capacitor-foldable';
 
 interface IComponent {
@@ -105,6 +105,11 @@ export class IndexPageComponent {
   async changeVerticalBarsMode(event: ToggleCustomEvent) {
     if (!event.detail.checked) return setVerticalControlAreaPlacement(null);
     const { verticalBarEdge, inset } = await Foldable.getBarPlacement();
-    setVerticalControlAreaPlacement({ edge: verticalBarEdge ?? 'trailing', nativeEdge: verticalBarEdge, inset });
+    if (verticalBarEdge !== null) {
+      applyVerticalBarPlacement(this.#document.querySelector('ion-app')!, { verticalBarEdge, inset });
+    } else {
+      // Keep the manual Chrome/device-without-a-rail preview available.
+      setVerticalControlAreaPlacement({ edge: 'trailing', nativeEdge: null, inset });
+    }
   }
 }

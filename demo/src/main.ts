@@ -2,7 +2,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { createAppConfig, type IonicAnimationOptions } from './app/app.config';
 import { AppComponent } from './app/app.component';
 import { enableNativeUIShell } from '../../src/native';
-import { enableVerticalControlArea, setVerticalControlAreaPlacement } from '../../src/vertical-bars';
+import { applyVerticalBarPlacement, enableVerticalControlArea, setVerticalControlAreaPlacement } from '../../src/vertical-bars';
 import { Capacitor } from '@capacitor/core';
 import { Foldable, type BarPlacement } from '@erkamyaman/capacitor-foldable';
 import { iosTransitionAnimation, popoverEnterAnimation, popoverLeaveAnimation } from '@rdlabo/ionic-theme-ios27';
@@ -30,6 +30,11 @@ void bootstrapApplication(AppComponent, createAppConfig(loadIOSAnimations()))
       const app = document.querySelector('ion-app');
       if (!app) return;
       const enabled = app.classList.contains('ios-theme-vertical-bars') || app.hasAttribute('data-native-ui-shell-vertical-bars-suspended');
+      if (enabled && verticalBarEdge !== null) {
+        applyVerticalBarPlacement(app, { verticalBarEdge, inset });
+        return;
+      }
+      // The demo can explicitly disable the rail or simulate one without a device edge.
       const rtl = app.closest('[dir]')?.getAttribute('dir') === 'rtl';
       const current = app.classList.contains('ios-theme-vertical-bars-left') !== rtl ? 'leading' : 'trailing';
       setVerticalControlAreaPlacement({ edge: enabled ? (verticalBarEdge ?? current) : null, nativeEdge: verticalBarEdge, inset });
