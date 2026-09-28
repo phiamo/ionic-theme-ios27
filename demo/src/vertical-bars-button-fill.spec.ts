@@ -12,7 +12,10 @@ const mount = (fills: (string | undefined)[], grouped = false) => {
   const buttons = Array.from(document.querySelectorAll('ion-button')) as HTMLIonButtonElement[];
   buttons.forEach((button, i) => {
     button.fill = fills[i] as HTMLIonButtonElement['fill'];
-    const native = button.attachShadow({ mode: 'open' }).appendChild(document.createElement('span'));
+    // Other suites may already have registered Ionic custom elements.
+    const shadow = button.shadowRoot ?? button.attachShadow({ mode: 'open' });
+    const native = document.createElement('span');
+    shadow.replaceChildren(native);
     native.setAttribute('part', 'native');
     native.style.cssText = 'color: white; background-color: rgba(0,0,0,0.24); border: 2px solid red';
   });

@@ -56,7 +56,6 @@ import { applyFoldStateClasses } from '@rdlabo/ionic-theme-ios27/vertical-bars';
 const root = document.querySelector('ion-app')!;
 const listener = await Foldable.addListener('foldStateChange', (fold) => applyFoldStateClasses(root, fold));
 applyFoldStateClasses(root, await Foldable.getFoldState());
-
 ```
 
 When the application owner is disposed:
@@ -67,7 +66,7 @@ await listener.remove();
 
 Subscribe to changes, then read the current state. The same helper handles initial values and events.
 
-`applyFoldStateClasses` keeps one of `ios-theme-fold-flat`, `ios-theme-fold-half-opened`, and `ios-theme-fold-closed` on the supplied root, preserving unrelated classes. It also sets `ios-theme-fold-expanded` for a half-opened state or a flat state with hinge geometry. A flat state without geometry (including the Web fallback) and a closed state clear that class. The helpers do not subscribe to the plugin or change Ionic's split-pane `when` property.
+`applyFoldStateClasses` keeps one of `ios-theme-fold-flat`, `ios-theme-fold-half-opened`, and `ios-theme-fold-closed` on the supplied root, preserving unrelated classes. It also sets `ios-theme-fold-expanded` for a half-opened state or a flat state with hinge geometry. A flat state without geometry (including the Web fallback) and a closed state clear that class. The helper does not subscribe to the plugin or change Ionic's split-pane `when` property.
 
 For rail placement, use `setVerticalControlAreaPlacement` as shown below. Pass the reported logical edge as both `edge` and `nativeEdge`, together with the measured `inset`. Leading is the physical left in LTR and the physical right in RTL. A null edge restores the ordinary layout; an inset of zero clears the explicit width. No start/stop monitoring calls are needed.
 
@@ -107,7 +106,6 @@ const listener = await Foldable.addListener('barPlacementChange', ({ verticalBar
 );
 const { verticalBarEdge, inset } = await Foldable.getBarPlacement();
 setVerticalControlAreaPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset });
-
 ```
 
 When the application owner is disposed:

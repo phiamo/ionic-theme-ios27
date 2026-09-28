@@ -1,8 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Capacitor } from '@capacitor/core';
 import { type FoldState } from '@erkamyaman/capacitor-foldable';
-import { vi } from 'vitest';
 
+// Use global vi: Angular can rename an imported vi while bundling, preventing mock hoisting.
 const foldable = vi.hoisted(() => ({
   addListener: vi.fn<(event: 'foldStateChange', callback: (fold: FoldState) => void) => Promise<{ remove(): Promise<void> }>>(),
   getFoldState: vi.fn<() => Promise<FoldState>>(),
