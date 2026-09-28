@@ -421,35 +421,121 @@ test('standalone Vertical Control Area never snapshots ordinary Native UI Shell 
     .toBe(true);
 });
 
-test('standalone vertical bars keep searchable tabs usable on the Web', async ({ page }) => {
-  await mockNative(page);
-  await page.route('https://picsum.photos/**', (route) => route.abort());
-  await page.goto('/main/album?verticalBarsOnly=1');
-  await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
-  await expect
-    .poll(() =>
+for (const standalone of [false, true]) {
+  test(`vertical native search preserves rail tabs (${standalone ? 'standalone' : 'full shell'})`, async ({ page }) => {
+    await mockNative(page);
+    await page.route('https://picsum.photos/**', (route) => route.abort());
+    await page.goto(`/main/album${standalone ? '?verticalBarsOnly=1' : ''}`);
+    await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
+    const footer = page.locator('app-album-page ion-footer');
+    const fab = page.locator('app-album-page ion-fab');
+    const tabs = page.locator('ion-tab-bar');
+    const config = () =>
       page.evaluate(() =>
         Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell')
           .updates.at(-1)
-          ?.controls.some((control: ShellControl) => control.placement === 'vertical-bars'),
-      ),
-    )
-    .toBe(true);
-  // The rail has no search surface, so no control may carry a search payload.
-  await expect
-    .poll(() =>
-      page.evaluate(() =>
-        Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell')
-          .updates.at(-1)!
-          .controls.every((control: ShellControl) => !control.search),
-      ),
-    )
-    .toBe(true);
-  // The Web search trigger and footer stay visible and interactive.
-  const fab = page.locator('app-album-page ion-fab');
-  await expect(fab).toBeVisible();
-  await expect(fab).not.toHaveAttribute('data-native-ui-shell');
-  await expect(page.locator('app-album-page ion-footer')).toBeVisible();
+          ?.controls.find((control: ShellControl) => control.placement === 'vertical-bars' && control.search),
+      );
+    await expect.poll(config).toBeTruthy();
+    await expect(footer).toHaveAttribute('data-native-ui-shell', '');
+    await expect(fab).toHaveAttribute('data-native-ui-shell', '');
+    const tabState = (control: ShellControl) => control.items.map(({ id, selected }) => ({ id, selected }));
+    const items = tabState((await config())!);
+    await page.evaluate(() => {
+      const state = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell');
+      const snapshot = state.updates.at(-1)!;
+      const search = snapshot.controls.find((control: ShellControl) => control.search)!.search!;
+      state.notifyListeners('activate', { id: search.trigger.id, revision: snapshot.revision, sequence: ++state.sequence });
+    });
+    await expect.poll(async () => (await config())?.search?.active).toBe(true);
+    expect(tabState((await config())!)).toEqual(items);
+    await expect(tabs).toHaveAttribute('data-native-ui-shell', '');
+    // Native enter must bypass the Web search morph.
+    await expect(footer).toHaveCSS('opacity', '0');
+    await expect(tabs).toHaveCSS('opacity', '1');
+    await page.evaluate(() => {
+      const state = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell');
+      const snapshot = state.updates.at(-1)!;
+      const search = snapshot.controls.find((control: ShellControl) => control.search)!.search!;
+      state.notifyListeners('search', {
+        id: search.id,
+        phase: 'input',
+        value: 'native query',
+        composing: false,
+        valueVersion: search.valueVersion,
+        revision: snapshot.revision,
+        sequence: ++state.sequence,
+      });
+    });
+    await expect.poll(() => footer.locator('ion-searchbar').evaluate((bar: HTMLIonSearchbarElement) => bar.value)).toBe('native query');
+    await page.evaluate(() => {
+      const state = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell');
+      const snapshot = state.updates.at(-1)!;
+      const search = snapshot.controls.find((control: ShellControl) => control.search)!.search!;
+      state.notifyListeners('activate', { id: search.closeId, revision: snapshot.revision, sequence: ++state.sequence });
+    });
+    await expect.poll(async () => (await config())?.search?.active).toBe(false);
+    await expect(tabs).toHaveAttribute('data-native-ui-shell', '');
+    expect(tabState((await config())!)).toEqual(items);
+    // Late icon hydration must not add the Web close button to the native rail.
+    await footer.locator('ion-buttons[slot=start] ion-icon').evaluate((icon) => icon.setAttribute('name', 'close'));
+    for (let cycle = 0; cycle < 3; cycle++) {
+      await page.evaluate(() => {
+        const state = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell');
+        const snapshot = state.updates.at(-1)!;
+        const search = snapshot.controls.find((control: ShellControl) => control.search)!.search!;
+        state.notifyListeners('activate', { id: search.trigger.id, revision: snapshot.revision, sequence: ++state.sequence });
+      });
+      await expect.poll(async () => (await config())?.search?.active).toBe(true);
+      await footer.locator('ion-searchbar').evaluate((bar: HTMLIonSearchbarElement) => bar.setFocus());
+      await expect.poll(async () => (await config())?.search?.focused).toBe(true);
+      await page.evaluate(() => {
+        const state = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell');
+        const snapshot = state.updates.at(-1)!;
+        const search = snapshot.controls.find((control: ShellControl) => control.search)!.search!;
+        state.notifyListeners('activate', { id: search.closeId, revision: snapshot.revision, sequence: ++state.sequence });
+      });
+      await expect.poll(async () => (await config())?.search?.active).toBe(false);
+      expect(tabState((await config())!)).toEqual(items);
+    }
+    await activate(page, 'Index');
+    await activate(page, 'Library');
+    await expect.poll(async () => (await config())?.search?.available).toBe(true);
+  });
+}
+
+test('vertical Web tabs remain visible while searching without a native rail', async ({ page }) => {
+  await mockNative(page, false, null);
+  await page.route('https://picsum.photos/**', (route) => route.abort());
+  await page.goto('/main/album?verticalBarsOnly=1');
+  await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
+  const tabs = page.locator('ion-tab-bar');
+  await expect(tabs).not.toHaveAttribute('data-native-ui-shell');
+  await page.locator('app-album-page ion-fab-button').click();
+  const footer = page.locator('app-album-page ion-footer');
+  await expect(footer).toHaveCSS('opacity', '1');
+  await tabs.evaluate((element) => element.classList.add('tab-bar-hidden'));
+  await expect(tabs).toBeVisible();
+  await expect(tabs).toHaveCSS('opacity', '1');
+  await expect(tabs.locator('ion-tab-button.tab-selected')).toBeVisible();
+  await expect(tabs.locator('ion-tab-button').first()).toHaveCSS('opacity', '1');
+  await footer.locator('ion-buttons[slot=start] ion-button').click();
+  await expect(footer).toHaveCSS('opacity', '0');
+  await expect(tabs).toHaveCSS('opacity', '1');
+  let bounds: { x: number; width: number } | undefined;
+  for (let cycle = 0; cycle < 3; cycle++) {
+    await page.locator('app-album-page ion-fab-button').click();
+    await expect(footer).toHaveCSS('opacity', '1');
+    const frame = await footer.locator('ion-searchbar').evaluate((bar) => {
+      const { x, width } = bar.getBoundingClientRect();
+      return { x, width };
+    });
+    if (bounds) expect(frame).toEqual(bounds);
+    bounds = frame;
+    await footer.locator('ion-buttons[slot=start] ion-button').click();
+    await expect(footer).toHaveCSS('opacity', '0');
+    await expect(tabs).toHaveCSS('opacity', '1');
+  }
 });
 
 test('verticalBars back navigation and toolbar slots request native rail placement', async ({ page }) => {

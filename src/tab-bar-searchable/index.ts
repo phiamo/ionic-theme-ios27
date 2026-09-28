@@ -64,6 +64,8 @@ export const attachTabBarSearchable = (
   // Initialize
   ionFooter.style.pointerEvents = 'none';
   ionFooter.style.opacity = '0';
+  // Search dismissal belongs beside the Web search field, never in the vertical rail.
+  ionFooter.querySelector('ion-buttons[slot=start]')?.classList.add('ios-theme-horizontal-only');
   const nativeSearch = registerNativeSearch(ionTabBar, ionFabButton, ionFooter);
 
   // Saved Params
@@ -72,6 +74,8 @@ export const attachTabBarSearchable = (
   // Leave is valid both while native Enter awaits its ack and after it completes.
   let nativeEntry = false;
   let nativeRequest = 0;
+  let verticalSearch = false;
+  let tabVisibilityObserver: MutationObserver | undefined;
 
   return async (event: Event, type: TabBarSearchableType) => {
     const selector = type === TabBarSearchableType.Enter ? 'ion-fab-button' : 'ion-buttons[slot=start] ion-button';
@@ -93,19 +97,38 @@ export const attachTabBarSearchable = (
       return;
     }
     if (type === TabBarSearchableType.Enter) {
-      resumeNative ??= await suspendNativeUIShell([ionTabBar, ionFooter, ionFabButton.closest('ion-fab') ?? ionFabButton]);
+      verticalSearch = !!ionTabBar.closest('ion-app.ios-theme-vertical-bars');
+      if (verticalSearch) {
+        // Ionic hides horizontal tabs when the keyboard opens; keep this rail available.
+        const keepTabsVisible = () => {
+          if (ionTabBar.classList.contains('tab-bar-hidden') && ionTabBar.closest('ion-app.ios-theme-vertical-bars')) {
+            ionTabBar.classList.remove('tab-bar-hidden');
+          }
+        };
+        tabVisibilityObserver?.disconnect();
+        tabVisibilityObserver = new MutationObserver(keepTabsVisible);
+        tabVisibilityObserver.observe(ionTabBar, { attributes: true, attributeFilter: ['class'] });
+        keepTabsVisible();
+      }
+      resumeNative ??= await suspendNativeUIShell([
+        ...(verticalSearch ? [] : [ionTabBar]),
+        ionFooter,
+        ionFabButton.closest('ion-fab') ?? ionFabButton,
+      ]);
       try {
-        searchableEventCache = await enterEvent(event, ionTabBar, ionFabButton, ionFooter);
+        searchableEventCache = await enterEvent(event, ionTabBar, ionFabButton, ionFooter, verticalSearch);
       } catch (error) {
+        tabVisibilityObserver?.disconnect();
         resumeNative();
         resumeNative = undefined;
         throw error;
       }
     } else if (searchableEventCache !== undefined) {
       try {
-        await leaveEvent(event, searchableEventCache, ionTabBar, ionFabButton, ionFooter);
+        await leaveEvent(event, searchableEventCache, ionTabBar, ionFabButton, ionFooter, verticalSearch);
         searchableEventCache = undefined;
       } finally {
+        tabVisibilityObserver?.disconnect();
         resumeNative?.();
         resumeNative = undefined;
       }
@@ -120,6 +143,7 @@ const enterEvent = async (
   ionTabBar: HTMLElement,
   ionFabButton: HTMLElement,
   ionFooter: HTMLElement,
+  verticalSearch: boolean,
 ): Promise<SearchableEventCache> => {
   if (!(event.target as HTMLElement)?.closest('ion-fab-button')) {
     throw throwErrorByFailedClickElement('ion-fab-button');
@@ -131,10 +155,12 @@ const enterEvent = async (
     ? getComputedStyle(references.selectedTabButton).getPropertyValue('--color-selected').trim()
     : '';
 
-  const effectAnimation = createEffectAnimation(references, sizes);
+  if (verticalSearch) references.closeButtonIcon.setAttribute('name', 'close');
+  const tabAnimations = verticalSearch
+    ? []
+    : [createTabBarAnimation(ionTabBar, references, sizes), createEffectAnimation(references, sizes)];
   const searchContainerAnimation = createSearchContainerAnimation(references, sizes);
   const closeButtonsAnimation = createCloseButtonsAnimation(references);
-  const tabBarAnimation = createTabBarAnimation(ionTabBar, references, sizes);
   const fabButtonAnimation = createFabButtonAnimation(ionFabButton);
 
   await createAnimation()
@@ -144,7 +170,7 @@ const enterEvent = async (
     .addElement(ionFooter)
     .afterAddWrite(() => (ionFooter.style.pointerEvents = 'auto'))
     .fromTo('opacity', '0.8', '1')
-    .addAnimation([tabBarAnimation, fabButtonAnimation, searchContainerAnimation, effectAnimation, closeButtonsAnimation])
+    .addAnimation([...tabAnimations, fabButtonAnimation, searchContainerAnimation, closeButtonsAnimation])
     .play();
 
   return {
@@ -159,6 +185,7 @@ const leaveEvent = async (
   ionTabBar: HTMLElement,
   ionFabButton: HTMLElement,
   ionFooter: HTMLElement,
+  verticalSearch: boolean,
 ): Promise<void> => {
   if (!(event.target as HTMLElement)?.closest('ion-buttons[slot=start] ion-button')) {
     throw throwErrorByFailedClickElement('ion-buttons[slot=start] ion-button');
@@ -166,10 +193,14 @@ const leaveEvent = async (
 
   const references = getElementReferences(ionTabBar, ionFooter);
 
-  const effectAnimation = createReverseEffectAnimation(references, searchableEventCache.elementSizes, searchableEventCache.colorSelected);
+  const tabAnimations = verticalSearch
+    ? []
+    : [
+        createReverseTabBarAnimation(ionTabBar, references, searchableEventCache.elementSizes),
+        createReverseEffectAnimation(references, searchableEventCache.elementSizes, searchableEventCache.colorSelected),
+      ];
   const searchContainerAnimation = createReverseSearchContainerAnimation(references, searchableEventCache.elementSizes);
   const closeButtonsAnimation = createReverseCloseButtonsAnimation(references);
-  const tabBarAnimation = createReverseTabBarAnimation(ionTabBar, references, searchableEventCache.elementSizes);
   const fabButtonAnimation = createReverseFabButtonAnimation(ionFabButton, searchableEventCache.elementSizes);
 
   await createAnimation()
@@ -179,6 +210,6 @@ const leaveEvent = async (
     .addElement(ionFooter)
     .afterAddWrite(() => (ionFooter.style.pointerEvents = 'none'))
     .fromTo('opacity', '1', '0')
-    .addAnimation([tabBarAnimation, fabButtonAnimation, searchContainerAnimation, effectAnimation, closeButtonsAnimation])
+    .addAnimation([...tabAnimations, fabButtonAnimation, searchContainerAnimation, closeButtonsAnimation])
     .play();
 };

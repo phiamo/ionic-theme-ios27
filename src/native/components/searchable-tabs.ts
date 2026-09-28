@@ -202,15 +202,7 @@ export const createSearchSupport = (doc: Document, id: (element: Element) => str
       };
       for (const binding of bindings) {
         const candidate = candidates.find((c) => c.element === binding.tabBar);
-        // The vertical rail has no search surface; hiding the FAB/footer there
-        // would leave searchable tabs without any search control.
-        if (
-          !candidate ||
-          candidate.control.search ||
-          candidate.control.placement === 'vertical-bars' ||
-          binding.tabBar.getAttribute('slot') !== 'bottom'
-        )
-          continue;
+        if (!candidate || candidate.control.search || binding.tabBar.getAttribute('slot') !== 'bottom') continue;
         const fab = binding.trigger.parentElement;
         // Search also supports the existing page-level fixed FAB, outside scrolling content.
         if (

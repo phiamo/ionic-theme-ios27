@@ -35,7 +35,7 @@ final class ShellSearchHost: UIView {
 }
 
 // Preserve UISearchBar's delegate while returning its clear action to Ionic.
-private final class ShellSearchInputDelegate: NSObject, UITextFieldDelegate {
+final class ShellSearchInputDelegate: NSObject, UITextFieldDelegate {
     weak var original: UITextFieldDelegate?
     var clear: (() -> Void)?
     override func responds(to selector: Selector!) -> Bool {

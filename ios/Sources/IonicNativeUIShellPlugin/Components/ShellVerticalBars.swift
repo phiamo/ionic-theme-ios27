@@ -6,6 +6,7 @@ protocol ShellVerticalBarsControlling: AnyObject {
     var view: UIView { get }
     func attach(to owner: UIViewController, in parent: UIView)
     @MainActor func apply(_ controls: [ShellControl], rendering: ShellRendering, edge: String)
+    var ownsKeyboardChrome: Bool { get }
     func detach()
 }
 
@@ -30,6 +31,7 @@ final class ShellVerticalBarsModel: ObservableObject {
         let slot: ShellControl.ToolbarSlot?
     }
 
+    @Published var search: ShellVerticalSearchModel?
     @Published var back: Item?
     @Published var groups: [Group] = []
     @Published var tabs: [Item] = []
@@ -163,6 +165,7 @@ private struct ShellVerticalBarsView: View {
                 }
             }
         }
+        .modifier(ShellVerticalBarsSearch(model: model))
         .modifier(ShellVerticalBarsCompression())
         .background(Color.clear)
     }
@@ -176,6 +179,16 @@ private struct ShellVerticalBarsPage: View {
         NavigationStack {
             Color.clear.modifier(ShellVerticalBarsToolbarAdapter(model: model))
         }
+    }
+}
+
+@available(iOS 26.0, *)
+private struct ShellVerticalBarsSearch: ViewModifier {
+    @ObservedObject var model: ShellVerticalBarsModel
+    @ViewBuilder func body(content: Content) -> some View {
+        if let search = model.search {
+            content.modifier(ShellVerticalSearchModifier(model: search))
+        } else { content }
     }
 }
 
@@ -271,9 +284,11 @@ private struct ShellVerticalBarsLegacyToolbar: ViewModifier {
 final class ShellVerticalBarsController: ShellVerticalBarsControlling {
     private final class TransparentHostingController<Content: View>: UIHostingController<Content> {
         var railEdge = "right"
+        var layoutSearch: (() -> Void)?
         override func viewDidLayoutSubviews() {
             super.viewDidLayoutSubviews()
             makeFullSizeSurfacesTransparent(in: view)
+            layoutSearch?()
         }
 
         private func makeFullSizeSurfacesTransparent(in surface: UIView) {
@@ -323,7 +338,7 @@ final class ShellVerticalBarsController: ShellVerticalBarsControlling {
         private func containsBarSurface(in view: UIView, at point: CGPoint) -> Bool {
             guard !view.isHidden, view.alpha > 0.05 else { return false }
             let name = NSStringFromClass(type(of: view))
-            if (name.contains("TabBar") || name.contains("Platter") || name.contains("Pocket") || name.contains("Sidebar")),
+            if (name.contains("TabBar") || name.contains("Platter") || name.contains("Pocket") || name.contains("Sidebar") || view is UISearchBar || view is UINavigationBar),
                convert(view.bounds, from: view).contains(point) { return true }
             return view.subviews.contains { containsBarSurface(in: $0, at: point) }
         }
@@ -333,14 +348,20 @@ final class ShellVerticalBarsController: ShellVerticalBarsControlling {
     private lazy var controller = TransparentHostingController(rootView: ShellVerticalBarsView(model: model))
     private let container = RailContainer()
     private weak var owner: UIViewController?
+    private let changed: (String, ShellSearchPhase, String, Bool, Int) -> Int
 
     var view: UIView { container }
 
-    init(activate: @escaping (String) -> Void) {
+    var ownsKeyboardChrome: Bool { model.search?.ownsKeyboardChrome == true }
+
+    init(activate: @escaping (String) -> Void,
+         changed: @escaping (String, ShellSearchPhase, String, Bool, Int) -> Int) {
+        self.changed = changed
         model.activate = activate
         container.backgroundColor = .clear
         controller.view.backgroundColor = .clear
         controller.view.isOpaque = false
+        controller.layoutSearch = { [weak self] in self?.model.search?.configureField() }
     }
 
     func attach(to owner: UIViewController, in parent: UIView) {
@@ -361,6 +382,10 @@ final class ShellVerticalBarsController: ShellVerticalBarsControlling {
         container.railEdge = edge
         controller.railEdge = edge
         let tabsAppear = model.tabs.isEmpty && controls.contains { $0.kind == .tabBar && !$0.items.isEmpty }
+        if let search = controls.first(where: { $0.search != nil })?.search {
+            if model.search?.configuration.id == search.id { model.search?.apply(search) }
+            else { model.search = ShellVerticalSearchModel(search, in: container, activate: model.activate, changed: changed) }
+        } else { model.search = nil }
         model.apply(controls, rendering: rendering)
         if tabsAppear { ShellCrossfade.enter(container, duration: ShellCrossfade.duration(180)) }
         controller.overrideUserInterfaceStyle = controls.contains(where: \.dark) ? .dark : .light

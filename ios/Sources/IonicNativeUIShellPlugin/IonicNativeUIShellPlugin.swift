@@ -46,7 +46,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                     self.host?.isHidden = true
                     self.verticalBars?.view.isHidden = true
                 }
-                var searchOwnsKeyboard = false
+                var searchOwnsKeyboard = self.verticalBars?.ownsKeyboardChrome == true
                 self.searchControllers.values.forEach { controller in
                     if controller.ownsKeyboardChrome { searchOwnsKeyboard = true }
                     if !keyboard { controller.surface.isHidden = true }
@@ -195,6 +195,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             let existing = Set(self.controls.keys)
             let verticalBars = snapshot.controls.filter { $0.placement == .verticalBars }
             let snapshots = snapshot.controls.filter { $0.placement != .verticalBars }
+            let verticalSearchActive = verticalBars.contains { $0.search.map { $0.available && $0.active } ?? false }
             let width = snapshot.viewportWidth
             self.revision = next
             if snapshots.isEmpty && verticalBars.isEmpty {
@@ -210,12 +211,16 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             var fabs: [(ShellFab, ShellControl)] = []
             var searches: [(ShellSearchControlling, ShellControl, CGRect, CGRect, UIView?, Bool)] = []
             var rejectedSearches: [String] = []
-            if verticalBars.isEmpty || self.keyboardVisible {
+            if verticalBars.isEmpty || (self.keyboardVisible && !verticalSearchActive) {
                 self.verticalBars?.detach()
                 self.verticalBars = nil
                 if self.keyboardVisible { rejectedControls.append(contentsOf: verticalBars.map(\.id)) }
             } else if let owner = self.bridge?.viewController {
-                let rail = self.verticalBars ?? ShellVerticalBarsController(activate: { [weak self] id in self?.activate(id) })
+                let rail = self.verticalBars ?? ShellVerticalBarsController(
+                    activate: { [weak self] id in self?.activate(id) },
+                    changed: { [weak self] id, phase, value, composing, valueVersion in
+                        self?.searchChanged(id, phase: phase, value: value, composing: composing, valueVersion: valueVersion) ?? 0
+                    })
                 self.verticalBars = rail
                 rail.attach(to: owner, in: owner.view)
                 if let frame = snapshot.verticalBarFrame {
@@ -274,11 +279,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                             controller = ShellSearchController()
                             controller.activate = { [weak self] id in self?.activate(id) }
                             controller.changed = { [weak self] id, phase, value, composing, valueVersion in
-                                guard let self else { return 0 }
-                                self.sequence += 1
-                                self.notifyListeners("search", data: ["id": id, "phase": phase.rawValue, "value": value,
-                                    "composing": composing, "valueVersion": valueVersion, "sequence": self.sequence, "revision": self.revision])
-                                return self.sequence
+                                self?.searchChanged(id, phase: phase, value: value, composing: composing, valueVersion: valueVersion) ?? 0
                             }
                             controller.attach(to: owner, in: owner.view)
                             self.searchControllers[id] = controller
@@ -377,6 +378,14 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             schedulePendingTabExpiry(controlId, until: pending.until)
         }
         activate(itemId)
+    }
+
+    private func searchChanged(_ id: String, phase: ShellSearchPhase, value: String,
+                               composing: Bool, valueVersion: Int) -> Int {
+        sequence += 1
+        notifyListeners("search", data: ["id": id, "phase": phase.rawValue, "value": value,
+            "composing": composing, "valueVersion": valueVersion, "sequence": sequence, "revision": revision])
+        return sequence
     }
 
     private func activate(_ id: String) {

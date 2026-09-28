@@ -607,4 +607,41 @@ final class ShellSnapshotTests: XCTestCase {
         XCTAssertEqual(phases, ["input"])
     }
 
+    func testVerticalSearchBridgesInputFocusAndDismissalWithoutStaleWebEchoes() throws {
+        guard #available(iOS 26.0, *) else { throw XCTSkip("Requires native glass search") }
+        func node(active: Bool, value: String = "", version: Int = 0) throws -> ShellControl {
+            let search: JSObject = ["id": "search", "field": item(),
+                "trigger": item(["id": "trigger"]), "closeId": "close", "active": active,
+                "available": true, "focused": false, "value": value, "placeholder": "Search",
+                "disabled": false, "editSequence": 0, "valueVersion": version]
+            return try XCTUnwrap(decode([control(["kind": "ion-tab-bar", "placement": "vertical-bars",
+                "search": search, "items": [item(["id": "first", "selected": true]), item(["id": "second"])]])]).controls.first)
+        }
+        var actions: [String] = []
+        var values: [String] = []
+        let rail = UIView()
+        let model = ShellVerticalSearchModel(try XCTUnwrap(node(active: false).search), in: rail,
+            activate: { actions.append($0) },
+            changed: { _, _, value, _, _ in values.append(value); return values.count })
+        model.present(true)
+        XCTAssertEqual(actions, ["trigger"])
+        model.apply(try XCTUnwrap(node(active: true).search))
+        XCTAssertTrue(model.presented)
+        model.input("native query")
+        XCTAssertEqual(values, ["native query"])
+        model.apply(try XCTUnwrap(node(active: true).search))
+        XCTAssertEqual(model.text, "native query")
+        // The first presentation acknowledgement must not undo native focus.
+        model.focus(true)
+        model.apply(try XCTUnwrap(node(active: true).search))
+        XCTAssertTrue(model.focused)
+        model.apply(try XCTUnwrap(node(active: true, value: "application", version: 1).search))
+        XCTAssertEqual(model.text, "application")
+        model.present(false)
+        XCTAssertEqual(actions, ["trigger", "close"])
+        model.apply(try XCTUnwrap(node(active: false).search))
+        XCTAssertFalse(model.presented)
+        XCTAssertFalse(model.focused)
+    }
+
 }
