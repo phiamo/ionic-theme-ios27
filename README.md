@@ -234,6 +234,18 @@ For Ionic 9 Angular, import `isPlatform` and `provideIonicAngular` from `@ionic/
 
 ## Development & Testing
 
+### JavaScript module builds
+
+Keep relative imports in TypeScript source extensionless, matching Ionic's source
+style. The shared `rdlabo-build-theme` CLI from `@rdlabo/ionic-theme-utils` uses
+tsdown to resolve imports when generating ESM JavaScript and type declarations.
+Dependencies remain external, and source files are not rewritten.
+
+Run `npm run build && npm run test:esm` to build and verify the npm tarball with
+the shared `rdlabo-check-esm` CLI. Public JavaScript entry points can be imported
+in Node.js without a DOM; UI operations still require a browser or a supported
+native environment. The package ships ESM only.
+
 ### Demo Application
 
 The same demo is deployed against both supported Ionic versions:
