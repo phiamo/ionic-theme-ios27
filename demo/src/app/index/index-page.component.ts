@@ -104,7 +104,7 @@ export class IndexPageComponent {
 
   async changeVerticalBarsMode(event: ToggleCustomEvent) {
     if (!event.detail.checked) return setVerticalControlAreaPlacement(null);
-    const { verticalBarEdge } = await Foldable.getBarPlacement();
-    setVerticalControlAreaPlacement({ edge: verticalBarEdge ?? 'trailing', nativeEdge: verticalBarEdge });
+    const { verticalBarEdge, inset } = await Foldable.getBarPlacement();
+    setVerticalControlAreaPlacement({ edge: verticalBarEdge ?? 'trailing', nativeEdge: verticalBarEdge, inset });
   }
 }

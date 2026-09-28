@@ -142,11 +142,11 @@ const rail = await enableVerticalControlArea();
 let layoutListener: PluginListenerHandle | undefined;
 
 if (Capacitor.getPlatform() === 'ios') {
-  layoutListener = await Foldable.addListener('barPlacementChange', ({ verticalBarEdge }) =>
-    rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge }),
+  layoutListener = await Foldable.addListener('barPlacementChange', ({ verticalBarEdge, inset }) =>
+    rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset }),
   );
-  const { verticalBarEdge } = await Foldable.getBarPlacement();
-  rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge });
+  const { verticalBarEdge, inset } = await Foldable.getBarPlacement();
+  rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset });
 }
 
 // Call when the application owner is disposed.
@@ -156,7 +156,7 @@ const stopVerticalArea = async () => {
 };
 ```
 
-`setPlacement()` resolves the logical edge through the document direction. Rail width comes from the theme’s CSS safe-area rules; `Foldable` does not supply an inset. A `null` edge restores the ordinary layout. Devices without a reported rail return `null`, so this example restores the ordinary layout there. On iOS 27.1 or later, Foldable can infer Duo bar placement from safe-area insets when the app is built with an older SDK. To deliberately request a rail when the plugin reports no edge, have your application choose a fixed edge with `rail.setPlacement('trailing')` instead of applying that null placement. This simulates the layout; it does not provide a real system rail or hinge measurements.
+`setPlacement()` resolves the logical edge through the document direction. Pass Foldable’s measured `inset` with the reported edge so the theme reserves the actual bar width and follows width changes. An inset of `0` clears the explicit width; manually requested rails then use the theme’s CSS safe-area rules. A `null` edge restores the ordinary layout. Devices without a reported rail return `null`, so this example restores the ordinary layout there. On iOS 27.1 or later, Foldable can infer Duo bar placement from safe-area insets when the app is built with an older SDK. To deliberately request a rail when the plugin reports no edge, have your application choose a fixed edge with `rail.setPlacement('trailing')` instead of applying that null placement. This simulates the layout; it does not provide a real system rail or hinge measurements.
 
 On supported iOS, controls in the rail use the system SwiftUI appearance; your custom Web styling still applies to ordinary content and horizontal controls. Web and Android use Web clones.
 

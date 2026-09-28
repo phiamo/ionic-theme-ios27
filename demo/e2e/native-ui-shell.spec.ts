@@ -85,7 +85,7 @@ const mockNative = async (page: Page, fail = false, nativeEdge: 'leading' | 'tra
     const foldable = {
       async getBarPlacement() {
         if (nativeEdge === 'unreported') return new Promise(() => {});
-        return { verticalBarEdge: nativeEdge };
+        return { verticalBarEdge: nativeEdge, inset: nativeEdge ? 84 : 0 };
       },
       async getFoldState() {
         return { state: 'flat', isSeparating: false, posture: 'flat' };
@@ -878,6 +878,38 @@ test('verticalBars controls stay operable on Web when the reported rail edge dif
   await projection.click();
   await expect(page).toHaveURL(/\/main\/index$/);
   expect(await page.evaluate(() => (document.querySelector('ion-app') as TestAppElement).verticalBarsBackCloneMoved)).toBe(false);
+});
+
+test('reported rail inset updates the layout without an edge change and clears when unavailable', async ({ page }) => {
+  await mockNative(page);
+  await page.goto('/main/index?verticalBarsOnly');
+  const app = page.locator('ion-app');
+  await page.getByText('iPhone Duo Mode', { exact: true }).click();
+  const width = () => app.evaluate((element) => element.style.getPropertyValue('--ios-theme-vertical-bars-native-inset'));
+  await expect.poll(width).toBe('84px');
+
+  const report = async (verticalBarEdge: 'leading' | 'trailing' | null, inset: number) => {
+    await page.evaluate(
+      ({ verticalBarEdge, inset }) => {
+        Capacitor.registerPlugin<ShellMock>('Foldable').notifyListeners('barPlacementChange', { verticalBarEdge, inset });
+      },
+      { verticalBarEdge, inset },
+    );
+  };
+  await report('trailing', 64);
+  await expect.poll(width).toBe('64px');
+  await expect
+    .poll(() =>
+      app.evaluate((element) => getComputedStyle(element).getPropertyValue('--ios-theme-vertical-bars-safe-area-right-resolved').trim()),
+    )
+    .toBe('64px');
+  await report('leading', 96);
+  await expect(app).toHaveClass(/ios-theme-vertical-bars-left/);
+  await expect.poll(width).toBe('96px');
+  await report(null, 0);
+  await expect.poll(width).toBe('');
+  await expect(app).toHaveClass(/ios-theme-vertical-bars/);
+  await expect(page.locator('ion-tab-bar')).toBeVisible();
 });
 
 for (const initialEdge of [null, 'unreported'] as const) {

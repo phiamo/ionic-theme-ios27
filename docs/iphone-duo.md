@@ -74,11 +74,11 @@ if (!disposed && !receivedEvent) applyFold(initialFold);
 
 `getFoldState()` and `foldStateChange` report `state` (`'flat'`, `'half-opened'`, or `'closed'`), `posture`, and optional hinge geometry. Without fold information, the plugin returns a flat state without `hingeBounds`; restore the ordinary split-pane breakpoint in that case. The Web implementation also returns a flat state. A half-opened state uses the 900px breakpoint even without hinge geometry; a flat state with hinge geometry also uses 900px. A closed state restores the ordinary 992px breakpoint. Events received during initialization take precedence over the initial read.
 
-`getBarPlacement()` and `barPlacementChange` report `{ verticalBarEdge: 'leading' | 'trailing' | null }`. The edge is **logical**: leading is the physical left in LTR and the physical right in RTL. Pass `{ edge: verticalBarEdge, nativeEdge: verticalBarEdge }` to `setPlacement()`. No start/stop monitoring calls are needed; remove each listener when its owner is disposed.
+`getBarPlacement()` and `barPlacementChange` report `{ verticalBarEdge: 'leading' | 'trailing' | null, inset: number }`. The edge is **logical**: leading is the physical left in LTR and the physical right in RTL. Pass `{ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset }` to `setPlacement()`. No start/stop monitoring calls are needed; remove each listener when its owner is disposed.
 
 The theme never reads UIKit bar-placement traits. The application supplies `nativeEdge` on the initial read and each event, even when choosing a fixed `edge`. Omit `nativeEdge` to keep the last supplied value; pass `null` when the plugin reports no edge. An explicit `nativeEdge: null` or an initial unregistered edge prevents native vertical projection: `enableVerticalControlArea()` keeps the requested Web rail, while the full Native UI Shell temporarily restores its ordinary horizontal layout. The requested rail is retained so a later reported edge can restore vertical layout. Native vertical projection starts only after a matching non-null edge is supplied. Omitting `nativeEdge` after supplying it preserves that value, including `null`. Passing `{ edge: null, nativeEdge }` updates the reported edge while keeping the rail disabled.
 
-The plugin does not report a safe-area inset with bar placement. The theme uses CSS safe-area values with its 80px rail fallback; an application can still pass `{ edge, inset }` to `setPlacement()` when it supplies an explicit width. WebView corner radius remains a rendering concern: `configureNativeTransition()` uses the shell's `getWebViewMetrics()` API, independently of `Foldable`.
+Foldable reports the measured width reserved by the native bar as `inset` and notifies changes through `barPlacementChange`. Pass this value to `setPlacement()` when following the reported edge, rather than assuming a fixed width. When no bar is reported, `inset` is `0`; the theme clears the explicit width and uses its CSS safe-area rules if the application still requests a Web rail. Applications choosing a different edge can supply their own width or use the CSS fallback. WebView corner radius remains a rendering concern: `configureNativeTransition()` uses the shell's `getWebViewMetrics()` API, independently of `Foldable`.
 
 **Migration:** the theme's former `DeviceLayout`, `HingeStatus`, `getDeviceLayout()`, `deviceLayoutChange`, and start/stop device-layout monitoring APIs have been removed. Replace device subscriptions with the `Foldable` APIs above; use `getWebViewMetrics()` for one-shot radius reads. Foldable can infer Duo bar placement from safe-area insets when the app is built without the iOS 27.1 SDK. Hinge data still requires the newer SDK. Apps can also request a fixed rail placement independently of the reported edge.
 
@@ -114,11 +114,11 @@ const rail = await enableVerticalControlArea();
 let layoutListener: PluginListenerHandle | undefined;
 
 if (Capacitor.getPlatform() === 'ios') {
-  layoutListener = await Foldable.addListener('barPlacementChange', ({ verticalBarEdge }) =>
-    rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge }),
+  layoutListener = await Foldable.addListener('barPlacementChange', ({ verticalBarEdge, inset }) =>
+    rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset }),
   );
-  const { verticalBarEdge } = await Foldable.getBarPlacement();
-  rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge });
+  const { verticalBarEdge, inset } = await Foldable.getBarPlacement();
+  rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset });
 }
 
 // Call when the application owner is disposed.
@@ -134,7 +134,7 @@ const stopVerticalArea = async () => {
 - Pass `null` to restore the ordinary layout.
 - The device-layout listener reports what iOS chose; the application decides whether to apply it. The theme compares the application's chosen edge with its supplied `nativeEdge`; a mismatch uses the Web rail until the edges match again. For a fixed right-in-LTR rail, pass `{ edge: 'trailing', nativeEdge: verticalBarEdge }` on each `Foldable` update.
 
-Start either `enableVerticalControlArea()` or the full `enableNativeUIShell()` — not both. Repeating the same configuration returns the shared runtime; starting a different configuration while it is active throws an error. The application should have one owner responsible for destroying that runtime. If the app already uses `enableNativeUIShell()`, keep that single runtime and call `setVerticalControlAreaPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge })` from its listener.
+Start either `enableVerticalControlArea()` or the full `enableNativeUIShell()` — not both. Repeating the same configuration returns the shared runtime; starting a different configuration while it is active throws an error. The application should have one owner responsible for destroying that runtime. If the app already uses `enableNativeUIShell()`, keep that single runtime and call `setVerticalControlAreaPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset })` from its listener.
 
 On supported iOS versions the runtime hands eligible tabs, back navigation, menu buttons, and fixed-toolbar actions to a native SwiftUI `TabView` and toolbar; on Web, Android, or when native projection is unavailable, Web clones remain the fallback. Back navigation can come from outside a fixed toolbar; menu buttons and other toolbar actions still require one.
 

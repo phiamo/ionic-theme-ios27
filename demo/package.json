@@ -39,7 +39,7 @@
     "@capacitor/ios": "^8.0.0",
     "@capacitor/keyboard": "^8.0.0",
     "@capacitor/status-bar": "^8.0.0",
-    "@erkamyaman/capacitor-foldable": "^8.3.2",
+    "@erkamyaman/capacitor-foldable": "^8.3.3",
     "@ionic/angular": "^9.0.0",
     "@rdlabo/ionic-theme-ios26": "^9.3.0",
     "@rdlabo/ionic-theme-ios27": "file:..",
