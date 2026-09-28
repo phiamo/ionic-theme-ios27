@@ -139,7 +139,7 @@ npx cap sync ios
 
 Use Capacitor 8.5 or later and build with Xcode 27.1 or newer for actual rail placement and hinge posture on iOS 27.1. Native UI Shell uses Swift Package Manager; existing CocoaPods apps can follow [Native UI Shell setup](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell#enable-the-shell). Keep this package's `vertical-bars.css`; the device plugin's `ionic-tabs.css` is not needed with our rail projection.
 
-Replace the browser-only startup with the [device placement setup](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#project-controls-into-the-rail). That setup sends initial values and `barPlacementChange` events to `applyFoldablePlacement(root, placement)`, with subscriptions and cleanup kept in your application.
+Replace the browser-only startup with the [device placement setup](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#project-controls-into-the-rail). That setup sends initial values and `barPlacementChange` events to `applyVerticalBarPlacement(root, placement)`, with subscriptions and cleanup kept in your application.
 
 The helper passes both the requested and native edge, resolves RTL, and applies Foldable's measured inset. A null edge restores the ordinary layout. Keep `buttonDefaultFill: 'solid'` on `enableVerticalControlArea()` if your existing theme needs CSS background projection.
 
@@ -147,7 +147,7 @@ On supported iOS, controls in the rail use the system SwiftUI appearance; your c
 
 ## Use hinge posture without projecting controls
 
-If your existing theme needs only a posture-driven split pane or a layout switch, do not start a projection runtime or add `.ios-theme-vertical-bars`. Pass `Foldable.getFoldState()` results and `foldStateChange` events to `applyFoldableState(root, fold)`, removing the listener when finished. There is no separate start/stop monitoring call.
+If your existing theme needs only a posture-driven split pane or a layout switch, do not start a projection runtime or add `.ios-theme-vertical-bars`. Pass `Foldable.getFoldState()` results and `foldStateChange` events to `applyFoldStateClasses(root, fold)`, removing the listener when finished. There is no separate start/stop monitoring call.
 
 See [Read the device layout](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#read-the-device-layout) for the subscription example, null values, and monitoring lifetime. See [Adapt the split pane](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#adapt-the-split-pane) for the opt-in width rules and half-open state.
 

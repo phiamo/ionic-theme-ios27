@@ -47,15 +47,15 @@ npx cap sync
 
 Use Capacitor 8.5 or later and build with Xcode 27.1 or newer for iPhone Duo's iOS 27.1 APIs. The dependency is needed for device-driven layout, not for the theme's CSS, browser simulation, or native control projection alone. Do not import the plugin's `ionic-tabs.css` alongside this package's rail projection; both would reposition the same tabs.
 
-After `ion-app` is mounted, pass device state to `applyFoldableState`. The application owns subscriptions and cleanup. No projection runtime is needed for posture-driven layout.
+After `ion-app` is mounted, pass device state to `applyFoldStateClasses`. The application owns subscriptions and cleanup. No projection runtime is needed for posture-driven layout.
 
 ```ts
 import { Foldable } from '@erkamyaman/capacitor-foldable';
-import { applyFoldableState } from '@rdlabo/ionic-theme-ios27/vertical-bars';
+import { applyFoldStateClasses } from '@rdlabo/ionic-theme-ios27/vertical-bars';
 
 const root = document.querySelector('ion-app')!;
-const listener = await Foldable.addListener('foldStateChange', (fold) => applyFoldableState(root, fold));
-applyFoldableState(root, await Foldable.getFoldState());
+const listener = await Foldable.addListener('foldStateChange', (fold) => applyFoldStateClasses(root, fold));
+applyFoldStateClasses(root, await Foldable.getFoldState());
 
 ```
 
@@ -67,9 +67,9 @@ await listener.remove();
 
 Subscribe to changes, then read the current state. The same helper handles initial values and events.
 
-`applyFoldableState` keeps one of `ios-theme-fold-flat`, `ios-theme-fold-half-opened`, and `ios-theme-fold-closed` on the supplied root, preserving unrelated classes. It also sets `ios-theme-fold-expanded` for a half-opened state or a flat state with hinge geometry. A flat state without geometry (including the Web fallback) and a closed state clear that class. The helpers do not subscribe to the plugin or change Ionic's split-pane `when` property.
+`applyFoldStateClasses` keeps one of `ios-theme-fold-flat`, `ios-theme-fold-half-opened`, and `ios-theme-fold-closed` on the supplied root, preserving unrelated classes. It also sets `ios-theme-fold-expanded` for a half-opened state or a flat state with hinge geometry. A flat state without geometry (including the Web fallback) and a closed state clear that class. The helpers do not subscribe to the plugin or change Ionic's split-pane `when` property.
 
-For rail placement, use `applyFoldablePlacement` as shown below. It forwards the reported logical edge as both the requested and native edge, and includes the measured inset. Leading is the physical left in LTR and the physical right in RTL. A null edge restores the ordinary layout; an inset of zero clears the explicit width. No start/stop monitoring calls are needed.
+For rail placement, use `applyVerticalBarPlacement` as shown below. It forwards the reported logical edge as both the requested and native edge, and includes the measured inset. Leading is the physical left in LTR and the physical right in RTL. A null edge restores the ordinary layout; an inset of zero clears the explicit width. No start/stop monitoring calls are needed.
 
 WebView corner radius remains a rendering concern: `configureNativeTransition()` uses the shell's `getWebViewMetrics()` API, independently of `Foldable`.
 
@@ -83,9 +83,9 @@ Add `.ios-theme-vertical-bars` to `ion-app` to reserve the rail region on the ph
 <ion-app class="ios-theme-vertical-bars">...</ion-app>
 ```
 
-The classes are physical — `-left` always means the physical left edge — because CSS and the native renderer work in physical coordinates. `applyFoldablePlacement` (below) applies the logical `verticalBarEdge` reported by `Foldable` and resolves it through the document's direction, so an RTL app does not need its own conversion.
+The classes are physical — `-left` always means the physical left edge — because CSS and the native renderer work in physical coordinates. `applyVerticalBarPlacement` (below) applies the logical `verticalBarEdge` reported by `Foldable` and resolves it through the document's direction, so an RTL app does not need its own conversion.
 
-For Chrome development, no native plugin is needed — the class alone reserves `80px` to simulate iPhone Duo. When `applyFoldablePlacement` receives the reported placement, its inset replaces the fallback width, even when it is less than `80px`. Override `--ios-theme-vertical-bars-safe-area-left` or `--ios-theme-vertical-bars-safe-area-right` when simulating a different layout.
+For Chrome development, no native plugin is needed — the class alone reserves `80px` to simulate iPhone Duo. When `applyVerticalBarPlacement` receives the reported placement, its inset replaces the fallback width, even when it is less than `80px`. Override `--ios-theme-vertical-bars-safe-area-left` or `--ios-theme-vertical-bars-safe-area-right` when simulating a different layout.
 
 This keeps routers and component backgrounds full-viewport. `ion-content` moves its scroll foreground, `ion-toolbar` moves its container foreground, and `ion-fab` adjusts only when placed beside the system UI. The corresponding Ionic safe-area variable is reset inside those foreground components so descendants do not add the inset again.
 
@@ -95,16 +95,16 @@ The mode is component-mode independent: an app can keep Ionic `mode: 'md'` on iO
 
 ## Project controls into the rail
 
-Start the standalone runtime once after `ion-app` is mounted, and apply the plugin's placement with `applyFoldablePlacement`:
+Start the standalone runtime once after `ion-app` is mounted, and apply the plugin's placement with `applyVerticalBarPlacement`:
 
 ```ts
 import { Foldable } from '@erkamyaman/capacitor-foldable';
-import { applyFoldablePlacement, enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-bars';
+import { applyVerticalBarPlacement, enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-bars';
 
 const root = document.querySelector('ion-app')!;
 const rail = await enableVerticalControlArea();
-const listener = await Foldable.addListener('barPlacementChange', (placement) => applyFoldablePlacement(root, placement));
-applyFoldablePlacement(root, await Foldable.getBarPlacement());
+const listener = await Foldable.addListener('barPlacementChange', (placement) => applyVerticalBarPlacement(root, placement));
+applyVerticalBarPlacement(root, await Foldable.getBarPlacement());
 
 ```
 
@@ -117,7 +117,7 @@ await rail.destroy();
 
 The helper supplies `nativeEdge` automatically, so the renderer knows which rail the system actually provides. The measured `inset` is passed through instead of assuming a fixed width. Devices without a reported rail, including Web and Android, return a null edge and retain the ordinary layout. For browser simulation, use the class-based preview above without connecting device placement.
 
-Start either `enableVerticalControlArea()` or the full `enableNativeUIShell()` — not both. If the app already uses Native UI Shell, keep that runtime and use the same `applyFoldablePlacement` callback. The application owner removes its listeners and destroys its runtime on teardown.
+Start either `enableVerticalControlArea()` or the full `enableNativeUIShell()` — not both. If the app already uses Native UI Shell, keep that runtime and use the same `applyVerticalBarPlacement` callback. The application owner removes its listeners and destroys its runtime on teardown.
 
 On supported iOS versions the runtime hands eligible tabs, back navigation, menu buttons, and fixed-toolbar actions to a native SwiftUI `TabView` and toolbar; on Web, Android, or when native projection is unavailable, Web clones remain the fallback. Back navigation can come from outside a fixed toolbar; menu buttons and other toolbar actions still require one.
 
@@ -181,7 +181,7 @@ ion-split-pane.ios-theme-fold-layout {
 }
 ```
 
-The registered `--ios-theme-split-pane-width` defaults to `320px`. `applyFoldableState` sets `ios-theme-fold-half-opened` on `ion-app`; the stylesheet then sets only descendant split panes with `ios-theme-fold-layout` to `50vw`. Add this opt-in class once; no state-dependent class binding is needed. Other split panes retain their existing width.
+The registered `--ios-theme-split-pane-width` defaults to `320px`. `applyFoldStateClasses` sets `ios-theme-fold-half-opened` on `ion-app`; the stylesheet then sets only descendant split panes with `ios-theme-fold-layout` to `50vw`. Add this opt-in class once; no state-dependent class binding is needed. Other split panes retain their existing width.
 
 Ionic's `when` still controls whether the menu is persistent. The example chooses a fixed 900px breakpoint. If your app needs different breakpoints for folded and ordinary displays, use the `ios-theme-fold-expanded` class applied by the helper to select that policy in your application's layout code. The helper only updates state classes, not `when`. This layout does not enable Vertical Bars or move an overlay menu.
 
