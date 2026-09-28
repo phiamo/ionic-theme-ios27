@@ -119,7 +119,7 @@ const observeNativeVerticalBarsLayout = (doc: Document): (() => void) => {
     const app = doc.querySelector<HTMLElement>('ion-app');
     if (!app) return;
     const requested = app.classList.contains('ios-theme-vertical-bars') || app.hasAttribute(horizontalFallbackAttribute);
-    const suspended = requested && nativePlacements.get(app)?.edge === null;
+    const suspended = requested && nativePlacements.get(app)?.edge == null;
     if (app.hasAttribute(horizontalFallbackAttribute) !== suspended) app.toggleAttribute(horizontalFallbackAttribute, suspended);
     if (app.classList.contains('ios-theme-vertical-bars') !== (requested && !suspended)) {
       app.classList.toggle('ios-theme-vertical-bars', requested && !suspended);
@@ -232,8 +232,7 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
           const app = document.querySelector<HTMLElement>('ion-app.ios-theme-vertical-bars');
           if (!app) return false;
           const reported = nativePlacements.get(app);
-          if (!reported) return true;
-          if (reported.edge === null) return false;
+          if (!reported?.edge) return false;
           const physicalEdge = app.classList.contains('ios-theme-vertical-bars-left') ? 'left' : 'right';
           return physicalEdge === physicalVerticalBarEdge(reported.edge, reported.rtl ?? elementRtl(app));
         };
