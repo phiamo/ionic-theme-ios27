@@ -3216,6 +3216,26 @@ test('button projection sends contextual fills and state updates to the native b
   expect((await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor).toBeUndefined();
   await page.getByRole('switch', { name: 'Disabled', exact: true }).click();
   await expect.poll(async () => (await items()).map((item) => item.disabled)).toEqual([true, true, true, true]);
+  for (const placement of ['Grouped', 'Standalone', 'Separate']) {
+    await page.locator('ion-select').click();
+    await page.getByRole('radio', { name: placement, exact: true }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell')
+            .updates.at(-1)
+            ?.controls.filter((control) =>
+              control.items.some((item) => ['Omitted', 'Clear', 'Solid', 'Outline'].includes(item.accessibilityLabel ?? '')),
+            )
+            .map((control) => control.items.length),
+        ),
+      )
+      .toEqual(placement === 'Grouped' ? [4] : [1, 1, 1, 1]);
+    await expect.poll(async () => (await items()).map((item) => item.disabled)).toEqual([true, true, true, true]);
+    await expect
+      .poll(async () => (await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor)
+      .toBe(placement === 'Standalone' ? 'rgb(184, 54, 42)' : undefined);
+  }
 });
 
 test('tab visibility ignores query parameters and fragments', async ({ page }) => {

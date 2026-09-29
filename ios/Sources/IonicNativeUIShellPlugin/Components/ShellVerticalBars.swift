@@ -246,6 +246,9 @@ private struct ShellVerticalBarsToolbar: ViewModifier {
                 .axisBehavior(.verticalPreferred)
             }
             ForEach(model.groups.filter { $0.slot == .start }) { group in
+                if group.id != model.groups.first(where: { $0.slot == .start })?.id {
+                    ToolbarSpacer(.fixed, placement: .topBarLeading)
+                }
                 ToolbarItemGroup(placement: .topBarLeading) {
                     ForEach(group.items) { item in
                         ShellVerticalBarsButton(model: model, id: item.id)
@@ -254,6 +257,9 @@ private struct ShellVerticalBarsToolbar: ViewModifier {
                 .axisBehavior(.verticalPreferred)
             }
             ForEach(model.groups.filter { $0.slot != .start }) { group in
+                if group.id != model.groups.first(where: { $0.slot != .start })?.id {
+                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     ForEach(group.items) { item in
                         ShellVerticalBarsButton(model: model, id: item.id)
@@ -278,6 +284,9 @@ private struct ShellVerticalBarsLegacyToolbar: ViewModifier {
                 }
             }
             ForEach(model.groups) { group in
+                if group.id != model.groups.first?.id {
+                    ToolbarSpacer(.fixed, placement: .primaryAction)
+                }
                 ToolbarItemGroup(placement: .primaryAction) {
                     ForEach(group.items) { item in
                         ShellVerticalBarsButton(model: model, id: item.id)
