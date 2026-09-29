@@ -3,7 +3,7 @@ import { activateProjectedElement, marker, unprojected } from './shared/dom';
 
 export const searchProjectionClass = 'ios-theme-vertical-bars-search-projection';
 
-/** Web counterpart of the system search button above the vertical tabs. */
+/** Web counterpart of the system search button above the vertical tabs, or at the rail bottom without visible tabs. */
 export const createVerticalBarsWebSearch = (doc: Document, eligible: (element: HTMLElement) => boolean, refresh: () => void) => {
   let binding: NativeSearchBinding | undefined;
   let projection: HTMLIonFabButtonElement | undefined;
@@ -29,7 +29,7 @@ export const createVerticalBarsWebSearch = (doc: Document, eligible: (element: H
     },
     update(root: HTMLElement) {
       const next = unprojected(binding ? [binding.trigger] : [], () =>
-        getNativeSearchBindings(doc).find(({ trigger, tabBar, footer }) => eligible(trigger) && eligible(tabBar) && eligible(footer)),
+        getNativeSearchBindings(doc).find(({ trigger, footer }) => eligible(trigger) && eligible(footer)),
       );
       if (next !== binding || container?.parentElement !== root) restore();
       if (!next) return;
@@ -69,9 +69,12 @@ export const createVerticalBarsWebSearch = (doc: Document, eligible: (element: H
       }
       container!.hidden = next.trigger.style.pointerEvents === 'none';
       projection.disabled = (next.trigger as HTMLIonFabButtonElement).disabled;
-      const tabs = next.tabBar.getBoundingClientRect();
-      container!.style.left = `${tabs.left + (tabs.width - 46) / 2}px`;
-      container!.style.top = `${tabs.top - 56}px`;
+      const bounds = next.tabBar.getBoundingClientRect();
+      const tabs = bounds.width > 0 && bounds.height > 0 && getComputedStyle(next.tabBar).visibility === 'visible' ? bounds : undefined;
+      container!.style.left = tabs ? `${tabs.left + (tabs.width - 46) / 2}px` : '';
+      container!.style.top = tabs ? `${tabs.top - 56}px` : '';
+      container!.style.right = tabs ? 'auto' : '';
+      container!.style.bottom = tabs ? 'auto' : '';
     },
   };
 };

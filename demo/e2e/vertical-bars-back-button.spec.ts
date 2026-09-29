@@ -264,6 +264,25 @@ test('Web search follows vertical tabs before native projection and restores its
       .toBeLessThan(1);
     const button = (await projection.boundingBox())!;
     expect(button.y + button.height).toBeLessThan((await tabs.boundingBox())!.y);
+    await tabs.evaluate((element) => element.setAttribute('data-shell', 'disabled'));
+    await expect.poll(async () => (await projection.boundingBox())!.y).toBe(button.y);
+    await tabs.evaluate((element) => element.removeAttribute('data-shell'));
+    await tabs.evaluate((element) => element.style.setProperty('display', 'none'));
+    await expect(projection).toBeVisible();
+    await expect
+      .poll(async () => {
+        const rect = (await projection.boundingBox())!;
+        return Math.abs(rect.y + rect.height - (900 - 24));
+      })
+      .toBeLessThan(1);
+    const bottomButton = (await projection.boundingBox())!;
+    expect(Math.abs(bottomButton.x - button.x)).toBeLessThan(1);
+    await projection.click();
+    await expect(footer).toHaveCSS('opacity', '1');
+    await footer.locator('ion-buttons[slot=start] ion-button').click();
+    await expect(footer).toHaveCSS('opacity', '0');
+    await tabs.evaluate((element) => element.style.removeProperty('display'));
+    await expect.poll(async () => (await projection.boundingBox())!.y).toBe(button.y);
     await projection.click();
     await expect(footer).toHaveCSS('opacity', '1');
     await expect(projection).toBeHidden();

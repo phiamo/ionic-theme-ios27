@@ -421,6 +421,10 @@ ion-tab-button.ios.ion-cloned-element.ios27-vertical-tab-effect {
 // Search shares the Web rail before Native UI Shell takes ownership.
 :is(ion-app.ios-theme-vertical-bars, ion-modal.ios-theme-vertical-bars-modal) > ion-fab.ios-theme-vertical-bars-search-projection {
   position: fixed;
+  left: auto;
+  right: 25px;
+  top: auto;
+  bottom: 24px;
   z-index: 3;
   width: 46px;
   height: 46px;
@@ -438,4 +442,10 @@ ion-app.ios-theme-vertical-bars ion-fab > ion-fab-button[data-native-ui-shell] {
 
 .ios-theme-vertical-bars-search-projection[hidden] {
   display: none !important;
+}
+
+ion-app.ios-theme-vertical-bars-left > ion-fab.ios-theme-vertical-bars-search-projection,
+ion-app.ios-theme-vertical-bars-left ion-modal.ios-theme-vertical-bars-modal > ion-fab.ios-theme-vertical-bars-search-projection {
+  left: 25px;
+  right: auto;
 }
