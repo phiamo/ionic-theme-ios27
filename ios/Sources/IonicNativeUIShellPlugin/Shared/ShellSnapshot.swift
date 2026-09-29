@@ -99,6 +99,7 @@ struct ShellBadge: Decodable, Equatable {
 
 struct ShellItemContent: Decodable, Equatable {
     enum IconPosition: String, Decodable { case leading, trailing, top }
+    enum ButtonFill: String, Decodable { case clear, solid, outline }
     let id: String
     var label: String
     let accessibilityLabel: String
@@ -107,6 +108,7 @@ struct ShellItemContent: Decodable, Equatable {
     let fontSize: Double
     let fontWeight: Double
     let color: String
+    let buttonFill: ButtonFill?
     let backgroundColor: String?
     let borderColor: String?
     let borderWidth: CGFloat?

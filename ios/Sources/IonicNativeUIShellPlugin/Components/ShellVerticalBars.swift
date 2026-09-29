@@ -17,6 +17,7 @@ final class ShellVerticalBarsModel: ObservableObject {
         let label: String
         let accessibilityLabel: String
         let image: UIImage?
+        let clear: Bool
         let background: Color?
         let borderColor: Color?
         let borderWidth: CGFloat
@@ -47,6 +48,7 @@ final class ShellVerticalBarsModel: ObservableObject {
             Item(id: source.id, label: source.content.label,
                  accessibilityLabel: source.content.accessibilityLabel,
                  image: rendering.image(source.content),
+                 clear: source.content.buttonFill == .clear,
                  background: source.content.backgroundColor.map { Color(uiColor: rendering.color($0)) },
                  borderColor: source.content.borderColor.map { Color(uiColor: rendering.color($0)) },
                  borderWidth: source.content.borderWidth ?? 0,
@@ -108,27 +110,33 @@ private struct ShellVerticalBarsLabel: View {
 }
 
 @available(iOS 26.0, *)
-private struct ShellVerticalBarsButton: View {
+private struct ShellVerticalBarsButton: ToolbarContent {
     @ObservedObject var model: ShellVerticalBarsModel
     let id: String
+    let placement: ToolbarItemPlacement
 
-    // Toolbar content can retain its original item value on iOS 27.1.
-    // Observe the model here so same-ID color and disabled updates reach the button.
-    var body: some View {
+    // Toolbar closures can retain their original item value on iOS 27.1.
+    // Observe the model here so the button and its shared glass background update together.
+    var body: some ToolbarContent {
         if let item = model.groups.lazy.flatMap(\.items).first(where: { $0.id == id }) {
-            let button = Button { model.activate(item.id) } label: { ShellVerticalBarsLabel(item: item) }
-                .disabled(item.disabled)
-                .accessibilityLabel(item.accessibilityLabel)
-                .accessibilityIdentifier(item.id)
-            if let background = item.background {
-                button.buttonStyle(.glassProminent).tint(background)
-            } else {
-                button.overlay {
-                    if let borderColor = item.borderColor {
-                        Capsule().strokeBorder(borderColor, lineWidth: item.borderWidth).allowsHitTesting(false)
+            ToolbarItem(placement: placement) {
+                let button = Button { model.activate(item.id) } label: { ShellVerticalBarsLabel(item: item) }
+                    .disabled(item.disabled)
+                    .accessibilityLabel(item.accessibilityLabel)
+                    .accessibilityIdentifier(item.id)
+                if item.clear {
+                    button.buttonStyle(.plain)
+                } else if let background = item.background {
+                    button.buttonStyle(.glassProminent).tint(background)
+                } else {
+                    button.overlay {
+                        if let borderColor = item.borderColor {
+                            Capsule().strokeBorder(borderColor, lineWidth: item.borderWidth).allowsHitTesting(false)
+                        }
                     }
                 }
             }
+            .sharedBackgroundVisibility(item.clear ? .hidden : .automatic)
         }
     }
 }
@@ -249,23 +257,19 @@ private struct ShellVerticalBarsToolbar: ViewModifier {
                 if group.id != model.groups.first(where: { $0.slot == .start })?.id {
                     ToolbarSpacer(.fixed, placement: .topBarLeading)
                 }
-                ToolbarItemGroup(placement: .topBarLeading) {
-                    ForEach(group.items) { item in
-                        ShellVerticalBarsButton(model: model, id: item.id)
-                    }
+                ForEach(group.items) { item in
+                    ShellVerticalBarsButton(model: model, id: item.id, placement: .topBarLeading)
+                    .axisBehavior(.verticalPreferred)
                 }
-                .axisBehavior(.verticalPreferred)
             }
             ForEach(model.groups.filter { $0.slot != .start }) { group in
                 if group.id != model.groups.first(where: { $0.slot != .start })?.id {
                     ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    ForEach(group.items) { item in
-                        ShellVerticalBarsButton(model: model, id: item.id)
-                    }
+                ForEach(group.items) { item in
+                    ShellVerticalBarsButton(model: model, id: item.id, placement: .topBarTrailing)
+                    .axisBehavior(.verticalPreferred)
                 }
-                .axisBehavior(.verticalPreferred)
             }
         }
     }
@@ -287,10 +291,8 @@ private struct ShellVerticalBarsLegacyToolbar: ViewModifier {
                 if group.id != model.groups.first?.id {
                     ToolbarSpacer(.fixed, placement: .primaryAction)
                 }
-                ToolbarItemGroup(placement: .primaryAction) {
-                    ForEach(group.items) { item in
-                        ShellVerticalBarsButton(model: model, id: item.id)
-                    }
+                ForEach(group.items) { item in
+                    ShellVerticalBarsButton(model: model, id: item.id, placement: .primaryAction)
                 }
             }
         }

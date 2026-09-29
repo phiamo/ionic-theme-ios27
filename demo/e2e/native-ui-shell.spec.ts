@@ -3207,6 +3207,7 @@ test('button projection sends contextual fills and state updates to the native b
           .filter((item) => ['Omitted', 'Clear', 'Solid', 'Outline'].includes(item.accessibilityLabel ?? '')) ?? [],
     );
   await expect.poll(async () => (await items()).length).toBe(4);
+  await expect.poll(async () => (await items()).map((item) => item.buttonFill)).toEqual(['clear', 'clear', 'solid', 'outline']);
   await expect.poll(async () => (await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor).toBeUndefined();
   await page.getByRole('switch', { name: 'Custom CSS background', exact: true }).click();
   await expect
@@ -3214,6 +3215,18 @@ test('button projection sends contextual fills and state updates to the native b
     .toBe('rgb(184, 54, 42)');
   expect((await items()).find((item) => item.accessibilityLabel === 'Clear')?.backgroundColor).toBeUndefined();
   expect((await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor).toBeUndefined();
+  const clearId = (await items()).find((item) => item.accessibilityLabel === 'Clear')!.id;
+  for (const fill of ['solid', 'outline', 'clear'] as const) {
+    await page
+      .locator('app-button-projection ion-button:has(ion-icon[name="heart-outline"])')
+      .evaluate((button: HTMLIonButtonElement, value) => (button.fill = value), fill);
+    await expect
+      .poll(async () => {
+        const item = (await items()).find((item) => item.accessibilityLabel === 'Clear');
+        return { id: item?.id, fill: item?.buttonFill };
+      })
+      .toEqual({ id: clearId, fill });
+  }
   await page.getByRole('switch', { name: 'Disabled', exact: true }).click();
   await expect.poll(async () => (await items()).map((item) => item.disabled)).toEqual([true, true, true, true]);
   for (const placement of ['Grouped', 'Standalone', 'Separate']) {
@@ -3232,6 +3245,9 @@ test('button projection sends contextual fills and state updates to the native b
       )
       .toEqual(placement === 'Grouped' ? [4] : [1, 1, 1, 1]);
     await expect.poll(async () => (await items()).map((item) => item.disabled)).toEqual([true, true, true, true]);
+    await expect
+      .poll(async () => (await items()).map((item) => item.buttonFill))
+      .toEqual([placement === 'Standalone' ? 'solid' : 'clear', 'clear', 'solid', 'outline']);
     await expect
       .poll(async () => (await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor)
       .toBe(placement === 'Standalone' ? 'rgb(184, 54, 42)' : undefined);

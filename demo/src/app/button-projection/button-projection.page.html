@@ -64,10 +64,10 @@
             <p>
               @switch (action.label) {
                 @case ('Omitted') {
-                  {{ placement() === 'Standalone' ? 'Uses buttonDefaultFill.' : 'Clear: no button background.' }}
+                  {{ placement() === 'Standalone' ? 'Uses buttonDefaultFill.' : 'Clear: no glass background.' }}
                 }
                 @case ('Clear') {
-                  Icon color only.
+                  Icon color only; no glass background.
                 }
                 @case ('Solid') {
                   Background and icon color.
@@ -101,7 +101,7 @@
           <p>
             @switch (placement()) {
               @case ('Grouped') {
-                ion-buttons: the iOS theme projects these together on a shared surface.
+                ion-buttons: grouped projection; clear buttons have no glass background.
               }
               @case ('Separate') {
                 ion-buttons.ios-theme-disabled: separate controls; omitted fill defaults to clear.
