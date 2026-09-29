@@ -3,6 +3,10 @@ import { IndexPageComponent } from './index-page.component';
 
 export const routes: Routes = [
   {
+    path: 'button-projection',
+    loadComponent: () => import('../button-projection/button-projection.page').then((m) => m.ButtonProjectionPage),
+  },
+  {
     path: 'native-ui-shell',
     loadComponent: () => import('../native-ui-shell/native-ui-shell.page').then((m) => m.NativeUIShellPage),
   },

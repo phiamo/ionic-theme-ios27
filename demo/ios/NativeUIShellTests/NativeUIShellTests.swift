@@ -251,6 +251,36 @@ final class NativeUIShellTests: XCTestCase {
         capture("native-tab-settings")
     }
 
+    func testVerticalButtonProjection() throws {
+        let app = XCUIApplication(bundleIdentifier: "io.ionic.theme.ios27")
+        app.launch()
+        let toggle = app.webViews.switches["iPhone Duo Mode"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 15), app.debugDescription)
+        if toggle.value as? String == "0" { toggle.tap() }
+        openPage(app, name: "button-projection")
+        XCTAssertTrue(app.webViews.staticTexts["Compare toolbar buttons"].waitForExistence(timeout: 10), app.debugDescription)
+
+        for placement in ["Individual in ion-buttons", "Grouped", "Outside ion-buttons"] {
+            app.webViews.switches[placement].tap()
+            for styled in [false, true] {
+                if styled { app.webViews.switches["Custom CSS background"].tap() }
+                for label in ["Omitted", "Clear", "Solid", "Outline"] {
+                    let button = nativeButton(app, label: label)
+                    XCTAssertTrue(button.waitForExistence(timeout: 10), app.debugDescription)
+                    button.tap()
+                    let lastAction = app.webViews.staticTexts["Last action: " + label]
+                    XCTAssertTrue(lastAction.waitForExistence(timeout: 5), app.debugDescription)
+                }
+                capture("button-projection-" + placement + (styled ? "-styled" : "-plain"))
+            }
+            app.webViews.switches["Custom CSS background"].tap()
+        }
+        app.webViews.switches["Disabled"].tap()
+        let disabled = NSPredicate(format: "enabled == false")
+        expectation(for: disabled, evaluatedWith: nativeButton(app, label: "Solid"))
+        waitForExpectations(timeout: 5)
+    }
+
     func testNativeVerticalBars() throws {
         let app = XCUIApplication(bundleIdentifier: "io.ionic.theme.ios27")
         app.launch()

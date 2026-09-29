@@ -135,3 +135,25 @@ To get more help on the Angular CLI use `ng help` or check out the [Angular CLI 
 For Ionic Framework, visit [Ionic Documentation](https://ionicframework.com/docs).
 
 For Playwright, visit [Playwright Documentation](https://playwright.dev/).
+
+## Button projection
+
+Open `/main/index/button-projection` after enabling iPhone Duo Mode on the index page.
+The page compares omitted, clear, solid, and outline fills, custom CSS backgrounds,
+disabled controls, and grouped versus individual projection. Tabs are hidden on this
+page to leave room for the four buttons. Tap a projected button
+to check the last-action label.
+
+For the iOS theme, run the regular demo. For stock Ionic styling with only
+`vertical-bars.css`, run:
+
+```sh
+npm start -- --configuration=ionic-default
+```
+
+This configuration automatically enables vertical-bars-only mode with
+`buttonDefaultFill: 'solid'`. Open `/main/index`, enable iPhone Duo Mode,
+and select **button-projection**. For a native build of the same styling, use
+`npm run build -- --configuration=production,ionic-default` before `npx cap sync ios`.
+The regular build also accepts `?verticalBarsOnly&buttonDefaultFill=solid` at startup
+for comparing the option with the iOS theme.

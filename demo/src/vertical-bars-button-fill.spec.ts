@@ -12,7 +12,10 @@ const mount = (fills: (string | undefined)[], grouped = false) => {
   const buttons = Array.from(document.querySelectorAll('ion-button')) as HTMLIonButtonElement[];
   buttons.forEach((button, i) => {
     button.fill = fills[i] as HTMLIonButtonElement['fill'];
-    const native = button.attachShadow({ mode: 'open' }).appendChild(document.createElement('span'));
+    // Ionic may already be registered by another suite.
+    const shadow = button.shadowRoot ?? button.attachShadow({ mode: 'open' });
+    const native = document.createElement('span');
+    shadow.replaceChildren(native);
     native.setAttribute('part', 'native');
     native.style.cssText = 'color: white; background-color: rgba(0,0,0,0.24); border: 2px solid red';
   });
@@ -39,13 +42,16 @@ test.each([undefined, 'default'])('solid default retains computed colors for fil
   expect((element as HTMLIonButtonElement).fill).toBe(fill);
 });
 
-test('grouped buttons use the default but explicit clear/outline override it', () => {
-  const element = mount([undefined, 'clear', 'outline', 'solid'], true);
-  const items = readCandidate(element, (e) => e.localName, { buttonDefaultFill: 'solid' })!.control.items;
-  expect(items.map((item) => item.backgroundColor)).toEqual(['rgba(0, 0, 0, 0.24)', undefined, undefined, 'rgba(0, 0, 0, 0.24)']);
-  expect(items[2].borderColor).toBe('rgb(255, 0, 0)');
-  expect(items[2].borderWidth).toBe(2);
-});
+test.each([undefined, null, 'solid'] as const)(
+  'grouped buttons default to clear with option %s and preserve explicit fills',
+  (buttonDefaultFill) => {
+    const element = mount([undefined, 'clear', 'outline', 'solid'], true);
+    const items = readCandidate(element, (e) => e.localName, { buttonDefaultFill })!.control.items;
+    expect(items.map((item) => item.backgroundColor)).toEqual([undefined, undefined, undefined, 'rgba(0, 0, 0, 0.24)']);
+    expect(items[2].borderColor).toBe('rgb(255, 0, 0)');
+    expect(items[2].borderWidth).toBe(2);
+  },
+);
 
 test('explicit solid wins over a null default', () => {
   const item = readCandidate(mount(['solid']), () => 'button', { buttonDefaultFill: null })!.control.items[0];
@@ -69,3 +75,19 @@ test('startup rejects a different default until the previous owner is destroyed'
   const next = await enableVerticalControlArea({ buttonDefaultFill: 'solid' });
   await next.destroy();
 });
+
+// Disabling the themed group keeps its buttons eligible for individual projection.
+test.each([undefined, null, 'solid'] as const)(
+  'individual buttons in a disabled group respect clear with option %s',
+  (buttonDefaultFill) => {
+    const group = mount([undefined, 'default', 'clear', 'solid', 'outline'], true);
+    group.classList.add('ios-theme-disabled');
+    expect(readCandidate(group, (e) => e.localName, { buttonDefaultFill })).toBeUndefined();
+    const buttons = Array.from(group.querySelectorAll('ion-button'));
+    const items = buttons.map((button) => readCandidate(button, (e) => e.localName, { buttonDefaultFill })!.control.items[0]);
+    expect(items.map((item) => item.backgroundColor)).toEqual([undefined, undefined, undefined, 'rgba(0, 0, 0, 0.24)', undefined]);
+    expect(items[4].borderColor).toBe('rgb(255, 0, 0)');
+    expect(items[4].borderWidth).toBe(2);
+    expect(buttons[0].fill).toBeUndefined();
+  },
+);

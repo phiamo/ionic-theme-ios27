@@ -62,7 +62,9 @@ export const appendItem = (
   const badge = child.querySelector<HTMLElement>('ion-badge');
   const badgeStyle = badge && visible(badge) ? getComputedStyle(badge) : undefined;
   const sourceFill = (child as HTMLIonButtonElement).fill;
-  const fill = !sourceFill || sourceFill === 'default' ? candidate.buttonDefaultFill : sourceFill;
+  // Ionic defaults buttons inside ion-buttons to clear, even when the app defaults to solid.
+  const defaultFill = child.closest('ion-buttons') ? 'clear' : candidate.buttonDefaultFill;
+  const fill = !sourceFill || sourceFill === 'default' ? defaultFill : sourceFill;
   const outline =
     isVerticalBarsSource(child) && child.matches('ion-button') && fill === 'outline' ? getComputedStyle(native ?? child) : undefined;
   const item: ShellItem = {

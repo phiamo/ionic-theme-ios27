@@ -1,0 +1,77 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start"><ion-back-button defaultHref="/main/index"></ion-back-button></ion-buttons>
+    <ion-title>Button projection</ion-title>
+  </ion-toolbar>
+  <ion-toolbar>
+    @switch (placement()) {
+      @case ('Grouped') {
+        <ion-buttons slot="end">
+          @for (action of actions; track action.label) {
+            <ion-button
+              [fill]="action.fill"
+              [class.styled]="styled()"
+              [disabled]="disabled()"
+              [attr.aria-label]="action.label"
+              (click)="lastAction.set(action.label)"
+            >
+              <ion-icon slot="icon-only" [name]="action.icon" aria-hidden="true"></ion-icon>
+            </ion-button>
+          }
+        </ion-buttons>
+      }
+      @case ('Individual in ion-buttons') {
+        <ion-buttons slot="end" class="ios-theme-disabled">
+          @for (action of actions; track action.label) {
+            <ion-button
+              [fill]="action.fill"
+              [class.styled]="styled()"
+              [disabled]="disabled()"
+              [attr.aria-label]="action.label"
+              (click)="lastAction.set(action.label)"
+            >
+              <ion-icon slot="icon-only" [name]="action.icon" aria-hidden="true"></ion-icon>
+            </ion-button>
+          }
+        </ion-buttons>
+      }
+      @case ('Outside ion-buttons') {
+        @for (action of actions; track action.label) {
+          <ion-button
+            [fill]="action.fill"
+            [class.styled]="styled()"
+            [disabled]="disabled()"
+            [attr.aria-label]="action.label"
+            (click)="lastAction.set(action.label)"
+          >
+            <ion-icon slot="icon-only" [name]="action.icon" aria-hidden="true"></ion-icon>
+          </ion-button>
+        }
+      }
+    }
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <h1>Compare toolbar buttons</h1>
+  <p role="status">Last action: {{ lastAction() }}</p>
+  <p>Enable iPhone Duo Mode on the index page, then compare the controls in the vertical bar.</p>
+  <fieldset>
+    <legend>Placement</legend>
+    @for (option of placements; track option) {
+      <button type="button" [attr.aria-pressed]="placement() === option" (click)="placement.set(option)">{{ option }}</button>
+    }
+  </fieldset>
+  <fieldset>
+    <legend>Appearance</legend>
+    <button type="button" [attr.aria-pressed]="styled()" (click)="styled.set(!styled())">Custom CSS background</button>
+    <button type="button" [attr.aria-pressed]="disabled()" (click)="disabled.set(!disabled())">Disabled</button>
+  </fieldset>
+  <ul>
+    @for (action of actions; track action.label) {
+      <li><ion-icon [name]="action.icon" aria-hidden="true"></ion-icon> {{ action.label }}</li>
+    }
+  </ul>
+  <p>Inside ion-buttons, an omitted fill behaves as clear. Explicit solid projects its background; clear does not.</p>
+  <p>Grouped controls retain their shared surface. Use “Individual in ion-buttons” to compare separate controls.</p>
+</ion-content>

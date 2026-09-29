@@ -1,0 +1,35 @@
+ion-button.styled {
+  --background: #b8362a;
+  --color: #fff8f2;
+}
+
+fieldset {
+  margin-block: 16px;
+  border: 1px solid var(--ion-color-medium);
+  border-radius: 12px;
+}
+
+button {
+  margin: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--ion-text-color);
+  background: var(--ion-color-light);
+
+  &[aria-pressed='true'] {
+    color: var(--ion-color-primary-contrast);
+    background: var(--ion-color-primary);
+  }
+}
+
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-block: 12px;
+}

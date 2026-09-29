@@ -14,6 +14,7 @@ export interface VerticalControlAreaOptions {
   /** Default fill for native vertical button projection when Ionic's fill is omitted or `default`.
    * Use `solid` for Ionic's default design, or `null` for the iOS theme's glass design.
    * Omitted is equivalent to `null` and preserves existing behavior.
+   * Buttons inside ion-buttons default to clear; explicit solid is required to project their background.
    * Explicit button fills take precedence. Source buttons and Web clones are unchanged.
    */
   buttonDefaultFill?: 'solid' | null;
