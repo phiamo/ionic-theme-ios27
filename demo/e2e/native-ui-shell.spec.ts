@@ -3192,7 +3192,7 @@ for (const native of [true, false]) {
   });
 }
 
-test('button projection respects contextual clear and updates native appearance', async ({ page }) => {
+test('button projection sends contextual fills and state updates to the native bridge', async ({ page }) => {
   await mockNative(page);
   await page.setViewportSize({ width: 466, height: 678 });
   await page.goto('/main/index?verticalBarsOnly&buttonDefaultFill=solid');
