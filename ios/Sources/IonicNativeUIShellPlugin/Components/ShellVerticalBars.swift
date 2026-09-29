@@ -195,6 +195,12 @@ private struct ShellVerticalBarsPage: View {
     var body: some View {
         NavigationStack {
             Color.clear.modifier(ShellVerticalBarsToolbarAdapter(model: model))
+                .toolbar {
+                    if model.search?.configuration.available == true {
+                        // Let the system adapt bottom-bar search to the vertical rail.
+                        DefaultToolbarItem(kind: .search, placement: .bottomBar)
+                    }
+                }
         }
     }
 }
@@ -347,6 +353,13 @@ final class ShellVerticalBarsController: ShellVerticalBarsControlling {
             let hit = super.hitTest(point, with: event)
             let inRail = railEdge == "left" ? point.x <= railWidth : point.x >= bounds.maxX - railWidth
             if inRail { return hit }
+            // Expanded system search leaves the rail; its field and close button
+            // must receive touches instead of passing them through to the WebView.
+            var ancestor = hit
+            while let view = ancestor, view !== self {
+                if view is UIControl { return hit }
+                ancestor = view.superview
+            }
             guard hit != nil, containsBarSurface(at: point) else { return nil }
             return hit
         }
