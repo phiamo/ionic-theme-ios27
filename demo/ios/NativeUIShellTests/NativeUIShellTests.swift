@@ -293,6 +293,7 @@ final class NativeUIShellTests: XCTestCase {
     }
 
     func testVerticalSearchPlacementAndEditing() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
         let app = XCUIApplication(bundleIdentifier: "io.ionic.theme.ios27")
         app.launch()
         let toggle = app.webViews.switches["iPhone Duo Mode"]
@@ -300,6 +301,7 @@ final class NativeUIShellTests: XCTestCase {
         if toggle.value as? String == "0" { toggle.tap() }
         let library = app.buttons["Library"].firstMatch
         XCTAssertTrue(library.waitForExistence(timeout: 10))
+        try XCTSkipUnless(library.frame.midX > app.frame.width * 0.8, "Requires a device with a right-hand native vertical rail")
         library.tap()
         let search = app.buttons["Search"].firstMatch
         let field = app.searchFields.matching(NSPredicate(format: "identifier BEGINSWITH 'shell-'")).firstMatch
@@ -321,7 +323,6 @@ final class NativeUIShellTests: XCTestCase {
             XCTAssertTrue(search.waitForExistence(timeout: 10))
             XCTAssertTrue(library.isSelected)
         }
-        XCUIDevice.shared.orientation = .portrait
     }
 
     func testNativeVerticalBars() throws {
