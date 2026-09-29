@@ -177,8 +177,13 @@ final class NativeUIShellSearchTests: XCTestCase {
                 let search = searchButton(app)
                 if status.label.contains("Probe native") {
                     XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription)
-                    let origin = Double(status.label.components(separatedBy: "origin:")[1].components(separatedBy: " ")[0])!
-                    XCTAssertEqual(search.frame.midX, origin, accuracy: 1)
+                    // UIKit owns the search position independently of the source FAB.
+                    XCTAssertTrue(search.isHittable)
+                    search.tap()
+                    let field = app.searchFields.matching(NSPredicate(format: "identifier BEGINSWITH 'shell-'")).firstMatch
+                    XCTAssertTrue(field.waitForExistence(timeout: 10), app.debugDescription)
+                    app.tabBars.buttons["Library"].tap()
+                    XCTAssertTrue(field.waitForNonExistence(timeout: 5), app.debugDescription)
                 } else {
                     XCTAssertTrue(search.waitForNonExistence(timeout: 5), app.debugDescription)
                     XCTAssertTrue(app.tabBars.buttons["Library"].isHittable)

@@ -56,7 +56,7 @@ protocol ShellSearchControlling: AnyObject {
     var changed: ((String, ShellSearchPhase, String, Bool, Int) -> Int)? { get set }
     func attach(to parent: UIViewController, in container: UIView)
     func detach()
-    func apply(_ snapshot: ShellControl, webFrame: CGRect, barFrame: CGRect, triggerFrame: CGRect, rendering: ShellRendering) -> Bool
+    func apply(_ snapshot: ShellControl, webFrame: CGRect, rendering: ShellRendering) -> Bool
 }
 
 @available(iOS 26.0, *)
@@ -231,7 +231,7 @@ final class ShellSearchController: UITabBarController, UITabBarControllerDelegat
         removeFromParent()
     }
 
-    func apply(_ snapshot: ShellControl, webFrame: CGRect, barFrame: CGRect, triggerFrame: CGRect,
+    func apply(_ snapshot: ShellControl, webFrame: CGRect,
                rendering: ShellRendering) -> Bool {
         loadViewIfNeeded()
         guard let configuration = snapshot.search else { return false }
@@ -270,6 +270,7 @@ final class ShellSearchController: UITabBarController, UITabBarControllerDelegat
         if tabs.map(\.identifier) != requested.map(\.identifier) {
             tabs = requested
         }
+        searchTab.viewController?.tabBarItem.accessibilityLabel = trigger.content.accessibilityLabel
         for item in items {
             if let nativeItem = ordinary[item.id]?.viewController?.tabBarItem {
                 nativeItem.accessibilityLabel = item.content.accessibilityLabel
