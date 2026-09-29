@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NavigationEnd, Router } from '@angular/router';
+import { Subject } from 'rxjs';
 import { Capacitor } from '@capacitor/core';
 import { type FoldState } from '@erkamyaman/capacitor-foldable';
 
@@ -16,12 +18,15 @@ describe('TabsPage', () => {
   let component: TabsPage;
   let fixture: ComponentFixture<TabsPage>;
   let root: HTMLElement;
+  let navigation: Subject<NavigationEnd>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [TabsPage],
       providers: testConfig.providers,
     }).compileComponents();
+    navigation = new Subject<NavigationEnd>();
+    vi.spyOn(TestBed.inject(Router), 'events', 'get').mockReturnValue(navigation);
   });
 
   beforeEach(() => {
@@ -61,7 +66,16 @@ describe('TabsPage', () => {
     }
   });
 
-  it('applies the initial state when no event has arrived', async () => {
+  it('stops reacting to router events after the component is destroyed', () => {
+    const tabBar = fixture.nativeElement.querySelector('ion-tab-bar') as HTMLElement;
+    navigation.next(new NavigationEnd(1, '/main/settings', '/main/settings'));
+    expect(tabBar.classList.contains('tab-bar-hidden')).toBe(true);
+    fixture.destroy();
+    navigation.next(new NavigationEnd(2, '/main/index', '/main/index'));
+    expect(tabBar.classList.contains('tab-bar-hidden')).toBe(true);
+  });
+
+  it('applies the initial fold state', async () => {
     vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('ios');
     foldable.addListener.mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) });
     foldable.getFoldState.mockResolvedValue(halfOpened);
@@ -78,7 +92,7 @@ describe('TabsPage', () => {
     const apply = vi.spyOn(component, 'setFoldState');
     const observing = component.observeHinge();
     await vi.waitFor(() => expect(resolveInitial).toBeTypeOf('function'));
-    component.ngOnDestroy();
+    fixture.destroy();
     resolveInitial(halfOpened);
     await observing;
     expect(apply).not.toHaveBeenCalled();

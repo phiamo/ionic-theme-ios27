@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, inject, OnDestroy, OnInit, viewChild } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, ElementRef, inject, OnDestroy, OnInit, viewChild } from '@angular/core';
 import {
   IonContent,
   IonIcon,
@@ -16,8 +16,8 @@ import {
 } from '@demo/ionic';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-// import { registerTabBarEffect } from '@rdlabo/ionic-theme-ios27';
 import { registeredEffect, registerTabBarEffect } from '../../../../src';
 import { applyFoldStateClasses } from '../../../../src/vertical-bars';
 import { Foldable, type FoldState } from '@erkamyaman/capacitor-foldable';
@@ -47,21 +47,26 @@ export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter,
   readonly #el = inject(ElementRef);
   readonly splitPane = viewChild.required<IonSplitPane, ElementRef<HTMLIonSplitPaneElement>>('splitPane', { read: ElementRef });
   #hingeListener?: { remove(): Promise<void> };
-  #destroyed = false;
+  readonly #destroyRef = inject(DestroyRef);
   readonly registeredGestures: registeredEffect[] = [];
   ngOnInit() {
-    this.#router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((params) => {
-      const tabBar = this.#el.nativeElement.querySelector('ion-tab-bar');
-      if (!tabBar) {
-        return;
-      }
-      const path = params.urlAfterRedirects.split(/[?#]/, 1)[0];
-      if (['/main/settings', '/main/index/toolbar', '/main/index/button-projection'].includes(path)) {
-        tabBar.classList.add('tab-bar-hidden');
-      } else if (tabBar) {
-        tabBar.classList.remove('tab-bar-hidden');
-      }
-    });
+    this.#router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.#destroyRef),
+      )
+      .subscribe((params) => {
+        const tabBar = this.#el.nativeElement.querySelector('ion-tab-bar');
+        if (!tabBar) {
+          return;
+        }
+        const path = params.urlAfterRedirects.split(/[?#]/, 1)[0];
+        if (['/main/settings', '/main/index/toolbar', '/main/index/button-projection'].includes(path)) {
+          tabBar.classList.add('tab-bar-hidden');
+        } else {
+          tabBar.classList.remove('tab-bar-hidden');
+        }
+      });
   }
 
   ngAfterViewInit() {
@@ -81,11 +86,11 @@ export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter,
   async observeHinge() {
     if (Capacitor.getPlatform() !== 'ios') return;
     this.#hingeListener = await Foldable.addListener('foldStateChange', (fold) => {
-      if (!this.#destroyed) this.setFoldState(fold);
+      if (!this.#destroyRef.destroyed) this.setFoldState(fold);
     });
-    if (this.#destroyed) return this.#releaseHinge();
+    if (this.#destroyRef.destroyed) return this.#releaseHinge();
     const fold = await Foldable.getFoldState();
-    if (!this.#destroyed) this.setFoldState(fold);
+    if (!this.#destroyRef.destroyed) this.setFoldState(fold);
   }
 
   #releaseHinge() {
@@ -94,8 +99,8 @@ export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter,
   }
 
   ngOnDestroy() {
-    this.#destroyed = true;
     this.#releaseHinge();
+    this.ionViewDidLeave();
   }
 
   ionViewDidEnter() {
@@ -106,6 +111,6 @@ export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter,
   }
 
   ionViewDidLeave() {
-    this.registeredGestures.forEach((gesture) => gesture.destroy());
+    this.registeredGestures.splice(0).forEach((gesture) => gesture.destroy());
   }
 }

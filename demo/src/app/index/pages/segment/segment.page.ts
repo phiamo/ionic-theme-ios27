@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, OnInit } from '@angular/core';
+import { Component, ElementRef, inject, OnDestroy } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import {
@@ -44,13 +44,9 @@ import { registeredEffect, registerSegmentEffect } from '../../../../../../src';
     IonButton,
   ],
 })
-export class SegmentPage implements OnInit, ViewDidEnter, ViewDidLeave {
+export class SegmentPage implements OnDestroy, ViewDidEnter, ViewDidLeave {
   readonly #el = inject(ElementRef);
   readonly registeredGestures: registeredEffect[] = [];
-  constructor() {}
-
-  ngOnInit() {}
-
   ionViewDidEnter() {
     this.#el.nativeElement.querySelectorAll('ion-segment').forEach((item: HTMLElement) => {
       const registerGesture = registerSegmentEffect(item);
@@ -60,7 +56,11 @@ export class SegmentPage implements OnInit, ViewDidEnter, ViewDidLeave {
     });
   }
 
+  ngOnDestroy() {
+    this.ionViewDidLeave();
+  }
+
   ionViewDidLeave() {
-    this.registeredGestures.forEach((gesture) => gesture.destroy());
+    this.registeredGestures.splice(0).forEach((gesture) => gesture.destroy());
   }
 }
