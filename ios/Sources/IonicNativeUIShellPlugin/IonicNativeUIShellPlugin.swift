@@ -10,8 +10,12 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
         CAPPluginMethod(name: "configure", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getWebViewMetrics", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "update", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "clear", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "clear", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setBottomAccessory", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setBottomAccessoryProgress", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "clearBottomAccessory", returnType: CAPPluginReturnPromise)
     ]
+    private var bottomAccessoryContent: AnyObject?
     private var host: ShellHost?
     private var verticalBars: ShellVerticalBarsControlling?
     private var controls: [String: UIView] = [:]
@@ -391,6 +395,68 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
     private func activate(_ id: String) {
         sequence += 1
         notifyListeners("activate", data: ["id": id, "revision": revision, "sequence": sequence])
+    }
 
+    private func tabBarControllerHost() -> UITabBarController? {
+        if #available(iOS 26.0, *) {
+            for controller in searchControllers.values {
+                if let search = controller as? ShellSearchController { return search }
+            }
+        }
+        return nil
+    }
+
+    @objc func setBottomAccessory(_ call: CAPPluginCall) {
+        let visible = call.getBool("visible") ?? true
+        let title = call.getString("title")
+        let subtitle = call.getString("subtitle")
+        let isPlaying = call.getBool("isPlaying") ?? false
+        let animated = call.getBool("animated") ?? true
+        let progress = call.getDouble("progress").map { CGFloat($0) }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { call.resolve(); return }
+            guard #available(iOS 26.0, *) else {
+                call.reject("Requires iOS 26")
+                return
+            }
+            guard let host = self.tabBarControllerHost() else {
+                call.reject("UITabAccessory requires a UITabBarController (enable searchable tabs, or host ordinary tabs in UITabBarController)")
+                return
+            }
+            let content: ShellBottomAccessoryContentView
+            if let existing = self.bottomAccessoryContent as? ShellBottomAccessoryContentView {
+                content = existing
+            } else {
+                let created = ShellBottomAccessoryContentView()
+                created.onPlayPause = { [weak self] in self?.notifyListeners("accessoryPlayPause", data: [:]) }
+                created.onTap = { [weak self] in self?.notifyListeners("accessoryTapped", data: [:]) }
+                self.bottomAccessoryContent = created
+                content = created
+            }
+            content.update(title: title, subtitle: subtitle, isPlaying: isPlaying)
+            if let progress { content.setProgress(progress) }
+            ShellBottomAccessory.apply(to: host, content: content, visible: visible, animated: animated)
+            call.resolve()
+        }
+    }
+
+    @objc func setBottomAccessoryProgress(_ call: CAPPluginCall) {
+        let progress = CGFloat(call.getDouble("progress") ?? -1)
+        DispatchQueue.main.async { [weak self] in
+            (self?.bottomAccessoryContent as? ShellBottomAccessoryContentView)?.setProgress(progress)
+            call.resolve()
+        }
+    }
+
+    @objc func clearBottomAccessory(_ call: CAPPluginCall) {
+        let animated = call.getBool("animated") ?? true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { call.resolve(); return }
+            if #available(iOS 26.0, *), let host = self.tabBarControllerHost(),
+               let content = self.bottomAccessoryContent as? ShellBottomAccessoryContentView {
+                ShellBottomAccessory.apply(to: host, content: content, visible: false, animated: animated)
+            }
+            call.resolve()
+        }
     }
 }

@@ -180,12 +180,32 @@ export interface WebViewMetrics {
   radius: number;
 }
 
+export interface BottomAccessoryOptions {
+  visible?: boolean;
+  title?: string;
+  subtitle?: string;
+  isPlaying?: boolean;
+  animated?: boolean;
+  artworkUrl?: string;
+  progress?: number;
+}
+
+export interface BottomAccessoryProgressOptions {
+  progress: number;
+}
+
 export interface NativeUIShellPlugin {
   configure(options?: { verticalBarsOnly?: boolean }): Promise<{ supported: boolean }>;
   getWebViewMetrics(): Promise<WebViewMetrics>;
   update(snapshot: ShellSnapshot): Promise<{ revision: number; rejectedSearches?: string[]; rejectedControls?: string[] }>;
   clear(options: { revision: number }): Promise<void>;
+  /** iOS 26+ `UITabAccessory` mini-player. Requires a `UITabBarController` host (searchable tabs today). */
+  setBottomAccessory(options: BottomAccessoryOptions): Promise<void>;
+  setBottomAccessoryProgress(options: BottomAccessoryProgressOptions): Promise<void>;
+  clearBottomAccessory(options?: { animated?: boolean }): Promise<void>;
   addListener(name: 'activate', listener: (event: ShellActivation) => void): Promise<PluginListenerHandle>;
   addListener(name: 'search', listener: (event: ShellSearchEvent) => void): Promise<PluginListenerHandle>;
   addListener(name: 'webViewMetricsChange', listener: (event: WebViewMetrics) => void): Promise<PluginListenerHandle>;
+  addListener(name: 'accessoryPlayPause', listener: () => void): Promise<PluginListenerHandle>;
+  addListener(name: 'accessoryTapped', listener: () => void): Promise<PluginListenerHandle>;
 }
