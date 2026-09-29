@@ -165,8 +165,8 @@ export const setVerticalControlAreaPlacement = (placement: VerticalBarEdge | Ver
 /**
  * Call once after ion-app is mounted. Ionic markup remains the source of truth.
  * buttonProjection defaults to `system`, letting SwiftUI style vertical buttons.
- * Use `source` to project Ionic fill and colors. Only in source mode, buttonDefaultFill
- * selects `solid` for Ionic's default design or `null` (the default) for this theme's glass design.
+ * Use `source` to project Ionic fill and colors. For buttons resolved to source, including
+ * data-projection overrides, buttonDefaultFill selects `solid` for Ionic's default design or `null` (the default) for this theme's glass design.
  */
 export const enableVerticalControlArea = async (options: VerticalControlAreaOptions = {}): Promise<VerticalControlAreaHandle> => {
   const handle = await enableNativeUIShell({
@@ -201,7 +201,8 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
   const configuration = JSON.stringify([
     options.verticalBarsOnly === true,
     options.buttonProjection ?? 'system',
-    options.buttonProjection === 'source' ? (options.buttonDefaultFill ?? null) : null,
+    // Local source overrides can use this even when the startup projection is system.
+    options.buttonDefaultFill ?? null,
     ...(['tabs', 'toolbar', 'segment', 'fab'] as const).map((component) => !controls || controls[component] === true),
   ]);
   if (active && activeConfiguration !== configuration)

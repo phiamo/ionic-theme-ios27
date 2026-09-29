@@ -3264,6 +3264,27 @@ for (const projection of ['source', 'system'] as const) {
         .poll(async () => (await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor)
         .toBe(projection === 'source' && placement === 'Standalone' ? 'rgb(184, 54, 42)' : undefined);
     }
+    const solid = page.locator('app-button-projection ion-button:has(ion-icon[name="add-outline"])');
+    const group = solid.locator('..');
+    const opposite = projection === 'source' ? 'system' : 'source';
+    const solidItem = async () => (await items()).find((item) => item.accessibilityLabel === 'Solid');
+    const id = (await solidItem())!.id;
+    const expectProjection = async (mode: string) => {
+      await expect
+        .poll(async () => {
+          const item = await solidItem();
+          return { id: item?.id, fill: item?.buttonFill, template: item?.iconTemplate };
+        })
+        .toEqual({ id, fill: mode === 'source' ? 'solid' : undefined, template: mode === 'system' ? true : undefined });
+    };
+    await group.evaluate((element, mode) => element.setAttribute('data-projection', mode), opposite);
+    await expectProjection(opposite);
+    await solid.evaluate((element, mode) => element.setAttribute('data-projection', mode), projection);
+    await expectProjection(projection);
+    await solid.evaluate((element) => element.removeAttribute('data-projection'));
+    await expectProjection(opposite);
+    await group.evaluate((element) => element.removeAttribute('data-projection'));
+    await expectProjection(projection);
   });
 }
 

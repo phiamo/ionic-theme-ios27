@@ -112,12 +112,37 @@ test.each([undefined, 'system'] as const)('projection %s ignores source styling 
   expect(candidate.actions.get('button-2')).toBe(disabled);
 });
 
-test('system is the default and ignores default-fill changes until source is requested', async () => {
+test('system is the default but retains default fill for local source overrides', async () => {
   const first = await enableVerticalControlArea();
   try {
-    await expect(enableVerticalControlArea({ buttonProjection: 'system', buttonDefaultFill: 'solid' })).resolves.toBeDefined();
+    await expect(enableVerticalControlArea({ buttonProjection: 'system', buttonDefaultFill: null })).resolves.toBeDefined();
+    await expect(enableVerticalControlArea({ buttonDefaultFill: 'solid' })).rejects.toThrow('different controls');
     await expect(enableVerticalControlArea({ buttonProjection: 'source' })).rejects.toThrow('different controls');
   } finally {
     await first.destroy();
   }
+});
+
+test.each(['source', 'system'] as const)('local projection overrides button, group and startup %s in order', (buttonProjection) => {
+  const group = mount(['solid', 'solid'], true);
+  const button = group.querySelector('ion-button')!;
+  const opposite = buttonProjection === 'source' ? 'system' : 'source';
+  const read = () => readCandidate(group, (e) => e.id || e.localName, { buttonProjection })!.control.items[0];
+  const expectedFill = (projection: string) => (projection === 'source' ? 'solid' : undefined);
+  group.setAttribute('data-projection', opposite);
+  expect(read().buttonFill).toBe(expectedFill(opposite));
+  button.setAttribute('data-projection', buttonProjection);
+  expect(read().buttonFill).toBe(expectedFill(buttonProjection));
+  button.setAttribute('data-projection', 'invalid');
+  expect(read().buttonFill).toBe(expectedFill(opposite));
+  button.removeAttribute('data-projection');
+  expect(read().buttonFill).toBe(expectedFill(opposite));
+  group.removeAttribute('data-projection');
+  expect(read().buttonFill).toBe(expectedFill(buttonProjection));
+
+  const standalone = mount([undefined]);
+  standalone.setAttribute('data-projection', 'source');
+  expect(readCandidate(standalone, () => 'button', { buttonProjection, buttonDefaultFill: 'solid' })!.control.items[0].buttonFill).toBe(
+    'solid',
+  );
 });
