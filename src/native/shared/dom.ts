@@ -89,7 +89,7 @@ export const createVerticalBarsPageState = () => {
   };
 };
 const disabledButtonGroup = 'ion-buttons:is(.ionic-theme-disabled, .ios-theme-disabled, .ios26-disabled)';
-const shellDisabledSelector = '.ios-theme-shell-disabled, [data-shell-disabled]';
+const shellDisabledSelector = '.ios-theme-shell-disabled, [data-shell="disabled"]';
 
 export const isDisabledButtonGroupChild = (element: HTMLElement): boolean =>
   element.matches('ion-button') && element.parentElement?.matches(disabledButtonGroup) === true;

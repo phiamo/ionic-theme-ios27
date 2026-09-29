@@ -70,10 +70,16 @@ test('shell data attribute releases prehidden controls and removal restores elig
   const prehide = prehideVerticalBarsToolbarSources(document);
   try {
     expect(group.classList.contains(prehiddenClass)).toBe(true);
-    toolbar.setAttribute('data-shell-disabled', '');
+    toolbar.setAttribute('data-shell', 'disabled');
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(group.classList.contains(prehiddenClass)).toBe(false);
-    toolbar.removeAttribute('data-shell-disabled');
+    toolbar.setAttribute('data-shell', '');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(group.classList.contains(prehiddenClass)).toBe(true);
+    toolbar.setAttribute('data-shell', 'disabled');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(group.classList.contains(prehiddenClass)).toBe(false);
+    toolbar.removeAttribute('data-shell');
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(group.classList.contains(prehiddenClass)).toBe(true);
   } finally {

@@ -1140,7 +1140,7 @@ test('shell opt-out restores the element and descendants while preserving Web gl
   ].entries()) {
     await target.evaluate(
       (element, useAttribute) => {
-        if (useAttribute) element.setAttribute('data-shell-disabled', '');
+        if (useAttribute) element.setAttribute('data-shell', 'disabled');
         else element.classList.add('ios-theme-shell-disabled');
       },
       index % 2 === 0,
@@ -1151,16 +1151,16 @@ test('shell opt-out restores the element and descendants while preserving Web gl
     expect(await glass()).toEqual(original);
     await expect(tabs).toHaveAttribute('data-native-ui-shell', '');
     await target.evaluate((element) => {
-      element.removeAttribute('data-shell-disabled');
+      element.removeAttribute('data-shell');
       element.classList.remove('ios-theme-shell-disabled');
     });
     await expect(button).toHaveAttribute('data-native-ui-shell', '');
   }
-  await page.locator('html').evaluate((element) => element.setAttribute('data-shell-disabled', ''));
+  await page.locator('html').evaluate((element) => element.setAttribute('data-shell', 'disabled'));
   await expect(page.locator('[data-native-ui-shell]')).toHaveCount(0);
   await button.click();
   await expect(page.locator('[data-save-count]')).toHaveText('1');
-  await page.locator('html').evaluate((element) => element.removeAttribute('data-shell-disabled'));
+  await page.locator('html').evaluate((element) => element.removeAttribute('data-shell'));
   await expect(tabs).toHaveAttribute('data-native-ui-shell', '');
 });
 
@@ -1179,12 +1179,12 @@ test('shell opt-out in shared surface children keeps the whole surface on Web', 
     const surface = page.locator(surfaceSelector);
     const child = surface.locator(childSelector).first();
     await expect(surface).toHaveAttribute('data-native-ui-shell', '');
-    await child.evaluate((element) => element.setAttribute('data-shell-disabled', ''));
+    await child.evaluate((element) => element.setAttribute('data-shell', 'disabled'));
     await expect(surface).not.toHaveAttribute('data-native-ui-shell');
     await expect(surface.locator('[data-native-ui-shell]')).toHaveCount(0);
     await expect(child).toHaveCSS('visibility', 'visible');
     await expect(button).toHaveAttribute('data-native-ui-shell', '');
-    await child.evaluate((element) => element.removeAttribute('data-shell-disabled'));
+    await child.evaluate((element) => element.removeAttribute('data-shell'));
     await expect(surface).toHaveAttribute('data-native-ui-shell', '');
   }
 });

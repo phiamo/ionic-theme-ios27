@@ -228,7 +228,7 @@ export const prehideVerticalBarsToolbarSources = (doc: Document): { suspend: () 
     childList: true,
     attributes: true,
     attributeOldValue: true,
-    attributeFilter: ['class', 'data-shell-disabled', 'hidden', 'inert', 'icon', 'color'],
+    attributeFilter: ['class', 'data-shell', 'hidden', 'inert', 'icon', 'color'],
   });
   return {
     suspend: () => {
