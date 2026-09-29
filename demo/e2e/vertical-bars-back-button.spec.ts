@@ -220,3 +220,63 @@ test('horizontal-only keeps a group and an individual button in their Web toolba
   await save.click();
   await expect(page.locator('[data-save-count]')).toHaveText('1');
 });
+
+test('Web search follows vertical tabs before native projection and restores its source', async ({ page }) => {
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.goto('/main/album');
+  const app = page.locator('ion-app');
+  const source = page.locator('app-album-page ion-fab-button');
+  const projection = page.locator('ion-app > .ios-theme-vertical-bars-search-projection');
+  const projectedButton = projection.locator('ion-fab-button');
+  const tabs = page.locator('ion-tab-bar');
+  const footer = page.locator('app-album-page ion-footer');
+  await app.evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
+  await expect(source).toBeHidden();
+  await expect(projection).toBeVisible();
+  await source.evaluate((button: HTMLIonFabButtonElement) => {
+    button.disabled = true;
+    button.setAttribute('aria-label', 'Find photos');
+    button.querySelector('ion-icon')!.name = undefined;
+  });
+  await expect(projectedButton).toHaveAttribute('aria-label', 'Find photos');
+  await expect.poll(() => projectedButton.evaluate((button: HTMLIonFabButtonElement) => button.disabled)).toBe(true);
+  await source.evaluate((button) => {
+    button.querySelector('ion-icon')!.icon =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>';
+  });
+  await expect.poll(() => projectedButton.evaluate((button) => button.querySelector('ion-icon')!.icon)).toContain('<circle');
+  await source.evaluate((button: HTMLIonFabButtonElement) => {
+    button.disabled = false;
+  });
+  await footer.evaluate((element) => element.setAttribute('data-shell', 'disabled'));
+  await expect(projection).toHaveCount(0);
+  await expect(source).toBeVisible();
+  await footer.evaluate((element) => element.removeAttribute('data-shell'));
+  await expect(projection).toBeVisible();
+  for (const left of [false, true]) {
+    await app.evaluate((element, value) => element.classList.toggle('ios-theme-vertical-bars-left', value), left);
+    await expect
+      .poll(async () => {
+        const button = (await projection.boundingBox())!;
+        const bar = (await tabs.boundingBox())!;
+        return Math.abs(button.x + button.width / 2 - bar.x - bar.width / 2);
+      })
+      .toBeLessThan(1);
+    const button = (await projection.boundingBox())!;
+    expect(button.y + button.height).toBeLessThan((await tabs.boundingBox())!.y);
+    await projection.click();
+    await expect(footer).toHaveCSS('opacity', '1');
+    await expect(projection).toBeHidden();
+    await footer.locator('ion-buttons[slot=start] ion-button').click();
+    await expect(footer).toHaveCSS('opacity', '0');
+    await expect(projection).toBeVisible();
+  }
+  await page.locator('ion-tab-button[tab=docs]').click();
+  await expect(projection).toHaveCount(0);
+  await page.locator('ion-tab-button[tab=album]').click();
+  await expect(projection).toBeVisible();
+  await app.evaluate((element) => element.classList.remove('ios-theme-vertical-bars'));
+  await expect(projection).toHaveCount(0);
+  await expect(source).toBeVisible();
+  await expect(source).not.toHaveAttribute('data-native-ui-shell');
+});

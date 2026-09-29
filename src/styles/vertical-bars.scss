@@ -417,3 +417,25 @@ ion-tab-button.ios.ion-cloned-element.ios27-vertical-tab-effect {
     height: 100%;
   }
 }
+
+// Search shares the Web rail before Native UI Shell takes ownership.
+:is(ion-app.ios-theme-vertical-bars, ion-modal.ios-theme-vertical-bars-modal) > ion-fab.ios-theme-vertical-bars-search-projection {
+  position: fixed;
+  z-index: 3;
+  width: 46px;
+  height: 46px;
+  margin: 0;
+  > ion-fab-button {
+    width: 46px;
+    height: 46px;
+    margin: 0;
+  }
+}
+
+ion-app.ios-theme-vertical-bars ion-fab > ion-fab-button[data-native-ui-shell] {
+  visibility: hidden !important;
+}
+
+.ios-theme-vertical-bars-search-projection[hidden] {
+  display: none !important;
+}
