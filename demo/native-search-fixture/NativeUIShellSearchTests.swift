@@ -132,9 +132,14 @@ final class NativeUIShellSearchTests: XCTestCase {
         let search = searchButton(app)
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         app.webViews.buttons["Move FAB"].tap()
-        XCTAssertTrue(probe(app, contains: "Probe web").waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertTrue(search.waitForNonExistence(timeout: 5))
-        capture("native-search-moved-fab-web")
+        XCTAssertTrue(probe(app, contains: "Probe native").waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(search.isHittable)
+        search.tap()
+        let field = app.searchFields.matching(NSPredicate(format: "identifier BEGINSWITH 'shell-'")).firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), app.debugDescription)
+        app.tabBars.buttons["Library"].tap()
+        XCTAssertTrue(field.waitForNonExistence(timeout: 5), app.debugDescription)
+        capture("native-search-moved-fab")
         app.webViews.buttons["Move FAB"].tap()
         XCTAssertTrue(search.waitForExistence(timeout: 10), app.debugDescription)
         let input = app.webViews.textFields["Web keyboard"]
