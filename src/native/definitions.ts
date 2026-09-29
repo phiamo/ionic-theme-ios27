@@ -11,21 +11,19 @@ export interface NativeUIShellStatus {
 }
 
 export interface VerticalControlAreaOptions {
-  /** Appearance projection for native vertical toolbar buttons, including ion-buttons.
-   * `system` (default) lets SwiftUI style the buttons and template icons.
-   * `source` projects Ionic fill and computed colors. Actions, disabled state and grouping are preserved in both.
-   * ios-theme-projection-source / ios-theme-projection-system on a button override its ion-buttons group, then this option.
-   * Removing the classes falls back to the next level. If both classes are present, system wins.
-   * Source buttons and Web clones are unchanged.
+  /** Appearance of native vertical ion-button and ion-menu-button actions.
+   * `system` (default) uses SwiftUI styling and template icons; `source` projects supported Ionic fill and colors.
+   * Local ios-theme-projection-source / ios-theme-projection-system classes take precedence:
+   * the button itself, then its nearest ion-buttons, then this option. On the same element, system wins.
+   * Classes update live; removing them restores inheritance. Actions, disabled state and grouping are preserved.
+   * Does not affect back buttons, tabs, FABs, horizontal controls, source elements or Web clones.
    */
   buttonProjection?: 'source' | 'system';
-  /** Default fill for native vertical button projection when Ionic's fill is omitted or `default`.
-   * Only used for buttons resolved to `source`, including local projection classes.
-   * Use `solid` for Ionic's default design, or `null` for the iOS theme's glass design.
-   * Omitted is equivalent to `null`.
-   * Clear buttons have no native glass background, including the default inside ion-buttons.
-   * Explicit solid is required to project a background from buttons inside ion-buttons.
-   * Explicit button fills take precedence. Source buttons and Web clones are unchanged.
+  /** Default fill for native vertical ion-button actions resolved to `source`, including local overrides.
+   * Use `solid` for Ionic's default design, or `null` (also the omitted default) for the iOS theme's glass design.
+   * Applies when fill is omitted or `default`, outside ion-buttons. Inside ion-buttons the default is clear.
+   * Explicit clear, solid and outline take precedence; clear and outline cannot be configured as defaults.
+   * Source elements and Web clones are unchanged.
    */
   buttonDefaultFill?: 'solid' | null;
 }

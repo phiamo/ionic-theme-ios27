@@ -134,7 +134,7 @@ npx cap sync
 
 Apply its fold state with `applyFoldStateClasses(root, fold)` and its bar placement with `setVerticalControlAreaPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset })`. Device monitoring is not bundled with the theme.
 
-Follow [iPhone Duo with your existing theme](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme) for the browser preview and iOS setup. For shared layout rules and APIs, see [iPhone Duo support](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo). Available in `1.2.0-0` as an experimental feature; APIs and supported behavior may change.
+Follow [iPhone Duo with your existing theme](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme) for the browser preview and iOS setup. For control projection and the runtime API, see [Vertical Bars](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars). For device events and split panes, see [iPhone Duo support](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo). Available in `1.2.0-0` as an experimental feature; APIs and supported behavior may change.
 
 ### Use only the iOS 27 theme
 
@@ -222,6 +222,7 @@ For Ionic 9 Angular, import `isPlatform` and `provideIonicAngular` from `@ionic/
 - [ESLint](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/eslint) — check list structure with ESLint rules.
 - [Features](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/features) — CSS variables, Liquid Glass, selective imports, and dark mode.
 - [Native UI Shell (Experimental)](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell) — project supported Ionic controls, text, and icons into UIKit.
+- [Vertical Bars (experimental)](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars) — side-rail layout, control eligibility, native button appearance and runtime API.
 - [iPhone Duo support (experimental)](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo) — vertical system rail, hinge posture, and split-pane layout; usable without the theme or the shell.
 - [iPhone Duo with your existing theme (experimental)](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme) — standalone setup that keeps your existing Web theme.
 - [Animation](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/animation) — tab, segment, and searchable effects.

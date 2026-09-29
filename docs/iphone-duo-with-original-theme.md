@@ -106,23 +106,23 @@ import { enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-ba
 const rail = await enableVerticalControlArea();
 ```
 
-Native vertical toolbar buttons default to `buttonProjection: 'system'`: SwiftUI chooses their appearance, and icons use system tinting. Ionic fill, foreground/background colors and borders are not projected. Actions, disabled state and `ion-buttons` grouping are preserved. Choose `buttonProjection: 'source'` to project Ionic fill and computed colors instead. This Preview default replaces the previous source-styled behavior; existing apps that need it should explicitly select `source`. Source elements and Web fallback clones are unchanged. Both startup APIs accept this option; restart the runtime to change it.
-
-If your existing theme gives buttons a CSS background without an explicit `fill="solid"`, opt into background projection:
-
-```ts
-const rail = await enableVerticalControlArea({ buttonProjection: 'source', buttonDefaultFill: 'solid' });
-```
-
-`buttonDefaultFill` is only used for buttons resolved to `source`, including local overrides, and accepts `'solid'` (Ionic's default design) or `null` (the iOS theme's glass design). Omitting it is equivalent to `null`. It applies only to native vertical button projection when Ionic's `fill` is omitted or `default`. Buttons inside `ion-buttons` default to `clear`, even when `buttonDefaultFill` is `solid`. For buttons resolved to `source`, clear actions have no native glass background. To project a button background, explicitly set `fill="solid"`; CSS backgrounds on clear buttons are not projected. Explicit `clear`, `solid`, and `outline` values take precedence. Solid projection reads the existing computed foreground and background colors; outline projection reads the computed border. Source buttons and Web clones are unchanged. Native Liquid Glass tinting may differ visually from the CSS background, especially for translucent colors.
-
-Use `ios-theme-projection-source` or `ios-theme-projection-system` on a button or its `ion-buttons` group to override the startup mode locally. The button wins over the group; removing the classes restores the inherited mode. See the [local projection rules](./iphone-duo.md#toolbar-actions) for supported controls and live updates.
-
 **What you should see:** your existing tab bar moves to the side, and fixed-toolbar buttons with an `ion-icon` or SVG using `slot="icon-only"` appear there too. Content keeps its existing theme and leaves room for the controls. The Web tab rail displays icons; pressing and dragging reveals tab labels.
 
 Use your existing Ionic click handlers, routing, and form associations. All button fills (`default`, `clear`, `solid`, and `outline`) use the same `icon-only` rule, including submit buttons. Actions without that slot remain horizontal. Add `.ios-theme-horizontal-only` to an `ion-buttons` group or individual `ion-button` to keep an action in the horizontal toolbar.
 
 When the application owner is disposed, call `await rail.destroy()` to restore the original controls and release the runtime. If you already use `enableNativeUIShell()`, keep that runtime and follow the [shared placement guide](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#project-controls-into-the-rail).
+
+### Optional: choose native button appearance (unreleased)
+
+The next release adds `buttonProjection` and local projection classes. These options are not available in the `1.2.0-1` installation above. See [Choose button appearance](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#choose-button-appearance) for availability and migration details.
+
+The new default is `system`: SwiftUI styles vertical buttons and tints their icons. If your existing theme should supply their fill and colors, use:
+
+```ts
+const rail = await enableVerticalControlArea({ buttonProjection: 'source', buttonDefaultFill: 'solid' });
+```
+
+The `solid` default suits ordinary Ionic buttons. Buttons inside `ion-buttons` still default to clear; set `fill="solid"` explicitly to project their background. For one-off exceptions, use the [local projection classes](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#override-individual-buttons-or-groups). These settings affect native vertical buttons only; Web clones keep their existing appearance.
 
 ### If the preview does not appear
 
@@ -130,7 +130,7 @@ When the application owner is disposed, call `await rail.destroy()` to restore t
 | --- | --- |
 | No space at the side | Load `vertical-bars.css` and put the class on `ion-app`. |
 | Space appears, but controls stay horizontal | Start `enableVerticalControlArea()` after mounting the app root. Use existing tabs or `slot="icon-only"` actions in a fixed header/footer toolbar. |
-| One action stays horizontal | Check for `slot="icon-only"` on the icon and a fixed toolbar outside scrolling content. Explicitly excluded controls and controls in centered modals stay horizontal; `fill` and `type="submit"` do not prevent movement. See [control requirements](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#toolbar-actions). |
+| One action stays horizontal | Check for `slot="icon-only"` on the icon and a fixed toolbar outside scrolling content. Explicitly excluded controls and controls in centered modals stay horizontal; `fill` and `type="submit"` do not prevent movement. See [control requirements](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#toolbar-actions). |
 
 ## Connect an iPhone Duo
 
@@ -145,9 +145,9 @@ Use Capacitor 8.5 or later and build with Xcode 27.1 or newer for actual rail pl
 
 Replace the browser-only startup with the [device placement setup](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#project-controls-into-the-rail). That setup sends initial values and `barPlacementChange` events to `setVerticalControlAreaPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset })`, with subscriptions and cleanup kept in your application.
 
-Pass both the requested and native edge with Foldable's measured inset. The placement API resolves RTL. A null edge restores the ordinary layout. Use `buttonProjection: 'source'` with `buttonDefaultFill: 'solid'` on `enableVerticalControlArea()` if your existing theme needs CSS background projection.
+Pass both the requested and native edge with Foldable's measured inset. The placement API resolves RTL. A null edge restores the ordinary layout.
 
-On supported iOS, controls in the rail use the system SwiftUI appearance; your custom Web styling still applies to ordinary content and horizontal controls. Web and Android use Web clones.
+On supported iOS, controls in the rail use native SwiftUI rendering; your custom Web styling still applies to ordinary content and horizontal controls. Web and Android use Web clones.
 
 ## Use hinge posture without projecting controls
 
@@ -157,4 +157,4 @@ See [Read the device layout](https://docs.rdlabo.dev/projects/ionic-theme-ios27/
 
 ## Shared layout rules and API
 
-Safe-area handling, overlays, RTL, control eligibility, Web simulation, and the handle API are documented in [iPhone Duo support](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo). Those rules apply to this standalone setup too.
+Safe-area handling, overlays, RTL, control eligibility, Web simulation, and the handle API are documented in [Vertical Bars](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars). Those rules apply to this standalone setup too.

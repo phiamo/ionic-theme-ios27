@@ -6,7 +6,7 @@ title: iPhone Duo support (experimental)
 
 Adapt your Ionic app to iPhone Duo: place navigation and actions in its vertical system rail, and adjust your split pane as the device opens and closes. Existing Ionic markup remains the source of labels, icons, routing, and click handlers.
 
-**New here?** Start with [iPhone Duo with your existing theme](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme) to preview the side layout in Chrome. This page explains device events, placement, split panes, and the API.
+**New here?** Start with [iPhone Duo with your existing theme](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme) to preview the side layout in Chrome. This page explains device events, placement and split panes. [Vertical Bars](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars) documents control projection and the runtime API.
 
 Available in `1.2.0-0` as an **experimental** feature alongside [Native UI Shell](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell). APIs and supported behavior may change. The real system rail and hinge reporting require iOS 27.1 or later and an app built with Xcode 27.1 or newer.
 
@@ -19,7 +19,7 @@ Device state belongs to [`@erkamyaman/capacitor-foldable`](https://github.com/er
 
 ## Choose what to adopt
 
-To keep your existing theme and add only the standalone support, follow [iPhone Duo with your existing theme](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme). This page covers the shared device-layout rules and API.
+To keep your existing theme and add only the standalone support, follow [iPhone Duo with your existing theme](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme). This page covers the shared device-layout rules.
 
 | Goal                                             | Stylesheet          | Runtime                                                            |
 | ------------------------------------------------ | ------------------- | ------------------------------------------------------------------ |
@@ -76,21 +76,7 @@ WebView corner radius remains a rendering concern: `configureNativeTransition()`
 
 ## Reserve the vertical rail
 
-Add `.ios-theme-vertical-bars` to `ion-app` to reserve the rail region on the physical right, or add `.ios-theme-vertical-bars-left` as well to use the physical left:
-
-```html
-<ion-app class="ios-theme-vertical-bars">...</ion-app>
-```
-
-The classes are physical — `-left` always means the physical left edge — because CSS and the native renderer work in physical coordinates. `setVerticalControlAreaPlacement` (below) applies the logical `verticalBarEdge` reported by `Foldable` and resolves it through the document's direction, so an RTL app does not need its own conversion.
-
-For Chrome development, no native plugin is needed — the class alone reserves `80px` to simulate iPhone Duo. When `setVerticalControlAreaPlacement` receives `{ edge, nativeEdge, inset }`, the inset replaces the fallback width, even when it is less than `80px`. Override `--ios-theme-vertical-bars-safe-area-left` or `--ios-theme-vertical-bars-safe-area-right` when simulating a different layout.
-
-This keeps routers and component backgrounds full-viewport. `ion-content` moves its scroll foreground, `ion-toolbar` moves its container foreground, and `ion-fab` adjusts only when placed beside the system UI. The corresponding Ionic safe-area variable is reset inside those foreground components so descendants do not add the inset again.
-
-`ion-modal` applies the same foreground correction when its visible dialog spans the viewport width. With the Vertical Control Area runtime enabled, the topmost full-width modal also projects eligible toolbar buttons into its own rail; centered dialogs keep their toolbar buttons and receive no page-rail inset. This includes full-width sheet modals: their rail follows the visible sheet bounds as the breakpoint changes. Eligibility follows the visible dialog width, not the hinge posture or modal type. `ion-menu` and `ion-popover` are handled as separate surfaces: their internal foreground components do not receive the main-page conversion and retain Ionic's standard safe-area handling. A menu presented beside the system UI keeps Ionic's full-viewport animation host and offsets only its visible container by the corresponding inset; a menu from the opposite side is unchanged. Left and right remain physical coordinates in RTL, while Ionic's `side="start"` and `side="end"` values remain logical.
-
-The mode is component-mode independent: an app can keep Ionic `mode: 'md'` on iOS and still enable Vertical Bars. No component needs `mode="ios"`.
+Load `vertical-bars.css` as shown above. For class-based browser simulation, safe-area handling, RTL and overlay layout, see [Reserve the vertical rail](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#reserve-the-vertical-rail). On device, the placement helper below applies the layout classes and measured inset.
 
 ## Project controls into the rail
 
@@ -115,62 +101,19 @@ await listener.remove();
 await rail.destroy();
 ```
 
-Supply `nativeEdge` on both the initial read and each event so the renderer knows which rail the system actually provides. The measured `inset` is passed through instead of assuming a fixed width. Devices without a reported rail, including Web and Android, return a null edge and retain the ordinary layout. For browser simulation, use the class-based preview above without connecting device placement.
+Supply `nativeEdge` on both the initial read and each event so the renderer knows which rail the system actually provides. The measured `inset` is passed through instead of assuming a fixed width. Devices without a reported rail, including Web and Android, return a null edge and retain the ordinary layout. For browser simulation, use the [class-based preview](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#reserve-the-vertical-rail) without connecting device placement.
 
 Start either `enableVerticalControlArea()` or the full `enableNativeUIShell()` — not both. If the app already uses Native UI Shell, keep that runtime and use the same `setVerticalControlAreaPlacement` callback. The application owner removes its listeners and destroys its runtime on teardown.
 
-On supported iOS versions the runtime hands eligible tabs, back navigation, menu buttons, and fixed-toolbar actions to a native SwiftUI `TabView` and toolbar; on Web, Android, or when native projection is unavailable, Web clones remain the fallback. Back navigation can come from outside a fixed toolbar; menu buttons and other toolbar actions still require one.
+On supported iOS versions the runtime hands eligible tabs, back navigation, menu buttons, and fixed-toolbar actions to a native SwiftUI `TabView` and toolbar; on Web, Android, or when native projection is unavailable, Web clones remain the fallback. See [Toolbar actions](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#toolbar-actions) for control eligibility.
 
 ### Toolbar actions
 
-Native vertical toolbar buttons default to `buttonProjection: 'system'`: SwiftUI chooses their appearance, and icons use system tinting. Ionic fill, foreground/background colors and borders are not projected. Actions, disabled state and `ion-buttons` grouping are preserved. Choose `buttonProjection: 'source'` to project Ionic fill and computed colors instead. This Preview default replaces the previous source-styled behavior; existing apps that need it should explicitly select `source`. Source elements and Web fallback clones are unchanged. Both startup APIs accept this option; restart the runtime to change it.
-
-An `ion-button` moves into the rail when it contains an `ion-icon` or SVG with `slot="icon-only"`. The button must be in a fixed `ion-toolbar` directly inside `ion-header` or `ion-footer`, outside scrolling `ion-content`.
-
-| Icon markup | Placement |
-| --- | --- |
-| `slot="icon-only"` | Vertical rail |
-| `slot="start"`, `slot="end"`, or no slot | Original horizontal toolbar |
-| No icon | Original horizontal toolbar |
-
-This rule applies to `fill="default"`, `clear`, `solid`, and `outline`, including buttons with an Ionic `color`. For buttons resolved to `source`, clear actions have no native glass background, including buttons implicitly resolved to clear inside `ion-buttons`. Solid actions retain their background color through a prominent native button; outline actions retain their border color and width. The runtime preserves the original click or form-submit behavior. `type="submit"` and `.button-submit` do not select a different placement.
-
-```html
-<ion-header>
-  <ion-toolbar>
-    <ion-buttons slot="end">
-      <ion-button type="button" fill="outline" color="primary" aria-label="Done">
-        <ion-icon name="checkmark-outline" slot="icon-only"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-  </ion-toolbar>
-</ion-header>
-```
-
-For existing themes that style a button background through CSS while leaving `fill` omitted or `default`, use `enableVerticalControlArea({ buttonProjection: 'source', buttonDefaultFill: 'solid' })`. For buttons resolved to `source`, the option accepts `'solid'` (Ionic's default design) or `null` (the iOS theme's glass design); omission is equivalent to `null`. Buttons inside `ion-buttons` default to `clear`, even with this option set to `solid`. To project their background, explicitly set `fill="solid"`; CSS backgrounds on clear buttons are not projected. With the iOS theme, ordinary `ion-buttons` retain group projection, while `ion-buttons.ios-theme-disabled` projects eligible buttons individually. Explicit button fills take precedence. It affects native vertical projection only and never changes source buttons or Web clones. The full `enableNativeUIShell()` also accepts this option for its vertical buttons. Restart the runtime before changing the option.
-
-Use `ios-theme-projection-source` or `ios-theme-projection-system` for local exceptions. For native vertical `ion-button` and `ion-menu-button` actions, the button’s projection class takes precedence over its nearest `ion-buttons` projection class, then the startup `buttonProjection`. Other ancestors and control types do not interpret these classes yet. Removing both classes falls back to the next level. If both classes are present on the same element, `system` wins. Class changes update the projection without restarting the runtime; grouping and placement stay unchanged.
-
-```html
-<ion-buttons class="ios-theme-projection-source">
-  <ion-button fill="solid" aria-label="Add">
-    <ion-icon name="add-outline" slot="icon-only"></ion-icon>
-  </ion-button>
-  <ion-button class="ios-theme-projection-system" aria-label="Search">
-    <ion-icon name="search-outline" slot="icon-only"></ion-icon>
-  </ion-button>
-</ion-buttons>
-```
-
-`buttonDefaultFill` applies to buttons resolved to `source`, including local exceptions when the startup mode is `system`.
-
-Give icon-only actions an accessible name, such as `aria-label="Done"`. Keep the original Ionic event handler or form association on the source button.
-
-The same rule applies to individual buttons and buttons inside `ion-buttons`, on ordinary pages and in the topmost full-width modal. Centered modals, menus, and popovers keep their own toolbar layout. Add `.ios-theme-horizontal-only` to a group or individual button to keep it horizontal. Placement is chosen when a routed page enters; changing an existing button's content or icon slot does not move it between the toolbar and rail until the page leaves and re-enters.
+See [Vertical Bars: Toolbar actions](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#toolbar-actions) for eligible markup, placement, button appearance and local overrides.
 
 ### Tab bar
 
-When the app contains `ion-tabs`, its tab bar moves into the reserved region and uses the native Duo edge spacing; the Ionic `slot` value does not select a different position. Without native projection, the stable Web rail is icon-only, matching the native resting presentation. While the user presses and drags across that rail, every icon-and-label tab reveals its label so the pending destination stays identifiable. The Web tab bar receives pointer input in the simulated system region. Native tabs and a restored Web tab bar fade in over 180ms; disappearance remains immediate. Reduced motion disables this fade. Use `ion-menu` when navigation should become a sidebar; this mode does not convert tabs into a menu. Web clones also work when no `ion-tabs` exists. Disabling the mode or leaving the page removes the native ownership or Web clones and restores their sources. Override `--ios-theme-vertical-bars-toolbar-top` when the simulated system controls use a different vertical layout.
+See [Vertical Bars: Tab bar](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#tab-bar) for navigation, labels and Web fallback behavior.
 
 ## Adapt the split pane
 
@@ -204,111 +147,4 @@ Ionic's `when` still controls whether the menu is persistent. The example choose
 
 ## Vertical Control Area API
 
-The generated reference below documents the handle returned by `enableVerticalControlArea()`.
-
-<docgen-index>
-
-* [`setPlacement(...)`](#setplacement)
-* [`getStatus()`](#getstatus)
-* [`suspend()`](#suspend)
-* [`destroy()`](#destroy)
-* [Interfaces](#interfaces)
-* [Type Aliases](#type-aliases)
-
-</docgen-index>
-
-<docgen-api>
-<!--Update the source file JSDoc comments and rerun docgen to update the docs below-->
-
-### setPlacement(...)
-
-```typescript
-setPlacement(placement: VerticalBarEdge | VerticalBarPlacement, rtl?: boolean | undefined) => void
-```
-
-Applies the application's chosen placement to both Web and native controls.
-
-| Param           | Type                                                                                                                    |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **`placement`** | <code><a href="#verticalbaredge">VerticalBarEdge</a> \| <a href="#verticalbarplacement">VerticalBarPlacement</a></code> |
-| **`rtl`**       | <code>boolean</code>                                                                                                    |
-
---------------------
-
-
-### getStatus()
-
-```typescript
-getStatus() => NativeUIShellStatus
-```
-
-Returns the current Web/native projection state.
-
-**Returns:** <code><a href="#nativeuishellstatus">NativeUIShellStatus</a></code>
-
---------------------
-
-
-### suspend()
-
-```typescript
-suspend() => Promise<NativeUIShellSuspension>
-```
-
-Restores projected controls to the Web until the returned lease is resumed.
-
-**Returns:** <code>Promise&lt;<a href="#nativeuishellsuspension">NativeUIShellSuspension</a>&gt;</code>
-
---------------------
-
-
-### destroy()
-
-```typescript
-destroy() => Promise<void>
-```
-
-Stops synchronization, restores Web controls and releases native resources.
-
---------------------
-
-
-### Interfaces
-
-
-#### VerticalBarPlacement
-
-| Prop             | Type                                                        | Description                                                                                                                                                                                                                       |
-| ---------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`edge`**       | <code><a href="#verticalbaredge">VerticalBarEdge</a></code> |                                                                                                                                                                                                                                   |
-| **`inset`**      | <code>number</code>                                         | Explicit rail width in CSS pixels; omitted to use the stylesheet's safe-area rules.                                                                                                                                               |
-| **`nativeEdge`** | <code><a href="#verticalbaredge">VerticalBarEdge</a></code> | Native logical edge reported by the application's device plugin. Null or an unregistered edge uses a Web rail in verticalBarsOnly mode, or the ordinary Native UI Shell layout otherwise. Omission keeps the last supplied value. |
-
-
-#### NativeUIShellStatus
-
-| Prop            | Type                                        |
-| --------------- | ------------------------------------------- |
-| **`state`**     | <code>'native' \| 'stopped' \| 'web'</code> |
-| **`projected`** | <code>number</code>                         |
-| **`updates`**   | <code>number</code>                         |
-| **`reason`**    | <code>string</code>                         |
-
-
-#### NativeUIShellSuspension
-
-| Method     | Signature                    | Description                                                                                    |
-| ---------- | ---------------------------- | ---------------------------------------------------------------------------------------------- |
-| **resume** | () =&gt; Promise&lt;void&gt; | Releases this suspension. Native projection resumes after all active suspensions are released. |
-
-
-### Type Aliases
-
-
-#### VerticalBarEdge
-
-Logical edge in the reading direction, matching UIVerticalBarEdge and capacitor-foldable.
-
-<code>'leading' | 'trailing' | null</code>
-
-</docgen-api>
+The runtime handle reference is maintained in [Vertical Bars](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#vertical-control-area-api).

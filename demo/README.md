@@ -144,23 +144,24 @@ disabled controls, and grouped versus individual projection. Tabs are hidden on 
 page to leave room for the four buttons. Tap a projected button
 to check the last-action label.
 
-For the iOS theme, run the regular demo. For stock Ionic styling with only
-`vertical-bars.css`, run:
+Native appearance comparisons require an iOS build on a supported simulator or device.
+The browser uses Web clones: use it to check layout and actions, not `system` versus
+`source` appearance.
 
-```sh
-npm start -- --configuration=ionic-default
-```
+Choose the styling to build (run these commands from `demo`):
 
-This configuration automatically enables vertical-bars-only mode and sets
-`buttonDefaultFill: 'solid'` for source projection. Open `/main/index`, enable iPhone Duo Mode,
-and select **button-projection**. For a native build of the same styling, use
-`npm run build -- --configuration=production,ionic-default` before `npx cap sync ios`.
-Both builds default to system projection. To compare source styling, open
-`/main/index?verticalBarsOnly&buttonProjection=source&buttonDefaultFill=solid` at startup,
-enable iPhone Duo Mode, and select **button-projection**. Omit `buttonProjection`
-to compare SwiftUI's standard appearance. The setting applies for the runtime's lifetime.
+| Styling | Browser preview | Build before `npx cap sync ios` | Source default fill |
+| --- | --- | --- | --- |
+| iOS theme | `npm start` | `npm run build -- --configuration=production` | `null` (glass) |
+| Stock Ionic, with only `vertical-bars.css` | `npm start -- --configuration=ionic-default` | `npm run build -- --configuration=production,ionic-default` | `solid` (set automatically) |
 
-For local exceptions, add the `ios-theme-projection-source` or `ios-theme-projection-system` class to
-an `ion-button` / `ion-menu-button`, or its `ion-buttons` group. The button takes
-precedence over its group and then the startup mode; changing or removing these
-classes updates native projection without restarting the demo.
+Build, sync and run the iOS app. Both configurations default to `system` projection.
+To compare appearances:
+
+1. Open `/main/index?verticalBarsOnly`, enable iPhone Duo Mode, and select **button-projection**.
+2. Restart at `/main/index?verticalBarsOnly&buttonProjection=source` and open the same page.
+3. Compare fills, disabled controls and grouped buttons. Enabled actions update the last-action label; disabled actions must not.
+
+The startup query applies for the runtime's lifetime. Leave `buttonDefaultFill` out
+of the query to use the chosen configuration's default shown above. For local
+exceptions and fill rules, see [Choose button appearance](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#choose-button-appearance).
