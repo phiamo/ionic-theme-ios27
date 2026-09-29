@@ -3217,3 +3217,12 @@ test('button projection respects contextual clear and updates native appearance'
   await page.getByRole('button', { name: 'Disabled', exact: true }).click();
   await expect.poll(async () => (await items()).map((item) => item.disabled)).toEqual([true, true, true, true]);
 });
+
+test('tab visibility ignores query parameters and fragments', async ({ page }) => {
+  for (const path of ['/main/index/button-projection', '/main/settings', '/main/index/toolbar']) {
+    await page.goto(`${path}?verticalBarsOnly&buttonDefaultFill=solid#comparison`);
+    await expect(page.locator('ion-tab-bar')).toHaveClass(/tab-bar-hidden/);
+  }
+  await page.goto('/main/index?verticalBarsOnly&buttonDefaultFill=solid#comparison');
+  await expect(page.locator('ion-tab-bar')).not.toHaveClass(/tab-bar-hidden/);
+});
