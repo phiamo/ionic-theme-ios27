@@ -52,7 +52,7 @@ export const isDark = (style: CSSStyleDeclaration): boolean => {
   const background = style.getPropertyValue('--ion-background-color-rgb').match(/\d+/g)?.slice(0, 3).map(Number);
   return !!background && background.length === 3 && background[0] * 0.2126 + background[1] * 0.7152 + background[2] * 0.0722 < 128;
 };
-const permanentlyExcluded = '.ionic-theme-disabled, .ios-theme-disabled, .ios26-disabled, .ion-cloned-element, [hidden], [inert]';
+const permanentlyExcluded = '.ios-theme-disabled, .ios26-disabled, .ion-cloned-element, [hidden], [inert]';
 export const excluded = `${permanentlyExcluded}, .ion-page-hidden, .ion-page-invisible`;
 const enteringPages = new WeakSet<HTMLElement>();
 export const setVerticalBarsEnteringPage = (page: HTMLElement, entering: boolean): void => {
@@ -88,7 +88,7 @@ export const createVerticalBarsPageState = () => {
     },
   };
 };
-const disabledButtonGroup = 'ion-buttons:is(.ionic-theme-disabled, .ios-theme-disabled, .ios26-disabled)';
+const disabledButtonGroup = 'ion-buttons:is(.ios-theme-disabled, .ios26-disabled)';
 const shellDisabledSelector = '.ios-theme-shell-disabled, [data-shell="disabled"]';
 
 export const isDisabledButtonGroupChild = (element: HTMLElement): boolean =>
@@ -188,7 +188,7 @@ export const isVerticalBarsToolbarGroup = (element: HTMLElement): boolean => {
   return (
     element.matches('ion-buttons') &&
     verticalBarsOwned(element) &&
-    !element.matches('.ionic-theme-disabled, .ios-theme-disabled, .ios26-disabled') &&
+    !element.matches('.ios-theme-disabled, .ios26-disabled') &&
     !isShellDisabled(element)
   );
 };

@@ -192,7 +192,7 @@ test('theme-disabled ion-buttons project their icon actions as independent contr
   await page.goto('/main/index/native-ui-shell');
   const app = page.locator('ion-app');
   const sourceGroup = page.locator('[data-glass-group]');
-  await sourceGroup.evaluate((element) => element.classList.add('ionic-theme-disabled'));
+  await sourceGroup.evaluate((element) => element.classList.add('ios-theme-disabled'));
   await app.evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
   await expect(
     page.locator(

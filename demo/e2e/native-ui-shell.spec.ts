@@ -232,7 +232,7 @@ test('FAB restores excluded groups and follows icon, list and theme changes', as
   const fab = page.locator('ion-fab[horizontal=center]');
   const child = fab.locator('ion-fab-list ion-fab-button').first();
   await expect(fab).toHaveAttribute('data-native-ui-shell', '');
-  for (const name of ['ionic-theme-disabled', 'ios-theme-disabled', 'ios26-disabled', 'ios-theme-shell-disabled']) {
+  for (const name of ['ios-theme-disabled', 'ios26-disabled', 'ios-theme-shell-disabled']) {
     await child.evaluate((b, name) => b.classList.add(name), name);
     await expect(fab).not.toHaveAttribute('data-native-ui-shell');
     await child.evaluate((b, name) => b.classList.remove(name), name);
@@ -1093,13 +1093,13 @@ test('ancestor display, element opt-out aliases and non-glass fills restore Web'
   await expect(button).not.toHaveAttribute('data-native-ui-shell');
   await page.getByRole('button', { name: 'Parent hidden: true', exact: true }).click();
   await expect(button).toHaveAttribute('data-native-ui-shell', '');
-  for (const name of ['ios-theme-disabled', 'ios26-disabled', 'ionic-theme-disabled']) {
+  for (const name of ['ios-theme-disabled', 'ios26-disabled']) {
     await toolbar.evaluate((element, name) => element.classList.add(name), name);
     await expect(button).not.toHaveAttribute('data-native-ui-shell');
     await toolbar.evaluate((element, name) => element.classList.remove(name), name);
     await expect(button).toHaveAttribute('data-native-ui-shell', '');
   }
-  for (const name of ['ios-theme-disabled', 'ios26-disabled', 'ionic-theme-disabled']) {
+  for (const name of ['ios-theme-disabled', 'ios26-disabled']) {
     await button.evaluate((element, name) => element.classList.add(name), name);
     await expect(button).not.toHaveAttribute('data-native-ui-shell');
     await button.evaluate((element, name) => element.classList.remove(name), name);
@@ -1517,10 +1517,10 @@ test('clear ion-buttons share one glass surface and keep independent actions', a
   });
 
   for (const target of [group, github]) {
-    await target.evaluate((element) => element.classList.add('ionic-theme-disabled'));
+    await target.evaluate((element) => element.classList.add('ios-theme-disabled'));
     await expect(group).not.toHaveAttribute('data-native-ui-shell');
     await expect(github.locator('button')).toHaveCSS('visibility', 'visible');
-    await target.evaluate((element) => element.classList.remove('ionic-theme-disabled'));
+    await target.evaluate((element) => element.classList.remove('ios-theme-disabled'));
     await expect(group).toHaveAttribute('data-native-ui-shell', '');
   }
   await group.evaluate((element) => {
@@ -1549,7 +1549,7 @@ test('theme-disabled ion-buttons project eligible buttons independently', async 
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');
   await page.locator('[data-glass-group]').evaluate((group) => {
-    group.classList.add('ionic-theme-disabled');
+    group.classList.add('ios-theme-disabled');
     group.querySelectorAll<HTMLIonButtonElement>('ion-button').forEach((button) => (button.fill = 'default'));
   });
   await expect
@@ -1996,9 +1996,9 @@ test('menu button projects slot icons and shared glass, restoring excluded surfa
   await expect(surface).toHaveAttribute('data-native-ui-shell', '');
   await surface.evaluate((element) => element.querySelector('ion-button')!.remove());
   for (const target of [surface, button]) {
-    await target.evaluate((element) => element.classList.add('ionic-theme-disabled'));
+    await target.evaluate((element) => element.classList.add('ios-theme-disabled'));
     await expect(surface).not.toHaveAttribute('data-native-ui-shell', '');
-    await target.evaluate((element) => element.classList.remove('ionic-theme-disabled'));
+    await target.evaluate((element) => element.classList.remove('ios-theme-disabled'));
     await expect(surface).toHaveAttribute('data-native-ui-shell', '');
   }
   await surface.evaluate((element: HTMLElement) => {
@@ -2267,7 +2267,7 @@ test('search retirement keeps the value, rejects late input and allows a fresh W
   await footer.locator('ion-searchbar').evaluate((bar: HTMLIonSearchbarElement) => {
     bar.value = 'retained';
   });
-  await footer.evaluate((element) => element.classList.add('ionic-theme-disabled'));
+  await footer.evaluate((element) => element.classList.add('ios-theme-disabled'));
   await expect(footer).not.toHaveAttribute('data-native-ui-shell');
   await page.evaluate(() => {
     const state = Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell');
@@ -2290,7 +2290,7 @@ test('search retirement keeps the value, rejects late input and allows a fresh W
   await expect(footer).toHaveCSS('opacity', '1');
   await footer.locator('ion-button').click();
   await expect(footer).toHaveCSS('opacity', '0');
-  await footer.evaluate((element) => element.classList.remove('ionic-theme-disabled'));
+  await footer.evaluate((element) => element.classList.remove('ios-theme-disabled'));
   await expect(footer).toHaveAttribute('data-native-ui-shell', '');
   await expect
     .poll(() =>
