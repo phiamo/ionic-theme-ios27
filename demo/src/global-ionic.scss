@@ -11,3 +11,8 @@
 :root {
   --demo-stock-ionic: 1;
 }
+
+// The demo wraps ion-tabs in this split-pane content section.
+#main-content {
+  width: 100%;
+}

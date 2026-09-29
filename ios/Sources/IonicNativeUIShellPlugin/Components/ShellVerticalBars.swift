@@ -108,18 +108,26 @@ private struct ShellVerticalBarsLabel: View {
 }
 
 @available(iOS 26.0, *)
-@ViewBuilder
-private func verticalBarsButton(_ item: ShellVerticalBarsModel.Item, model: ShellVerticalBarsModel) -> some View {
-    let button = Button { model.activate(item.id) } label: { ShellVerticalBarsLabel(item: item) }
-        .disabled(item.disabled)
-        .accessibilityLabel(item.accessibilityLabel)
-        .accessibilityIdentifier(item.id)
-    if let background = item.background {
-        button.buttonStyle(.glassProminent).tint(background)
-    } else {
-        button.overlay {
-            if let borderColor = item.borderColor {
-                Capsule().strokeBorder(borderColor, lineWidth: item.borderWidth).allowsHitTesting(false)
+private struct ShellVerticalBarsButton: View {
+    @ObservedObject var model: ShellVerticalBarsModel
+    let id: String
+
+    // Toolbar content can retain its original item value on iOS 27.1.
+    // Observe the model here so same-ID color and disabled updates reach the button.
+    var body: some View {
+        if let item = model.groups.lazy.flatMap(\.items).first(where: { $0.id == id }) {
+            let button = Button { model.activate(item.id) } label: { ShellVerticalBarsLabel(item: item) }
+                .disabled(item.disabled)
+                .accessibilityLabel(item.accessibilityLabel)
+                .accessibilityIdentifier(item.id)
+            if let background = item.background {
+                button.buttonStyle(.glassProminent).tint(background)
+            } else {
+                button.overlay {
+                    if let borderColor = item.borderColor {
+                        Capsule().strokeBorder(borderColor, lineWidth: item.borderWidth).allowsHitTesting(false)
+                    }
+                }
             }
         }
     }
@@ -240,7 +248,7 @@ private struct ShellVerticalBarsToolbar: ViewModifier {
             ForEach(model.groups.filter { $0.slot == .start }) { group in
                 ToolbarItemGroup(placement: .topBarLeading) {
                     ForEach(group.items) { item in
-                        verticalBarsButton(item, model: model)
+                        ShellVerticalBarsButton(model: model, id: item.id)
                     }
                 }
                 .axisBehavior(.verticalPreferred)
@@ -248,7 +256,7 @@ private struct ShellVerticalBarsToolbar: ViewModifier {
             ForEach(model.groups.filter { $0.slot != .start }) { group in
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     ForEach(group.items) { item in
-                        verticalBarsButton(item, model: model)
+                        ShellVerticalBarsButton(model: model, id: item.id)
                     }
                 }
                 .axisBehavior(.verticalPreferred)
@@ -272,7 +280,7 @@ private struct ShellVerticalBarsLegacyToolbar: ViewModifier {
             ForEach(model.groups) { group in
                 ToolbarItemGroup(placement: .primaryAction) {
                     ForEach(group.items) { item in
-                        verticalBarsButton(item, model: model)
+                        ShellVerticalBarsButton(model: model, id: item.id)
                     }
                 }
             }

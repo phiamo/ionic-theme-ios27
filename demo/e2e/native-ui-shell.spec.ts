@@ -3191,3 +3191,29 @@ for (const native of [true, false]) {
     }
   });
 }
+
+test('button projection respects contextual clear and updates native appearance', async ({ page }) => {
+  await mockNative(page);
+  await page.setViewportSize({ width: 466, height: 678 });
+  await page.goto('/main/index?verticalBarsOnly&buttonDefaultFill=solid');
+  await page.getByText('iPhone Duo Mode', { exact: true }).click();
+  await page.getByText('button-projection', { exact: true }).click();
+  const items = () =>
+    page.evaluate(
+      () =>
+        Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell')
+          .updates.at(-1)
+          ?.controls.flatMap((control) => control.items)
+          .filter((item) => ['Omitted', 'Clear', 'Solid', 'Outline'].includes(item.accessibilityLabel ?? '')) ?? [],
+    );
+  await expect.poll(async () => (await items()).length).toBe(4);
+  await expect.poll(async () => (await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor).toBeUndefined();
+  await page.getByRole('button', { name: 'Custom CSS background', exact: true }).click();
+  await expect
+    .poll(async () => (await items()).find((item) => item.accessibilityLabel === 'Solid')?.backgroundColor)
+    .toBe('rgb(184, 54, 42)');
+  expect((await items()).find((item) => item.accessibilityLabel === 'Clear')?.backgroundColor).toBeUndefined();
+  expect((await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor).toBeUndefined();
+  await page.getByRole('button', { name: 'Disabled', exact: true }).click();
+  await expect.poll(async () => (await items()).map((item) => item.disabled)).toEqual([true, true, true, true]);
+});
