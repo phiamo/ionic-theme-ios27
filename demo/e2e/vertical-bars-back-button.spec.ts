@@ -135,32 +135,34 @@ test('turning verticalBars on during a transition honors its success or cancella
   await expect(projection).toHaveCount(0);
 });
 
-test('verticalBars back projection respects source opt-out regardless of Ionic mode', async ({ page }) => {
-  await page.goto('/main/index/button');
-  const app = page.locator('ion-app');
-  const source = page.locator('app-button ion-header ion-back-button').first();
-  const toolbar = source.locator('xpath=ancestor::ion-toolbar');
-  const projection = page.locator('ion-app > ion-back-button.ios-theme-vertical-bars-back-button-projection');
+for (const optOut of ['class', 'data-shell']) {
+  test(`verticalBars back projection respects ${optOut} opt-out regardless of Ionic mode`, async ({ page }) => {
+    await page.goto('/main/index/button');
+    const app = page.locator('ion-app');
+    const source = page.locator('app-button ion-header ion-back-button').first();
+    const toolbar = source.locator('xpath=ancestor::ion-toolbar');
+    const projection = page.locator('ion-app > ion-back-button.ios-theme-vertical-bars-back-button-projection');
 
-  await source.evaluate((element) => element.classList.add('ios-theme-shell-disabled'));
-  await app.evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
-  await expect(projection).toHaveCount(0);
-  await expect(source).toBeVisible();
+    await source.evaluate((element, optOut) => {
+      if (optOut === 'class') element.classList.add('ios-theme-shell-disabled');
+      else element.setAttribute('data-shell', 'disabled');
+    }, optOut);
+    await app.evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
+    await expect(projection).toHaveCount(0);
+    await expect(source).toBeVisible();
 
-  await source.evaluate((element) => {
-    element.classList.remove('ios-theme-shell-disabled');
-    (element as HTMLIonBackButtonElement).mode = 'md';
+    await source.evaluate((element) => {
+      element.classList.remove('ios-theme-shell-disabled');
+      element.removeAttribute('data-shell');
+      (element as HTMLIonBackButtonElement).mode = 'md';
+    });
+    await toolbar.evaluate((element) => element.classList.remove('ios'));
+    await expect(source).toBeHidden();
+    await expect(projection).toBeVisible();
+    expect(await projection.evaluate((element: HTMLIonBackButtonElement) => element.mode)).toBe('md');
+    await expect(projection).toHaveCSS('position', 'fixed');
   });
-  await toolbar.evaluate((element) => element.classList.remove('ios'));
-  await expect(source).toBeVisible();
-  await page
-    .locator('app-button.ion-page')
-    .evaluate((element) => element.dispatchEvent(new CustomEvent('ionViewWillEnter', { bubbles: true })));
-  await expect(source).toBeHidden();
-  await expect(projection).toBeVisible();
-  expect(await projection.evaluate((element: HTMLIonBackButtonElement) => element.mode)).toBe('md');
-  await expect(projection).toHaveCSS('position', 'fixed');
-});
+}
 
 test('verticalBars toolbar projects icon actions and preserves text-only actions', async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 900 });
