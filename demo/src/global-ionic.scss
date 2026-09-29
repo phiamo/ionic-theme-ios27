@@ -1,0 +1,18 @@
+// Stock Ionic styling with only vertical-bars from this theme.
+@use '@ionic/angular/css/core.css';
+@use '@ionic/angular/css/normalize.css';
+@use '@ionic/angular/css/structure.css';
+@use '@ionic/angular/css/typography.css';
+@use '@ionic/angular/css/display.css';
+@use '@ionic/angular/css/padding.css';
+@use '@ionic/angular/css/palettes/dark.class.css';
+@use '../../src/styles/vertical-bars';
+
+:root {
+  --demo-stock-ionic: 1;
+}
+
+// The demo wraps ion-tabs in this split-pane content section.
+#main-content {
+  width: 100%;
+}

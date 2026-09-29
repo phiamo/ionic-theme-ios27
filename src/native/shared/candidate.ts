@@ -62,9 +62,14 @@ export const appendItem = (
   const badge = child.querySelector<HTMLElement>('ion-badge');
   const badgeStyle = badge && visible(badge) ? getComputedStyle(badge) : undefined;
   const sourceFill = (child as HTMLIonButtonElement).fill;
-  const fill = !sourceFill || sourceFill === 'default' ? candidate.buttonDefaultFill : sourceFill;
-  const outline =
-    isVerticalBarsSource(child) && child.matches('ion-button') && fill === 'outline' ? getComputedStyle(native ?? child) : undefined;
+  // Ionic defaults buttons inside ion-buttons to clear, even when the app defaults to solid.
+  const defaultFill = child.closest('ion-buttons') ? 'clear' : candidate.buttonDefaultFill;
+  const fill = !sourceFill || sourceFill === 'default' ? defaultFill : sourceFill;
+  const buttonFill =
+    isVerticalBarsSource(child) && child.matches('ion-button') && (fill === 'clear' || fill === 'solid' || fill === 'outline')
+      ? fill
+      : undefined;
+  const outline = buttonFill === 'outline' ? getComputedStyle(native ?? child) : undefined;
   const item: ShellItem = {
     id: id(child),
     ...frame(child.getBoundingClientRect(), candidate.element.getBoundingClientRect()),
@@ -82,10 +87,8 @@ export const appendItem = (
     fontSize: parseFloat(labelStyle.fontSize),
     fontWeight: parseInt(labelStyle.fontWeight, 10) || 400,
     color: getComputedStyle(native ?? child).color,
-    backgroundColor:
-      isVerticalBarsSource(child) && child.matches('ion-button') && fill === 'solid'
-        ? getComputedStyle(native ?? child).backgroundColor
-        : undefined,
+    buttonFill,
+    backgroundColor: buttonFill === 'solid' ? getComputedStyle(native ?? child).backgroundColor : undefined,
     borderColor: outline?.borderTopColor,
     borderWidth: outline ? parseFloat(outline.borderTopWidth) : undefined,
     badge: badgeStyle

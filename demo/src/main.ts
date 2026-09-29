@@ -7,12 +7,15 @@ import { Capacitor } from '@capacitor/core';
 import { Foldable, type BarPlacement } from '@erkamyaman/capacitor-foldable';
 import { iosTransitionAnimation, popoverEnterAnimation, popoverLeaveAnimation } from '@rdlabo/ionic-theme-ios27';
 
+// The stock-Ionic build exercises vertical bars without loading the iOS theme.
+const stockIonic = getComputedStyle(document.documentElement).getPropertyValue('--demo-stock-ionic').trim() === '1';
+
 /**
  * Adaptive CSS selects styles; page transition always uses iOS 27 — see README.md.
  * Resolved synchronously so Ionic's global config is initialized before any element upgrades.
  */
 function loadIOSAnimations(): IonicAnimationOptions {
-  if (typeof CSS === 'undefined') return {};
+  if (stockIonic || typeof CSS === 'undefined') return {};
   if (!CSS.supports('overflow-anchor: auto') && !CSS.supports('text-wrap: pretty')) return {};
 
   return {
@@ -38,8 +41,10 @@ void bootstrapApplication(AppComponent, createAppConfig(loadIOSAnimations()))
     applyPlacement(await Foldable.getBarPlacement());
   })
   .catch((err) => console.error(err));
-const startShell = new URLSearchParams(window.location.search).has('verticalBarsOnly') ? enableVerticalControlArea : enableNativeUIShell;
-void startShell().then((handle) => {
+const startShell =
+  stockIonic || new URLSearchParams(window.location.search).has('verticalBarsOnly') ? enableVerticalControlArea : enableNativeUIShell;
+const buttonDefaultFill = stockIonic || new URLSearchParams(window.location.search).get('buttonDefaultFill') === 'solid' ? 'solid' : null;
+void startShell({ buttonDefaultFill }).then((handle) => {
   const app = document.querySelector('ion-app');
   if (app) Object.assign(app, { nativeUIShell: handle });
 });

@@ -251,6 +251,47 @@ final class NativeUIShellTests: XCTestCase {
         capture("native-tab-settings")
     }
 
+    func testVerticalButtonDisabledStateUpdates() throws {
+        let app = XCUIApplication(bundleIdentifier: "io.ionic.theme.ios27")
+        app.launch()
+        let toggle = app.webViews.switches["iPhone Duo Mode"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 15), app.debugDescription)
+        if toggle.value as? String == "0" { toggle.tap() }
+        openPage(app, name: "button-projection")
+        XCTAssertTrue(app.webViews.staticTexts["Compare toolbar buttons"].waitForExistence(timeout: 10), app.debugDescription)
+
+        let buttons = ["Omitted", "Clear", "Solid", "Outline"].map { nativeButton(app, label: $0) }
+        for button in buttons {
+            XCTAssertTrue(button.waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertTrue(button.isEnabled)
+        }
+        let identifiers = buttons.map(\.identifier)
+
+        app.webViews.switches["Disabled"].tap()
+        for button in buttons {
+            expectation(for: NSPredicate(format: "enabled == false"), evaluatedWith: button)
+        }
+        waitForExpectations(timeout: 5)
+        XCTAssertEqual(buttons.map(\.identifier), identifiers)
+        for button in buttons {
+            button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        let unexpectedAction = expectation(
+            for: NSPredicate(format: "exists == false"),
+            evaluatedWith: app.webViews.staticTexts["Last action: None"]
+        )
+        unexpectedAction.isInverted = true
+        waitForExpectations(timeout: 1)
+
+        app.webViews.switches["Disabled"].tap()
+        for button in buttons {
+            expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: button)
+        }
+        waitForExpectations(timeout: 5)
+        buttons[3].tap()
+        XCTAssertTrue(app.webViews.staticTexts["Last action: Outline"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
     func testNativeVerticalBars() throws {
         let app = XCUIApplication(bundleIdentifier: "io.ionic.theme.ios27")
         app.launch()
@@ -431,7 +472,8 @@ final class NativeUIShellTests: XCTestCase {
     }
 
     private func openPage(_ app: XCUIApplication, name: String) {
-        let entry = app.webViews.buttons[name == "native-ui-shell" ? "native-ui-shell (Experimental)" : name]
+        let label = name == "native-ui-shell" ? "native-ui-shell (Experimental)" : name
+        let entry = app.webViews.buttons[label].exists ? app.webViews.buttons[label] : app.webViews.links[label]
         // WebKit's isHittable does not account for a sibling native tab bar.
         func unobscured() -> Bool {
             entry.isHittable && entry.frame.midY > app.frame.minY + 130 && entry.frame.midY < app.frame.maxY - 120

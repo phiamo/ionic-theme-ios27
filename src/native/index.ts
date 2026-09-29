@@ -165,7 +165,7 @@ export const setVerticalControlAreaPlacement = (placement: VerticalBarEdge | Ver
 /**
  * Call once after ion-app is mounted. Ionic markup remains the source of truth.
  * Set buttonDefaultFill to `solid` for Ionic's default design, or `null` for this
- * theme's glass design. Omitting it is equivalent to `null` (existing behavior).
+ * theme's glass design. Omitting it is equivalent to `null`.
  * This default affects native vertical projection only; explicit button fills win.
  */
 export const enableVerticalControlArea = async (options: VerticalControlAreaOptions = {}): Promise<VerticalControlAreaHandle> => {

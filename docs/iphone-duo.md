@@ -131,7 +131,7 @@ An `ion-button` moves into the rail when it contains an `ion-icon` or SVG with `
 | `slot="start"`, `slot="end"`, or no slot | Original horizontal toolbar |
 | No icon | Original horizontal toolbar |
 
-This rule applies to `fill="default"`, `clear`, `solid`, and `outline`, including buttons with an Ionic `color`. Solid actions retain their background color through a prominent native button; outline actions retain their border color and width. The runtime preserves the original click or form-submit behavior. `type="submit"` and `.button-submit` do not select a different placement.
+This rule applies to `fill="default"`, `clear`, `solid`, and `outline`, including buttons with an Ionic `color`. Clear actions have no native glass background, including buttons implicitly resolved to clear inside `ion-buttons`. Solid actions retain their background color through a prominent native button; outline actions retain their border color and width. The runtime preserves the original click or form-submit behavior. `type="submit"` and `.button-submit` do not select a different placement.
 
 ```html
 <ion-header>
@@ -145,7 +145,7 @@ This rule applies to `fill="default"`, `clear`, `solid`, and `outline`, includin
 </ion-header>
 ```
 
-For existing themes that style a button background through CSS while leaving `fill` omitted or `default`, use `enableVerticalControlArea({ buttonDefaultFill: 'solid' })`. The option accepts `'solid'` (Ionic's default design) or `null` (the iOS theme's glass design); omission is equivalent to `null`. Explicit button fills take precedence. It affects native vertical projection only and never changes source buttons or Web clones. Omit it to retain the existing behavior. The full `enableNativeUIShell()` also accepts this option for its vertical buttons. Restart the runtime before changing the option.
+For existing themes that style a button background through CSS while leaving `fill` omitted or `default`, use `enableVerticalControlArea({ buttonDefaultFill: 'solid' })`. The option accepts `'solid'` (Ionic's default design) or `null` (the iOS theme's glass design); omission is equivalent to `null`. Buttons inside `ion-buttons` default to `clear`, even with this option set to `solid`. To project their background, explicitly set `fill="solid"`; CSS backgrounds on clear buttons are not projected. With the iOS theme, ordinary `ion-buttons` retain group projection, while `ion-buttons.ios-theme-disabled` projects eligible buttons individually. Explicit button fills take precedence. It affects native vertical projection only and never changes source buttons or Web clones. The full `enableNativeUIShell()` also accepts this option for its vertical buttons. Restart the runtime before changing the option.
 
 Give icon-only actions an accessible name, such as `aria-label="Done"`. Keep the original Ionic event handler or form association on the source button.
 

@@ -13,7 +13,9 @@ export interface NativeUIShellStatus {
 export interface VerticalControlAreaOptions {
   /** Default fill for native vertical button projection when Ionic's fill is omitted or `default`.
    * Use `solid` for Ionic's default design, or `null` for the iOS theme's glass design.
-   * Omitted is equivalent to `null` and preserves existing behavior.
+   * Omitted is equivalent to `null`.
+   * Clear buttons have no native glass background, including the default inside ion-buttons.
+   * Explicit solid is required to project a background from buttons inside ion-buttons.
    * Explicit button fills take precedence. Source buttons and Web clones are unchanged.
    */
   buttonDefaultFill?: 'solid' | null;
@@ -91,6 +93,8 @@ export interface ShellItem extends Frame {
   fontSize: number;
   fontWeight: number;
   color: string;
+  /** Resolved ion-button fill for vertical projection; clear omits the native glass background. */
+  buttonFill?: 'clear' | 'solid' | 'outline';
   backgroundColor?: string;
   borderColor?: string;
   borderWidth?: number;

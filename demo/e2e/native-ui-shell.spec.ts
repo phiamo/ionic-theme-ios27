@@ -1630,7 +1630,11 @@ test('all demo pages keep projection consistent through consecutive navigation',
   await settled();
   for (const route of routes) {
     await test.step(route, async () => {
-      await page.getByRole('button', { name: route === 'native-ui-shell' ? 'native-ui-shell (Experimental)' : route, exact: true }).click();
+      const name = route === 'native-ui-shell' ? 'native-ui-shell (Experimental)' : route;
+      await page
+        .getByRole('button', { name, exact: true })
+        .or(page.getByRole('link', { name, exact: true }))
+        .click();
       await expect(page).toHaveURL(`/main/index/${route}`);
       await settled();
       await back();
@@ -3191,3 +3195,74 @@ for (const native of [true, false]) {
     }
   });
 }
+
+test('button projection sends contextual fills and state updates to the native bridge', async ({ page }) => {
+  await mockNative(page);
+  await page.setViewportSize({ width: 466, height: 678 });
+  await page.goto('/main/index?verticalBarsOnly&buttonDefaultFill=solid');
+  await page.getByText('iPhone Duo Mode', { exact: true }).click();
+  await page.getByText('button-projection', { exact: true }).click();
+  const items = () =>
+    page.evaluate(
+      () =>
+        Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell')
+          .updates.at(-1)
+          ?.controls.flatMap((control) => control.items)
+          .filter((item) => ['Omitted', 'Clear', 'Solid', 'Outline'].includes(item.accessibilityLabel ?? '')) ?? [],
+    );
+  await expect.poll(async () => (await items()).length).toBe(4);
+  await expect.poll(async () => (await items()).map((item) => item.buttonFill)).toEqual(['clear', 'clear', 'solid', 'outline']);
+  await expect.poll(async () => (await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor).toBeUndefined();
+  await page.getByRole('switch', { name: 'Custom CSS background', exact: true }).click();
+  await expect
+    .poll(async () => (await items()).find((item) => item.accessibilityLabel === 'Solid')?.backgroundColor)
+    .toBe('rgb(184, 54, 42)');
+  expect((await items()).find((item) => item.accessibilityLabel === 'Clear')?.backgroundColor).toBeUndefined();
+  expect((await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor).toBeUndefined();
+  const clearId = (await items()).find((item) => item.accessibilityLabel === 'Clear')!.id;
+  for (const fill of ['solid', 'outline', 'clear'] as const) {
+    await page
+      .locator('app-button-projection ion-button:has(ion-icon[name="heart-outline"])')
+      .evaluate((button: HTMLIonButtonElement, value) => (button.fill = value), fill);
+    await expect
+      .poll(async () => {
+        const item = (await items()).find((item) => item.accessibilityLabel === 'Clear');
+        return { id: item?.id, fill: item?.buttonFill };
+      })
+      .toEqual({ id: clearId, fill });
+  }
+  await page.getByRole('switch', { name: 'Disabled', exact: true }).click();
+  await expect.poll(async () => (await items()).map((item) => item.disabled)).toEqual([true, true, true, true]);
+  for (const placement of ['Grouped', 'Standalone', 'Separate']) {
+    await page.locator('ion-select').click();
+    await page.getByRole('radio', { name: placement, exact: true }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell')
+            .updates.at(-1)
+            ?.controls.filter((control) =>
+              control.items.some((item) => ['Omitted', 'Clear', 'Solid', 'Outline'].includes(item.accessibilityLabel ?? '')),
+            )
+            .map((control) => control.items.length),
+        ),
+      )
+      .toEqual(placement === 'Grouped' ? [4] : [1, 1, 1, 1]);
+    await expect.poll(async () => (await items()).map((item) => item.disabled)).toEqual([true, true, true, true]);
+    await expect
+      .poll(async () => (await items()).map((item) => item.buttonFill))
+      .toEqual([placement === 'Standalone' ? 'solid' : 'clear', 'clear', 'solid', 'outline']);
+    await expect
+      .poll(async () => (await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor)
+      .toBe(placement === 'Standalone' ? 'rgb(184, 54, 42)' : undefined);
+  }
+});
+
+test('tab visibility ignores query parameters and fragments', async ({ page }) => {
+  for (const path of ['/main/index/button-projection', '/main/settings', '/main/index/toolbar']) {
+    await page.goto(`${path}?verticalBarsOnly&buttonDefaultFill=solid#comparison`);
+    await expect(page.locator('ion-tab-bar')).toHaveClass(/tab-bar-hidden/);
+  }
+  await page.goto('/main/index?verticalBarsOnly&buttonDefaultFill=solid#comparison');
+  await expect(page.locator('ion-tab-bar')).not.toHaveClass(/tab-bar-hidden/);
+});
