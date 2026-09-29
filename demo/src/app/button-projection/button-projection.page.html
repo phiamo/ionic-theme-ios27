@@ -20,7 +20,7 @@
           }
         </ion-buttons>
       }
-      @case ('Individual in ion-buttons') {
+      @case ('Separate') {
         <ion-buttons slot="end" class="ios-theme-disabled">
           @for (action of actions; track action.label) {
             <ion-button
@@ -35,7 +35,7 @@
           }
         </ion-buttons>
       }
-      @case ('Outside ion-buttons') {
+      @case ('Standalone') {
         @for (action of actions; track action.label) {
           <ion-button
             [fill]="action.fill"
@@ -54,24 +54,79 @@
 
 <ion-content class="ion-padding">
   <h1>Compare toolbar buttons</h1>
-  <p role="status">Last action: {{ lastAction() }}</p>
-  <p>Enable iPhone Duo Mode on the index page, then compare the controls in the vertical bar.</p>
+  <p class="intro">Compare the four icons in the vertical bar.</p>
+  <p class="last-action" role="status">Last action: {{ lastAction() }}</p>
+
   <fieldset>
-    <legend>Placement</legend>
-    @for (option of placements; track option) {
-      <button type="button" [attr.aria-pressed]="placement() === option" (click)="placement.set(option)">{{ option }}</button>
-    }
+    <legend>1. Button placement</legend>
+    <div class="placement-options">
+      @for (option of placements; track option) {
+        <button type="button" [attr.aria-pressed]="placement() === option" (click)="placement.set(option)">{{ option }}</button>
+      }
+    </div>
+    <p class="hint">
+      @switch (placement()) {
+        @case ('Grouped') {
+          <code>ion-buttons</code> — the iOS theme projects these together on a shared surface.
+        }
+        @case ('Separate') {
+          <code>ion-buttons.ios-theme-disabled</code> — separate controls. Omitted fill defaults to clear.
+        }
+        @case ('Standalone') {
+          Standalone <code>ion-button</code> — omitted fill follows <code>buttonDefaultFill</code>.
+        }
+      }
+    </p>
   </fieldset>
+
   <fieldset>
-    <legend>Appearance</legend>
-    <button type="button" [attr.aria-pressed]="styled()" (click)="styled.set(!styled())">Custom CSS background</button>
-    <button type="button" [attr.aria-pressed]="disabled()" (click)="disabled.set(!disabled())">Disabled</button>
+    <legend>2. Change appearance</legend>
+    <div class="appearance-options">
+      <button type="button" [attr.aria-pressed]="styled()" (click)="styled.set(!styled())">
+        <span>Custom CSS background</span><strong aria-hidden="true">{{ styled() ? 'On' : 'Off' }}</strong>
+      </button>
+      <button type="button" [attr.aria-pressed]="disabled()" (click)="disabled.set(!disabled())">
+        <span>Disabled</span><strong aria-hidden="true">{{ disabled() ? 'On' : 'Off' }}</strong>
+      </button>
+    </div>
+    <p class="hint">CSS on: red background + light icons. Only solid projects the background.</p>
   </fieldset>
-  <ul>
-    @for (action of actions; track action.label) {
-      <li><ion-icon [name]="action.icon" aria-hidden="true"></ion-icon> {{ action.label }}</li>
-    }
-  </ul>
-  <p>Inside ion-buttons, an omitted fill behaves as clear. Explicit solid projects its background; clear does not.</p>
-  <p>Grouped controls retain their shared surface. Use “Individual in ion-buttons” to compare separate controls.</p>
+
+  <section aria-labelledby="check-buttons">
+    <h2 id="check-buttons">3. Check each button</h2>
+    <ul class="button-guide">
+      @for (action of actions; track action.label) {
+        <li>
+          <ion-icon [name]="action.icon" aria-hidden="true"></ion-icon>
+          <div>
+            <strong>{{ action.label }}</strong>
+            <code>{{ action.fill ? 'fill="' + action.fill + '"' : 'No fill attribute' }}</code>
+            <p>
+              @switch (action.label) {
+                @case ('Omitted') {
+                  {{
+                    placement() === 'Standalone'
+                      ? 'Uses buttonDefaultFill.'
+                      : 'Clear: no
+            button background.'
+                  }}
+                }
+                @case ('Clear') {
+                  Icon color only; no button background.
+                }
+                @case ('Solid') {
+                  Background and icon color.
+                }
+                @case ('Outline') {
+                  Border and icon color; no button background.
+                }
+              }
+            </p>
+          </div>
+        </li>
+      }
+    </ul>
+    <p class="hint">With Disabled on, taps should not change “Last action”. Turn it off to check that taps work again.</p>
+  </section>
+  <p class="hint">No vertical bar? Enable iPhone Duo Mode on the index page first.</p>
 </ion-content>

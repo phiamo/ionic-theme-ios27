@@ -9,8 +9,8 @@ import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, I
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ButtonProjectionPage {
-  readonly placements = ['Grouped', 'Individual in ion-buttons', 'Outside ion-buttons'] as const;
-  readonly placement = signal<(typeof this.placements)[number]>('Individual in ion-buttons');
+  readonly placements = ['Grouped', 'Separate', 'Standalone'] as const;
+  readonly placement = signal<(typeof this.placements)[number]>('Separate');
   readonly styled = signal(false);
   readonly disabled = signal(false);
   readonly lastAction = signal('None');
