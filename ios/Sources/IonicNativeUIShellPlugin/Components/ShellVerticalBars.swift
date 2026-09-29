@@ -110,33 +110,34 @@ private struct ShellVerticalBarsLabel: View {
 }
 
 @available(iOS 26.0, *)
+@ViewBuilder
+private func verticalBarsButton(_ item: ShellVerticalBarsModel.Item, model: ShellVerticalBarsModel) -> some View {
+    let button = Button { model.activate(item.id) } label: { ShellVerticalBarsLabel(item: item) }
+        .disabled(item.disabled)
+        .accessibilityLabel(item.accessibilityLabel)
+        .accessibilityIdentifier(item.id)
+    if let background = item.background {
+        button.buttonStyle(.glassProminent).tint(background)
+    } else {
+        button.overlay {
+            if let borderColor = item.borderColor {
+                Capsule().strokeBorder(borderColor, lineWidth: item.borderWidth).allowsHitTesting(false)
+            }
+        }
+    }
+}
+
+@available(iOS 26.0, *)
 private struct ShellVerticalBarsButton: ToolbarContent {
     @ObservedObject var model: ShellVerticalBarsModel
     let id: String
     let placement: ToolbarItemPlacement
 
-    // Toolbar closures can retain their original item value on iOS 27.1.
-    // Observe the model here so the button and its shared glass background update together.
+    // Observe here so same-ID updates also refresh the shared toolbar background.
     var body: some ToolbarContent {
         if let item = model.groups.lazy.flatMap(\.items).first(where: { $0.id == id }) {
-            ToolbarItem(placement: placement) {
-                let button = Button { model.activate(item.id) } label: { ShellVerticalBarsLabel(item: item) }
-                    .disabled(item.disabled)
-                    .accessibilityLabel(item.accessibilityLabel)
-                    .accessibilityIdentifier(item.id)
-                if item.clear {
-                    button.buttonStyle(.plain)
-                } else if let background = item.background {
-                    button.buttonStyle(.glassProminent).tint(background)
-                } else {
-                    button.overlay {
-                        if let borderColor = item.borderColor {
-                            Capsule().strokeBorder(borderColor, lineWidth: item.borderWidth).allowsHitTesting(false)
-                        }
-                    }
-                }
-            }
-            .sharedBackgroundVisibility(item.clear ? .hidden : .automatic)
+            ToolbarItem(placement: placement) { verticalBarsButton(item, model: model) }
+                .sharedBackgroundVisibility(item.clear ? .hidden : .automatic)
         }
     }
 }
