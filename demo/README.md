@@ -151,9 +151,11 @@ For the iOS theme, run the regular demo. For stock Ionic styling with only
 npm start -- --configuration=ionic-default
 ```
 
-This configuration automatically enables vertical-bars-only mode with
-`buttonDefaultFill: 'solid'`. Open `/main/index`, enable iPhone Duo Mode,
+This configuration automatically enables vertical-bars-only mode and sets
+`buttonDefaultFill: 'solid'` for source projection. Open `/main/index`, enable iPhone Duo Mode,
 and select **button-projection**. For a native build of the same styling, use
 `npm run build -- --configuration=production,ionic-default` before `npx cap sync ios`.
-The regular build also accepts `?verticalBarsOnly&buttonDefaultFill=solid` at startup
-for comparing the option with the iOS theme.
+Both builds default to system projection. To compare source styling, open
+`/main/index?verticalBarsOnly&buttonProjection=source&buttonDefaultFill=solid` at startup,
+enable iPhone Duo Mode, and select **button-projection**. Omit `buttonProjection`
+to compare SwiftUI's standard appearance. The setting applies for the runtime's lifetime.

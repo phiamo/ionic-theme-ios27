@@ -106,13 +106,15 @@ import { enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-ba
 const rail = await enableVerticalControlArea();
 ```
 
+Native vertical toolbar buttons default to `buttonProjection: 'system'`: SwiftUI chooses their appearance, and icons use system tinting. Ionic fill, foreground/background colors and borders are not projected. Actions, disabled state and `ion-buttons` grouping are preserved. Choose `buttonProjection: 'source'` to project Ionic fill and computed colors instead. This Preview default replaces the previous source-styled behavior; existing apps that need it should explicitly select `source`. Source elements and Web fallback clones are unchanged. Both startup APIs accept this option; restart the runtime to change it.
+
 If your existing theme gives buttons a CSS background without an explicit `fill="solid"`, opt into background projection:
 
 ```ts
-const rail = await enableVerticalControlArea({ buttonDefaultFill: 'solid' });
+const rail = await enableVerticalControlArea({ buttonProjection: 'source', buttonDefaultFill: 'solid' });
 ```
 
-`buttonDefaultFill` accepts `'solid'` (Ionic's default design) or `null` (the iOS theme's glass design). Omitting it is equivalent to `null`. It applies only to native vertical button projection when Ionic's `fill` is omitted or `default`. Buttons inside `ion-buttons` default to `clear`, even when `buttonDefaultFill` is `solid`. Clear actions have no native glass background. To project a button background, explicitly set `fill="solid"`; CSS backgrounds on clear buttons are not projected. Explicit `clear`, `solid`, and `outline` values take precedence. Solid projection reads the existing computed foreground and background colors; outline projection reads the computed border. Source buttons and Web clones are unchanged. Native Liquid Glass tinting may differ visually from the CSS background, especially for translucent colors.
+`buttonDefaultFill` is only used with `buttonProjection: 'source'` and accepts `'solid'` (Ionic's default design) or `null` (the iOS theme's glass design). Omitting it is equivalent to `null`. It applies only to native vertical button projection when Ionic's `fill` is omitted or `default`. Buttons inside `ion-buttons` default to `clear`, even when `buttonDefaultFill` is `solid`. With `buttonProjection: 'source'`, clear actions have no native glass background. To project a button background, explicitly set `fill="solid"`; CSS backgrounds on clear buttons are not projected. Explicit `clear`, `solid`, and `outline` values take precedence. Solid projection reads the existing computed foreground and background colors; outline projection reads the computed border. Source buttons and Web clones are unchanged. Native Liquid Glass tinting may differ visually from the CSS background, especially for translucent colors.
 
 **What you should see:** your existing tab bar moves to the side, and fixed-toolbar buttons with an `ion-icon` or SVG using `slot="icon-only"` appear there too. Content keeps its existing theme and leaves room for the controls. The Web tab rail displays icons; pressing and dragging reveals tab labels.
 
@@ -141,7 +143,7 @@ Use Capacitor 8.5 or later and build with Xcode 27.1 or newer for actual rail pl
 
 Replace the browser-only startup with the [device placement setup](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#project-controls-into-the-rail). That setup sends initial values and `barPlacementChange` events to `setVerticalControlAreaPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset })`, with subscriptions and cleanup kept in your application.
 
-Pass both the requested and native edge with Foldable's measured inset. The placement API resolves RTL. A null edge restores the ordinary layout. Keep `buttonDefaultFill: 'solid'` on `enableVerticalControlArea()` if your existing theme needs CSS background projection.
+Pass both the requested and native edge with Foldable's measured inset. The placement API resolves RTL. A null edge restores the ordinary layout. Use `buttonProjection: 'source'` with `buttonDefaultFill: 'solid'` on `enableVerticalControlArea()` if your existing theme needs CSS background projection.
 
 On supported iOS, controls in the rail use the system SwiftUI appearance; your custom Web styling still applies to ordinary content and horizontal controls. Web and Android use Web clones.
 

@@ -56,6 +56,13 @@
   <ion-list [inset]="true">
     <ion-list-header><ion-label>Compare toolbar buttons</ion-label></ion-list-header>
     <ion-item-group>
+      <ion-item
+        ><ion-label class="ion-text-wrap"
+          ><p>
+            System projection (default) uses SwiftUI styling for all four buttons. The descriptions below apply to source projection.
+          </p></ion-label
+        ></ion-item
+      >
       @for (action of actions; track action.label) {
         <ion-item>
           <ion-icon slot="start" [name]="action.icon" aria-hidden="true"></ion-icon>
@@ -64,16 +71,16 @@
             <p>
               @switch (action.label) {
                 @case ('Omitted') {
-                  {{ placement() === 'Standalone' ? 'Uses buttonDefaultFill.' : 'Clear: no glass background.' }}
+                  Source: {{ placement() === 'Standalone' ? 'uses buttonDefaultFill.' : 'clear, without glass.' }}
                 }
                 @case ('Clear') {
-                  Icon color only; no glass background.
+                  Source: icon color only; no glass background.
                 }
                 @case ('Solid') {
-                  Background and icon color.
+                  Source: background and icon color.
                 }
                 @case ('Outline') {
-                  Border and icon color.
+                  Source: border and icon color.
                 }
               }
             </p>
@@ -101,13 +108,13 @@
           <p>
             @switch (placement()) {
               @case ('Grouped') {
-                ion-buttons: grouped projection; clear buttons have no glass background.
+                ion-buttons: grouped projection.
               }
               @case ('Separate') {
-                ion-buttons.ios-theme-disabled: separate controls; omitted fill defaults to clear.
+                ion-buttons.ios-theme-disabled: separate controls.
               }
               @case ('Standalone') {
-                Outside ion-buttons: omitted fill follows buttonDefaultFill.
+                Outside ion-buttons: standalone controls.
               }
             }
           </p>
@@ -127,7 +134,10 @@
       </ion-item>
       <ion-item>
         <ion-label class="ion-text-wrap">
-          <p>Custom CSS sets a red background and light icons. Only solid projects the background.</p>
+          <p>
+            Custom CSS sets a red background and light icons. System projection uses native styling. Source projection reflects fill and
+            color; only solid projects the background.
+          </p>
           <p>Tap a vertical bar icon to update “Last action”. Disabled buttons should not respond.</p>
         </ion-label>
       </ion-item>

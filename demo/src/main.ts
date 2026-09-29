@@ -44,7 +44,8 @@ void bootstrapApplication(AppComponent, createAppConfig(loadIOSAnimations()))
 const startShell =
   stockIonic || new URLSearchParams(window.location.search).has('verticalBarsOnly') ? enableVerticalControlArea : enableNativeUIShell;
 const buttonDefaultFill = stockIonic || new URLSearchParams(window.location.search).get('buttonDefaultFill') === 'solid' ? 'solid' : null;
-void startShell({ buttonDefaultFill }).then((handle) => {
+const buttonProjection = new URLSearchParams(window.location.search).get('buttonProjection') === 'source' ? 'source' : 'system';
+void startShell({ buttonProjection, buttonDefaultFill }).then((handle) => {
   const app = document.querySelector('ion-app');
   if (app) Object.assign(app, { nativeUIShell: handle });
 });

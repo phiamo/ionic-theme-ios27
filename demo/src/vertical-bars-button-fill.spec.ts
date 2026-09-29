@@ -11,6 +11,7 @@ const mount = (fills: (string | undefined)[], grouped = false) => {
   });
   const buttons = Array.from(document.querySelectorAll('ion-button')) as HTMLIonButtonElement[];
   buttons.forEach((button, i) => {
+    button.id = `button-${i}`;
     button.fill = fills[i] as HTMLIonButtonElement['fill'];
     // Other suites may already have registered Ionic custom elements.
     const shadow = button.shadowRoot ?? button.attachShadow({ mode: 'open' });
@@ -29,7 +30,7 @@ const mount = (fills: (string | undefined)[], grouped = false) => {
 afterEach(() => document.body.replaceChildren());
 
 test.each([undefined, null])('default %s preserves the existing glass projection', (buttonDefaultFill) => {
-  const item = readCandidate(mount([undefined]), () => 'button', { buttonDefaultFill })!.control.items[0];
+  const item = readCandidate(mount([undefined]), () => 'button', { buttonProjection: 'source', buttonDefaultFill })!.control.items[0];
   expect(item.color).toBe('rgb(255, 255, 255)');
   expect(item.backgroundColor).toBeUndefined();
   expect(item.borderColor).toBeUndefined();
@@ -37,7 +38,7 @@ test.each([undefined, null])('default %s preserves the existing glass projection
 
 test.each([undefined, 'default'])('solid default retains computed colors for fill %s without changing the source', (fill) => {
   const element = mount([fill]);
-  const item = readCandidate(element, () => 'button', { buttonDefaultFill: 'solid' })!.control.items[0];
+  const item = readCandidate(element, () => 'button', { buttonProjection: 'source', buttonDefaultFill: 'solid' })!.control.items[0];
   expect(item.color).toBe('rgb(255, 255, 255)');
   expect(item.backgroundColor).toBe('rgba(0, 0, 0, 0.24)');
   expect((element as HTMLIonButtonElement).fill).toBe(fill);
@@ -47,7 +48,7 @@ test.each([undefined, null, 'solid'] as const)(
   'grouped buttons default to clear with option %s and preserve explicit fills',
   (buttonDefaultFill) => {
     const element = mount([undefined, 'clear', 'outline', 'solid'], true);
-    const items = readCandidate(element, (e) => e.localName, { buttonDefaultFill })!.control.items;
+    const items = readCandidate(element, (e) => e.localName, { buttonProjection: 'source', buttonDefaultFill })!.control.items;
     expect(items.map((item) => item.backgroundColor)).toEqual([undefined, undefined, undefined, 'rgba(0, 0, 0, 0.24)']);
     expect(items[2].borderColor).toBe('rgb(255, 0, 0)');
     expect(items[2].borderWidth).toBe(2);
@@ -55,19 +56,21 @@ test.each([undefined, null, 'solid'] as const)(
 );
 
 test('explicit solid wins over a null default', () => {
-  const item = readCandidate(mount(['solid']), () => 'button', { buttonDefaultFill: null })!.control.items[0];
+  const item = readCandidate(mount(['solid']), () => 'button', { buttonProjection: 'source', buttonDefaultFill: null })!.control.items[0];
   expect(item.backgroundColor).toBe('rgba(0, 0, 0, 0.24)');
 });
 
 test('startup rejects a different default until the previous owner is destroyed', async () => {
-  const first = await enableVerticalControlArea();
+  const first = await enableVerticalControlArea({ buttonProjection: 'source' });
   try {
-    await expect(enableVerticalControlArea({ buttonDefaultFill: null })).resolves.toBeDefined();
-    await expect(enableVerticalControlArea({ buttonDefaultFill: 'solid' })).rejects.toThrow('different controls');
+    await expect(enableVerticalControlArea({ buttonProjection: 'source', buttonDefaultFill: null })).resolves.toBeDefined();
+    await expect(enableVerticalControlArea({ buttonProjection: 'source', buttonDefaultFill: 'solid' })).rejects.toThrow(
+      'different controls',
+    );
   } finally {
     await first.destroy();
   }
-  const next = await enableVerticalControlArea({ buttonDefaultFill: 'solid' });
+  const next = await enableVerticalControlArea({ buttonProjection: 'source', buttonDefaultFill: 'solid' });
   await next.destroy();
 });
 
@@ -77,12 +80,44 @@ test.each([undefined, null, 'solid'] as const)(
   (buttonDefaultFill) => {
     const group = mount([undefined, 'default', 'clear', 'solid', 'outline'], true);
     group.classList.add('ios-theme-disabled');
-    expect(readCandidate(group, (e) => e.localName, { buttonDefaultFill })).toBeUndefined();
+    expect(readCandidate(group, (e) => e.localName, { buttonProjection: 'source', buttonDefaultFill })).toBeUndefined();
     const buttons = Array.from(group.querySelectorAll('ion-button'));
-    const items = buttons.map((button) => readCandidate(button, (e) => e.localName, { buttonDefaultFill })!.control.items[0]);
+    const items = buttons.map(
+      (button) => readCandidate(button, (e) => e.localName, { buttonProjection: 'source', buttonDefaultFill })!.control.items[0],
+    );
     expect(items.map((item) => item.backgroundColor)).toEqual([undefined, undefined, undefined, 'rgba(0, 0, 0, 0.24)', undefined]);
     expect(items[4].borderColor).toBe('rgb(255, 0, 0)');
     expect(items[4].borderWidth).toBe(2);
     expect(buttons[0].fill).toBeUndefined();
   },
 );
+
+// System projection preserves semantics while leaving appearance to SwiftUI.
+test.each([undefined, 'system'] as const)('projection %s ignores source styling and the default fill', (buttonProjection) => {
+  const group = mount([undefined, 'clear', 'solid', 'outline'], true);
+  const disabled = group.querySelectorAll('ion-button')[2];
+  disabled.disabled = true;
+  const candidate = readCandidate(group, (e) => e.id || e.localName, { buttonProjection, buttonDefaultFill: 'solid' })!;
+  expect(candidate.control.kind).toBe('ion-buttons');
+  expect(candidate.control.items).toHaveLength(4);
+  for (const item of candidate.control.items) {
+    expect(item.iconTemplate).toBe(true);
+    expect(item.color).toBe('currentColor');
+    expect(item.buttonFill).toBeUndefined();
+    expect(item.backgroundColor).toBeUndefined();
+    expect(item.borderColor).toBeUndefined();
+  }
+  expect(candidate.control.items.map((item) => item.disabled)).toEqual([false, false, true, false]);
+  expect(candidate.actions.size).toBe(4);
+  expect(candidate.actions.get('button-2')).toBe(disabled);
+});
+
+test('system is the default and ignores default-fill changes until source is requested', async () => {
+  const first = await enableVerticalControlArea();
+  try {
+    await expect(enableVerticalControlArea({ buttonProjection: 'system', buttonDefaultFill: 'solid' })).resolves.toBeDefined();
+    await expect(enableVerticalControlArea({ buttonProjection: 'source' })).rejects.toThrow('different controls');
+  } finally {
+    await first.destroy();
+  }
+});

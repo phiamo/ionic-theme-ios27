@@ -3,6 +3,7 @@ import { frame, isDark, isVerticalBarsSource, text, visible } from './dom';
 import { iconSource } from './icons';
 
 export interface Candidate {
+  buttonProjection?: VerticalControlAreaOptions['buttonProjection'];
   buttonDefaultFill?: VerticalControlAreaOptions['buttonDefaultFill'];
   element: HTMLElement;
   sources?: HTMLElement[];
@@ -24,6 +25,7 @@ export const createCandidate = (
   const style = getComputedStyle(element);
   return {
     element,
+    buttonProjection: options.buttonProjection,
     buttonDefaultFill: options.buttonDefaultFill,
     control: {
       id: id(element),
@@ -62,11 +64,16 @@ export const appendItem = (
   const badge = child.querySelector<HTMLElement>('ion-badge');
   const badgeStyle = badge && visible(badge) ? getComputedStyle(badge) : undefined;
   const sourceFill = (child as HTMLIonButtonElement).fill;
+  const systemButton =
+    candidate.buttonProjection !== 'source' && isVerticalBarsSource(child) && child.matches('ion-button, ion-menu-button');
   // Ionic defaults buttons inside ion-buttons to clear, even when the app defaults to solid.
   const defaultFill = child.closest('ion-buttons') ? 'clear' : candidate.buttonDefaultFill;
   const fill = !sourceFill || sourceFill === 'default' ? defaultFill : sourceFill;
   const buttonFill =
-    isVerticalBarsSource(child) && child.matches('ion-button') && (fill === 'clear' || fill === 'solid' || fill === 'outline')
+    !systemButton &&
+    isVerticalBarsSource(child) &&
+    child.matches('ion-button') &&
+    (fill === 'clear' || fill === 'solid' || fill === 'outline')
       ? fill
       : undefined;
   const outline = buttonFill === 'outline' ? getComputedStyle(native ?? child) : undefined;
@@ -86,7 +93,8 @@ export const appendItem = (
     selected: !!(child as ItemElement).selected,
     fontSize: parseFloat(labelStyle.fontSize),
     fontWeight: parseInt(labelStyle.fontWeight, 10) || 400,
-    color: getComputedStyle(native ?? child).color,
+    color: systemButton ? 'currentColor' : getComputedStyle(native ?? child).color,
+    iconTemplate: systemButton ? true : undefined,
     buttonFill,
     backgroundColor: buttonFill === 'solid' ? getComputedStyle(native ?? child).backgroundColor : undefined,
     borderColor: outline?.borderTopColor,
