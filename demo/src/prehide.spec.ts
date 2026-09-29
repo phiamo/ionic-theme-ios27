@@ -60,3 +60,25 @@ test('captures a group whose child accessors are virtualized', () => {
     document.documentElement.className = '';
   }
 });
+
+// Opting out before the native bridge is ready must release prehidden Web controls.
+test('shell data attribute releases prehidden controls and removal restores eligibility', async () => {
+  document.documentElement.className = '';
+  document.body.innerHTML = markup;
+  const toolbar = document.querySelector<HTMLElement>('ion-toolbar')!;
+  const group = document.querySelector<HTMLElement>('ion-buttons')!;
+  const prehide = prehideVerticalBarsToolbarSources(document);
+  try {
+    expect(group.classList.contains(prehiddenClass)).toBe(true);
+    toolbar.setAttribute('data-shell-disabled', '');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(group.classList.contains(prehiddenClass)).toBe(false);
+    toolbar.removeAttribute('data-shell-disabled');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(group.classList.contains(prehiddenClass)).toBe(true);
+  } finally {
+    prehide.stop();
+    document.body.innerHTML = '';
+    document.documentElement.className = '';
+  }
+});

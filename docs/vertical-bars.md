@@ -87,7 +87,7 @@ The rule applies to individual buttons and buttons inside `ion-buttons`, on ordi
 
 ### Choose button appearance
 
-**Unreleased:** `buttonProjection` and the local projection classes below are part of the next release. They are not available in the `1.2.0-1` package used by the introductory guide. The following rules describe this branch.
+**Unreleased:** `buttonProjection` and the local projection settings below are part of the next release. They are not available in the `1.2.0-1` package used by the introductory guide. The following rules describe this branch.
 
 For native vertical `ion-button` and `ion-menu-button` actions, choose who controls appearance:
 
@@ -106,14 +106,19 @@ Both `enableVerticalControlArea()` and `enableNativeUIShell()` accept the option
 
 ### Override individual buttons or groups
 
-Use `ios-theme-projection-source` or `ios-theme-projection-system` for local exceptions:
+Use `data-projection` for local exceptions. Existing classes remain supported:
+
+| Attribute | Equivalent class |
+| --- | --- |
+| `data-projection="source"` | `ios-theme-projection-source` |
+| `data-projection="system"` | `ios-theme-projection-system` |
 
 ```html
-<ion-buttons class="ios-theme-projection-source">
+<ion-buttons data-projection="source">
   <ion-button fill="solid" aria-label="Add">
     <ion-icon name="add-outline" slot="icon-only"></ion-icon>
   </ion-button>
-  <ion-button class="ios-theme-projection-system" aria-label="Search">
+  <ion-button data-projection="system" aria-label="Search">
     <ion-icon name="search-outline" slot="icon-only"></ion-icon>
   </ion-button>
 </ion-buttons>
@@ -121,11 +126,13 @@ Use `ios-theme-projection-source` or `ios-theme-projection-system` for local exc
 
 The first matching setting wins:
 
-1. The button's projection class.
-2. Its nearest `ion-buttons` projection class.
+1. The button's local setting.
+2. Its nearest `ion-buttons` local setting.
 3. The startup `buttonProjection` option, or `system` if omitted.
 
-If both classes are present on the same element, `system` wins. Removing the classes restores the inherited setting. Class changes apply without restarting the runtime; grouping and placement stay unchanged. Only native vertical `ion-button` and `ion-menu-button` actions interpret these classes. Other ancestors, back buttons, tabs and FABs do not.
+On the same element, a valid `data-projection` value takes precedence over the classes. Empty or unknown values are ignored. Without a valid attribute, `system` wins if both classes are present. Removing an attribute falls back to the element's classes, then the next level above. Attribute and class changes apply without restarting the runtime; grouping and placement stay unchanged.
+
+Only native vertical `ion-button` and `ion-menu-button` actions interpret these settings. Other ancestors, back buttons, tabs and FABs do not. They do not change Web styling. To keep a control or subtree on the Web entirely, use [`data-shell-disabled`](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell#supported-markup).
 
 ### Source fill rules
 
@@ -146,7 +153,7 @@ const rail = await enableVerticalControlArea({ buttonDefaultFill: 'solid' });
 
 ```html
 <!-- In a fixed toolbar, outside ion-buttons: omitted fill resolves to solid. -->
-<ion-button class="ios-theme-projection-source" aria-label="Add">
+<ion-button data-projection="source" aria-label="Add">
   <ion-icon name="add-outline" slot="icon-only"></ion-icon>
 </ion-button>
 ```
@@ -158,7 +165,7 @@ const rail = await enableVerticalControlArea({ buttonDefaultFill: 'solid' });
 | `outline` | Computed border color and width, with native glass |
 | `null` | Native glass with source icon colors |
 
-Inside `ion-buttons`, explicitly set `fill="solid"` to project a background; `buttonDefaultFill: 'solid'` does not override the group's clear default. Native Liquid Glass tinting can differ from the CSS color, especially for translucent backgrounds. With the iOS theme, ordinary `ion-buttons` retain group projection; `ion-buttons.ios-theme-disabled` projects eligible buttons individually. Projection classes do not change that grouping rule.
+Inside `ion-buttons`, explicitly set `fill="solid"` to project a background; `buttonDefaultFill: 'solid'` does not override the group's clear default. Native Liquid Glass tinting can differ from the CSS color, especially for translucent backgrounds. With the iOS theme, ordinary `ion-buttons` retain group projection; `ion-buttons.ios-theme-disabled` projects eligible buttons individually. Local projection settings do not change that grouping rule.
 
 ## Tab bar
 

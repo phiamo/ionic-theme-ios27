@@ -65,13 +65,17 @@ export const appendItem = (
   const badgeStyle = badge && visible(badge) ? getComputedStyle(badge) : undefined;
   const sourceFill = (child as HTMLIonButtonElement).fill;
   const projectionOwner = [child, child.closest('ion-buttons')].find((element) =>
-    element?.matches('.ios-theme-projection-source, .ios-theme-projection-system'),
+    element?.matches('[data-projection="source"], [data-projection="system"], .ios-theme-projection-source, .ios-theme-projection-system'),
   );
-  const projection = projectionOwner
-    ? projectionOwner.classList.contains('ios-theme-projection-system')
-      ? 'system'
-      : 'source'
-    : candidate.buttonProjection;
+  const attributeProjection = projectionOwner?.getAttribute('data-projection');
+  const projection =
+    attributeProjection === 'source' || attributeProjection === 'system'
+      ? attributeProjection
+      : projectionOwner
+        ? projectionOwner.classList.contains('ios-theme-projection-system')
+          ? 'system'
+          : 'source'
+        : candidate.buttonProjection;
   const systemButton = projection !== 'source' && isVerticalBarsSource(child) && child.matches('ion-button, ion-menu-button');
   // Ionic defaults buttons inside ion-buttons to clear, even when the app defaults to solid.
   const defaultFill = child.closest('ion-buttons') ? 'clear' : candidate.buttonDefaultFill;

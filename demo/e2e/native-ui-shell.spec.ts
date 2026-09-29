@@ -1132,26 +1132,35 @@ test('shell opt-out restores the element and descendants while preserving Web gl
   await expect(button).toHaveAttribute('data-native-ui-shell', '');
   const original = await glass();
   expect(original.filter).toContain('blur');
-  for (const target of [
+  for (const [index, target] of [
     button,
     button.locator('..'),
     page.locator('app-native-ui-shell > ion-header'),
     page.locator('app-native-ui-shell'),
-  ]) {
-    await target.evaluate((element) => element.classList.add('ios-theme-shell-disabled'));
+  ].entries()) {
+    await target.evaluate(
+      (element, useAttribute) => {
+        if (useAttribute) element.setAttribute('data-shell-disabled', '');
+        else element.classList.add('ios-theme-shell-disabled');
+      },
+      index % 2 === 0,
+    );
     await expect(button).not.toHaveAttribute('data-native-ui-shell');
     await expect(target.locator('[data-native-ui-shell]')).toHaveCount(0);
     await expect(button.locator('button')).toHaveCSS('visibility', 'visible');
     expect(await glass()).toEqual(original);
     await expect(tabs).toHaveAttribute('data-native-ui-shell', '');
-    await target.evaluate((element) => element.classList.remove('ios-theme-shell-disabled'));
+    await target.evaluate((element) => {
+      element.removeAttribute('data-shell-disabled');
+      element.classList.remove('ios-theme-shell-disabled');
+    });
     await expect(button).toHaveAttribute('data-native-ui-shell', '');
   }
-  await page.locator('html').evaluate((element) => element.classList.add('ios-theme-shell-disabled'));
+  await page.locator('html').evaluate((element) => element.setAttribute('data-shell-disabled', ''));
   await expect(page.locator('[data-native-ui-shell]')).toHaveCount(0);
   await button.click();
   await expect(page.locator('[data-save-count]')).toHaveText('1');
-  await page.locator('html').evaluate((element) => element.classList.remove('ios-theme-shell-disabled'));
+  await page.locator('html').evaluate((element) => element.removeAttribute('data-shell-disabled'));
   await expect(tabs).toHaveAttribute('data-native-ui-shell', '');
 });
 
@@ -1170,12 +1179,12 @@ test('shell opt-out in shared surface children keeps the whole surface on Web', 
     const surface = page.locator(surfaceSelector);
     const child = surface.locator(childSelector).first();
     await expect(surface).toHaveAttribute('data-native-ui-shell', '');
-    await child.evaluate((element) => element.classList.add('ios-theme-shell-disabled'));
+    await child.evaluate((element) => element.setAttribute('data-shell-disabled', ''));
     await expect(surface).not.toHaveAttribute('data-native-ui-shell');
     await expect(surface.locator('[data-native-ui-shell]')).toHaveCount(0);
     await expect(child).toHaveCSS('visibility', 'visible');
     await expect(button).toHaveAttribute('data-native-ui-shell', '');
-    await child.evaluate((element) => element.classList.remove('ios-theme-shell-disabled'));
+    await child.evaluate((element) => element.removeAttribute('data-shell-disabled'));
     await expect(surface).toHaveAttribute('data-native-ui-shell', '');
   }
 });
@@ -3284,6 +3293,18 @@ for (const projection of ['source', 'system'] as const) {
     await solid.evaluate((element) => element.classList.remove('ios-theme-projection-source', 'ios-theme-projection-system'));
     await expectProjection(opposite);
     await group.evaluate((element) => element.classList.remove('ios-theme-projection-source', 'ios-theme-projection-system'));
+    await expectProjection(projection);
+    await group.evaluate((element, mode) => element.setAttribute('data-projection', mode), opposite);
+    await expectProjection(opposite);
+    await solid.evaluate((element, mode) => element.classList.add(`ios-theme-projection-${mode}`), projection);
+    await expectProjection(projection);
+    await solid.evaluate((element, mode) => element.setAttribute('data-projection', mode), opposite);
+    await expectProjection(opposite);
+    await solid.evaluate((element) => element.removeAttribute('data-projection'));
+    await expectProjection(projection);
+    await solid.evaluate((element) => element.classList.remove('ios-theme-projection-source', 'ios-theme-projection-system'));
+    await expectProjection(opposite);
+    await group.evaluate((element) => element.removeAttribute('data-projection'));
     await expectProjection(projection);
   });
 }

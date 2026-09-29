@@ -114,7 +114,7 @@ When the application owner is disposed, call `await rail.destroy()` to restore t
 
 ### Optional: choose native button appearance (unreleased)
 
-The next release adds `buttonProjection` and local projection classes. These options are not available in the `1.2.0-1` installation above. See [Choose button appearance](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#choose-button-appearance) for availability and migration details.
+The next release adds `buttonProjection` and local projection settings. These options are not available in the `1.2.0-1` installation above. See [Choose button appearance](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#choose-button-appearance) for availability and migration details.
 
 The new default is `system`: SwiftUI styles vertical buttons and tints their icons. If your existing theme should supply their fill and colors, use:
 
@@ -122,7 +122,7 @@ The new default is `system`: SwiftUI styles vertical buttons and tints their ico
 const rail = await enableVerticalControlArea({ buttonProjection: 'source', buttonDefaultFill: 'solid' });
 ```
 
-The `solid` default suits ordinary Ionic buttons. Buttons inside `ion-buttons` still default to clear; set `fill="solid"` explicitly to project their background. For one-off exceptions, use the [local projection classes](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#override-individual-buttons-or-groups). These settings affect native vertical buttons only; Web clones keep their existing appearance.
+The `solid` default suits ordinary Ionic buttons. Buttons inside `ion-buttons` still default to clear; set `fill="solid"` explicitly to project their background. For one-off exceptions, use the [local projection settings](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#override-individual-buttons-or-groups). These settings affect native vertical buttons only; Web clones keep their existing appearance.
 
 ### If the preview does not appear
 

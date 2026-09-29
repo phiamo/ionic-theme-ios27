@@ -140,8 +140,26 @@ test.each(['source', 'system'] as const)('local projection overrides button, gro
   group.classList.remove(`ios-theme-projection-${opposite}`);
   expect(read().buttonFill).toBe(expectedFill(buttonProjection));
 
+  // Attributes participate in the same hierarchy, taking precedence only on the same element.
+  group.setAttribute('data-projection', opposite);
+  expect(read().buttonFill).toBe(expectedFill(opposite));
+  button.classList.add(`ios-theme-projection-${buttonProjection}`);
+  expect(read().buttonFill).toBe(expectedFill(buttonProjection));
+  button.setAttribute('data-projection', opposite);
+  expect(read().buttonFill).toBe(expectedFill(opposite));
+  for (const value of ['', 'invalid']) {
+    button.setAttribute('data-projection', value);
+    expect(read().buttonFill).toBe(expectedFill(buttonProjection));
+  }
+  button.removeAttribute('data-projection');
+  expect(read().buttonFill).toBe(expectedFill(buttonProjection));
+  button.classList.remove(`ios-theme-projection-${buttonProjection}`);
+  expect(read().buttonFill).toBe(expectedFill(opposite));
+  group.removeAttribute('data-projection');
+  expect(read().buttonFill).toBe(expectedFill(buttonProjection));
+
   const standalone = mount([undefined]);
-  standalone.classList.add('ios-theme-projection-source');
+  standalone.setAttribute('data-projection', 'source');
   expect(readCandidate(standalone, () => 'button', { buttonProjection, buttonDefaultFill: 'solid' })!.control.items[0].buttonFill).toBe(
     'solid',
   );
