@@ -17,6 +17,7 @@ final class ShellVerticalBarsModel: ObservableObject {
         let label: String
         let accessibilityLabel: String
         let image: UIImage?
+        let clear: Bool
         let background: Color?
         let borderColor: Color?
         let borderWidth: CGFloat
@@ -47,6 +48,7 @@ final class ShellVerticalBarsModel: ObservableObject {
             Item(id: source.id, label: source.content.label,
                  accessibilityLabel: source.content.accessibilityLabel,
                  image: rendering.image(source.content),
+                 clear: source.content.buttonFill == .clear,
                  background: source.content.backgroundColor.map { Color(uiColor: rendering.color($0)) },
                  borderColor: source.content.borderColor.map { Color(uiColor: rendering.color($0)) },
                  borderWidth: source.content.borderWidth ?? 0,
@@ -121,6 +123,21 @@ private func verticalBarsButton(_ item: ShellVerticalBarsModel.Item, model: Shel
             if let borderColor = item.borderColor {
                 Capsule().strokeBorder(borderColor, lineWidth: item.borderWidth).allowsHitTesting(false)
             }
+        }
+    }
+}
+
+@available(iOS 26.0, *)
+private struct ShellVerticalBarsButton: ToolbarContent {
+    @ObservedObject var model: ShellVerticalBarsModel
+    let id: String
+    let placement: ToolbarItemPlacement
+
+    // Observe here so same-ID updates also refresh the shared toolbar background.
+    var body: some ToolbarContent {
+        if let item = model.groups.lazy.flatMap(\.items).first(where: { $0.id == id }) {
+            ToolbarItem(placement: placement) { verticalBarsButton(item, model: model) }
+                .sharedBackgroundVisibility(item.clear ? .hidden : .automatic)
         }
     }
 }
@@ -238,20 +255,22 @@ private struct ShellVerticalBarsToolbar: ViewModifier {
                 .axisBehavior(.verticalPreferred)
             }
             ForEach(model.groups.filter { $0.slot == .start }) { group in
-                ToolbarItemGroup(placement: .topBarLeading) {
-                    ForEach(group.items) { item in
-                        verticalBarsButton(item, model: model)
-                    }
+                if group.id != model.groups.first(where: { $0.slot == .start })?.id {
+                    ToolbarSpacer(.fixed, placement: .topBarLeading)
                 }
-                .axisBehavior(.verticalPreferred)
+                ForEach(group.items) { item in
+                    ShellVerticalBarsButton(model: model, id: item.id, placement: .topBarLeading)
+                    .axisBehavior(.verticalPreferred)
+                }
             }
             ForEach(model.groups.filter { $0.slot != .start }) { group in
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    ForEach(group.items) { item in
-                        verticalBarsButton(item, model: model)
-                    }
+                if group.id != model.groups.first(where: { $0.slot != .start })?.id {
+                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 }
-                .axisBehavior(.verticalPreferred)
+                ForEach(group.items) { item in
+                    ShellVerticalBarsButton(model: model, id: item.id, placement: .topBarTrailing)
+                    .axisBehavior(.verticalPreferred)
+                }
             }
         }
     }
@@ -270,10 +289,11 @@ private struct ShellVerticalBarsLegacyToolbar: ViewModifier {
                 }
             }
             ForEach(model.groups) { group in
-                ToolbarItemGroup(placement: .primaryAction) {
-                    ForEach(group.items) { item in
-                        verticalBarsButton(item, model: model)
-                    }
+                if group.id != model.groups.first?.id {
+                    ToolbarSpacer(.fixed, placement: .primaryAction)
+                }
+                ForEach(group.items) { item in
+                    ShellVerticalBarsButton(model: model, id: item.id, placement: .primaryAction)
                 }
             }
         }

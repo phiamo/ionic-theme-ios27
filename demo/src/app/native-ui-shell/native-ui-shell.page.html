@@ -2,7 +2,7 @@
   <ion-toolbar>
     <ion-buttons slot="start"><ion-back-button defaultHref="/main/index"></ion-back-button></ion-buttons>
     <ion-title>Native UI Shell</ion-title>
-    <ion-buttons slot="end" [style.display]="hidden() ? 'none' : null" [class.ionic-theme-disabled]="themeDisabled()">
+    <ion-buttons slot="end" [style.display]="hidden() ? 'none' : null" [class.ios-theme-disabled]="themeDisabled()">
       <ion-button fill="clear" type="button">Cancel</ion-button>
       <ion-button [fill]="fill()" type="submit" [form]="formRef" [disabled]="disabled()" aria-label="Save">
         <ion-icon slot="start" name="heart" aria-hidden="true"></ion-icon>

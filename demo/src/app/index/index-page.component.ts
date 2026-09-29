@@ -18,7 +18,7 @@ import {
   IonToolbar,
   ToggleCustomEvent,
 } from '@demo/ionic';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { setVerticalControlAreaPlacement } from '../../../../src/vertical-bars';
 import { Foldable } from '@erkamyaman/capacitor-foldable';
 
@@ -47,6 +47,7 @@ interface IComponent {
     IonItemGroup,
     IonToggle,
     IonMenuButton,
+    RouterLink,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

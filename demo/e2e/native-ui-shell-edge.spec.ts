@@ -223,20 +223,22 @@ for (const fixed of [false, true]) {
     await web.setViewportSize({ width: 402, height: 874 });
     await mockNative(page);
     await Promise.all([page.goto('/main/index'), web.goto('/main/index')]);
-    const backSelector = '.ion-page:not(.ion-page-hidden) > ion-header > ion-toolbar ion-back-button';
+    let destination = 'app-button';
+    const backSelector = () => `${destination}.ion-page:not(.ion-page-hidden) > ion-header > ion-toolbar ion-back-button`;
     const appearance = (p: Page) =>
-      p.locator(backSelector).evaluate((button) => ({
+      p.locator(backSelector()).evaluate((button) => ({
         frame: button.getBoundingClientRect().toJSON(),
         label: button.shadowRoot?.querySelector('[part=text]')?.textContent?.trim() ?? '',
         icon: button.shadowRoot?.querySelector('ion-icon')?.getAttribute('icon'),
         accessibilityLabel: button.shadowRoot?.querySelector('[part=native]')?.getAttribute('aria-label'),
       }));
-    const checkBack = async () => {
-      await Promise.all([page, web].map((p) => expect(p.locator(backSelector)).toHaveCount(1)));
+    const checkBack = async (pageTag: string) => {
+      destination = pageTag;
+      await Promise.all([page, web].map((p) => expect(p.locator(backSelector())).toHaveCount(1)));
       if (fixed) {
         await Promise.all(
           [page, web].map((p) =>
-            p.locator(backSelector).evaluate((button) => {
+            p.locator(backSelector()).evaluate((button) => {
               const owner = button.closest('.ion-page')!;
               owner.querySelectorAll('ion-content ion-header[collapse=condense]').forEach((header) => header.remove());
               // Replace this sample's collapsing configuration with a fixed header fixture.
@@ -246,10 +248,10 @@ for (const fixed of [false, true]) {
             }),
           ),
         );
-        await expect(page.locator(backSelector)).toHaveAttribute('data-native-ui-shell', '');
+        await expect(page.locator(backSelector())).toHaveAttribute('data-native-ui-shell', '');
       } else {
-        await expect(page.locator(backSelector)).not.toHaveAttribute('data-native-ui-shell');
-        await expect(page.locator(backSelector)).toBeVisible();
+        await expect(page.locator(backSelector())).not.toHaveAttribute('data-native-ui-shell');
+        await expect(page.locator(backSelector())).toBeVisible();
       }
       await expect.poll(async () => JSON.stringify(await appearance(page)) === JSON.stringify(await appearance(web))).toBe(true);
       if (fixed) {
@@ -263,7 +265,7 @@ for (const fixed of [false, true]) {
     const clickBack = async (p: Page, count = 1) => {
       if (p === page && fixed) await activate(p, 'ion-back-button', undefined, count);
       else
-        await p.locator(backSelector).evaluate((button: HTMLIonBackButtonElement, count) => {
+        await p.locator(backSelector()).evaluate((button: HTMLIonBackButtonElement, count) => {
           for (let i = 0; i < count; i++) button.click();
         }, count);
     };
@@ -273,15 +275,15 @@ for (const fixed of [false, true]) {
     for (let cycle = 0; cycle < 3; cycle++) {
       await Promise.all([page, web].map((p) => p.getByRole('button', { name: 'button', exact: true }).click()));
       await Promise.all([page, web].map((p) => expect(p).toHaveURL('/main/index/button')));
-      await checkBack();
+      await checkBack('app-button');
       await Promise.all([page, web].map((p) => clickPush(p)));
       await Promise.all([page, web].map((p) => expect(p).toHaveURL('/main/index/action-sheet')));
-      await checkBack();
+      await checkBack('app-action-sheet');
       await Promise.all([page, web].map((p) => clickBack(p, cycle === 2 ? 3 : 1)));
       await Promise.all(
         [page, web].map((p) => expect(p, `${p === page ? 'native' : 'Web'} back cycle ${cycle}`).toHaveURL('/main/index/button')),
       );
-      await checkBack();
+      await checkBack('app-button');
       await Promise.all([page, web].map((p) => clickBack(p)));
       await Promise.all([page, web].map((p) => expect(p).toHaveURL('/main/index')));
       await expect(page.locator('.ion-page-hidden [data-native-ui-shell]')).toHaveCount(0);

@@ -53,6 +53,8 @@ iPhone Duo support, including standalone vertical bars, is available as a **prev
 
 iPhone Duo support — the vertical system rail, hinge posture, and the posture-driven split-pane layout — is independent of the iOS 27 theme and the full Native UI Shell. See [iPhone Duo support](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo) for the complete setup, including device-layout monitoring without a projection runtime.
 
+See [Vertical Bars](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars) for rail layout classes, control eligibility and native button appearance.
+
 For standalone setup while keeping your existing theme, see [iPhone Duo with your existing theme](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo-with-original-theme).
 
 ## Two-line inset list items

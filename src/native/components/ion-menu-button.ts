@@ -1,5 +1,6 @@
 import { createCandidate, appendItem } from '../shared/candidate';
 import type { Candidate, Identify } from '../shared/candidate';
+import type { VerticalControlAreaOptions } from '../definitions';
 import { childElements, inFixedToolbar } from '../shared/dom';
 
 export const tag = 'ion-menu-button';
@@ -13,11 +14,11 @@ export const append = (candidate: Candidate, button: HTMLIonMenuButtonElement, i
   return !!content && !!appendItem(candidate, button, id, content);
 };
 
-export const read = (group: HTMLElement, id: Identify): Candidate | undefined => {
+export const read = (group: HTMLElement, id: Identify, options: VerticalControlAreaOptions = {}): Candidate | undefined => {
   const children = group.matches('ion-buttons') ? childElements(group) : [];
   if (!inFixedToolbar(group) || children.length !== 1) return;
   const button = children[0];
   if (!button?.matches(`${tag}${group.closest('ion-app.ios-theme-vertical-bars') ? '' : '.ios'}`)) return;
-  const candidate = createCandidate(group, tag, id);
+  const candidate = createCandidate(group, tag, id, options);
   return append(candidate, button as HTMLIonMenuButtonElement, id) ? candidate : undefined;
 };

@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, inject, OnDestroy, OnInit, viewChild } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, ElementRef, inject, OnDestroy, OnInit, viewChild } from '@angular/core';
 import {
   IonContent,
   IonIcon,
@@ -16,9 +16,10 @@ import {
 } from '@demo/ionic';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-// import { registerTabBarEffect } from '@rdlabo/ionic-theme-ios27';
 import { registeredEffect, registerTabBarEffect } from '../../../../src';
+import { applyFoldStateClasses } from '../../../../src/vertical-bars';
 import { Foldable, type FoldState } from '@erkamyaman/capacitor-foldable';
 import { Capacitor } from '@capacitor/core';
 
@@ -46,20 +47,26 @@ export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter,
   readonly #el = inject(ElementRef);
   readonly splitPane = viewChild.required<IonSplitPane, ElementRef<HTMLIonSplitPaneElement>>('splitPane', { read: ElementRef });
   #hingeListener?: { remove(): Promise<void> };
-  #destroyed = false;
+  readonly #destroyRef = inject(DestroyRef);
   readonly registeredGestures: registeredEffect[] = [];
   ngOnInit() {
-    this.#router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((params) => {
-      const tabBar = this.#el.nativeElement.querySelector('ion-tab-bar');
-      if (!tabBar) {
-        return;
-      }
-      if (['/main/settings', '/main/index/toolbar'].includes(params.urlAfterRedirects)) {
-        tabBar.classList.add('tab-bar-hidden');
-      } else if (tabBar) {
-        tabBar.classList.remove('tab-bar-hidden');
-      }
-    });
+    this.#router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.#destroyRef),
+      )
+      .subscribe((params) => {
+        const tabBar = this.#el.nativeElement.querySelector('ion-tab-bar');
+        if (!tabBar) {
+          return;
+        }
+        const path = params.urlAfterRedirects.split(/[?#]/, 1)[0];
+        if (['/main/settings', '/main/index/toolbar', '/main/index/button-projection'].includes(path)) {
+          tabBar.classList.add('tab-bar-hidden');
+        } else {
+          tabBar.classList.remove('tab-bar-hidden');
+        }
+      });
   }
 
   ngAfterViewInit() {
@@ -67,23 +74,23 @@ export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter,
   }
 
   setFoldState(fold: FoldState) {
-    const splitPane = this.splitPane().nativeElement;
-    // The width rules key off the `when` attribute, so go through setAttribute.
-    const expanded = fold.state === 'half-opened' || (fold.state === 'flat' && !!fold.hingeBounds);
-    splitPane.setAttribute('when', expanded ? '(min-width: 900px)' : '(min-width: 992px)');
-    splitPane.classList.toggle('ios-theme-split-pane-half-open', fold.state === 'half-opened');
+    const root = this.#el.nativeElement.closest('ion-app') as HTMLElement;
+    applyFoldStateClasses(root, fold);
+    // Visibility remains an application choice; the helper controls state classes.
+    this.splitPane().nativeElement.setAttribute(
+      'when',
+      root.classList.contains('ios-theme-fold-expanded') ? '(min-width: 900px)' : '(min-width: 992px)',
+    );
   }
 
   async observeHinge() {
     if (Capacitor.getPlatform() !== 'ios') return;
-    let receivedEvent = false;
     this.#hingeListener = await Foldable.addListener('foldStateChange', (fold) => {
-      receivedEvent = true;
-      if (!this.#destroyed) this.setFoldState(fold);
+      if (!this.#destroyRef.destroyed) this.setFoldState(fold);
     });
-    if (this.#destroyed) return this.#releaseHinge();
+    if (this.#destroyRef.destroyed) return this.#releaseHinge();
     const fold = await Foldable.getFoldState();
-    if (!this.#destroyed && !receivedEvent) this.setFoldState(fold);
+    if (!this.#destroyRef.destroyed) this.setFoldState(fold);
   }
 
   #releaseHinge() {
@@ -92,8 +99,8 @@ export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter,
   }
 
   ngOnDestroy() {
-    this.#destroyed = true;
     this.#releaseHinge();
+    this.ionViewDidLeave();
   }
 
   ionViewDidEnter() {
@@ -104,6 +111,6 @@ export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter,
   }
 
   ionViewDidLeave() {
-    this.registeredGestures.forEach((gesture) => gesture.destroy());
+    this.registeredGestures.splice(0).forEach((gesture) => gesture.destroy());
   }
 }

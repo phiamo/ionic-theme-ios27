@@ -135,3 +135,33 @@ To get more help on the Angular CLI use `ng help` or check out the [Angular CLI 
 For Ionic Framework, visit [Ionic Documentation](https://ionicframework.com/docs).
 
 For Playwright, visit [Playwright Documentation](https://playwright.dev/).
+
+## Button projection
+
+Open `/main/index/button-projection` after enabling iPhone Duo Mode on the index page.
+The page compares omitted, clear, solid, and outline fills, custom CSS backgrounds,
+disabled controls, and grouped versus individual projection. Tabs are hidden on this
+page to leave room for the four buttons. Tap a projected button
+to check the last-action label.
+
+Native appearance comparisons require an iOS build on a supported simulator or device.
+The browser uses Web clones: use it to check layout and actions, not `system` versus
+`source` appearance.
+
+Choose the styling to build (run these commands from `demo`):
+
+| Styling | Browser preview | Build before `npx cap sync ios` | Source default fill |
+| --- | --- | --- | --- |
+| iOS theme | `npm start` | `npm run build -- --configuration=production` | `null` (glass) |
+| Stock Ionic, with only `vertical-bars.css` | `npm start -- --configuration=ionic-default` | `npm run build -- --configuration=production,ionic-default` | `solid` (set automatically) |
+
+Build, sync and run the iOS app. Both configurations default to `system` projection.
+To compare appearances:
+
+1. Open `/main/index?verticalBarsOnly`, enable iPhone Duo Mode, and select **button-projection**.
+2. Restart at `/main/index?verticalBarsOnly&buttonProjection=source` and open the same page.
+3. Compare fills, disabled controls and grouped buttons. Enabled actions update the last-action label; disabled actions must not.
+
+The startup query applies for the runtime's lifetime. Leave `buttonDefaultFill` out
+of the query to use the chosen configuration's default shown above. For local
+exceptions and fill rules, see [Choose button appearance](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#choose-button-appearance).

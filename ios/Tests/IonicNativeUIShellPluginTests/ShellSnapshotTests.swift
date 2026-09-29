@@ -53,16 +53,19 @@ final class ShellSnapshotTests: XCTestCase {
         guard #available(iOS 26.0, *) else { throw XCTSkip("Requires SwiftUI adaptive controls") }
         let controls = try decode([control(["kind": "ion-buttons", "items": [
             item(["backgroundColor": "rgb(0, 122, 255)"]),
+            item(["id": "clear", "buttonFill": "clear"]),
             item(["id": "outline", "borderColor": "rgb(255, 0, 0)", "borderWidth": 2.0])
         ]])]).controls
         XCTAssertEqual(controls.first?.items.first?.content.backgroundColor, "rgb(0, 122, 255)")
         let model = ShellVerticalBarsModel()
         model.apply(controls, rendering: ShellRendering())
         XCTAssertNotNil(model.groups.first?.items.first?.background)
+        XCTAssertEqual(model.groups.first?.items.map(\.clear), [false, true, false])
         XCTAssertNotNil(model.groups.first?.items.last?.borderColor)
         XCTAssertEqual(model.groups.first?.items.last?.borderWidth, 2)
         model.apply(try decode([control(["kind": "ion-button"])]).controls, rendering: ShellRendering())
         XCTAssertNil(model.groups.first?.items.first?.background)
+        XCTAssertEqual(model.groups.first?.items.first?.clear, false)
         XCTAssertNil(model.groups.first?.items.first?.borderColor)
         XCTAssertEqual(model.groups.first?.items.first?.borderWidth, 0)
     }

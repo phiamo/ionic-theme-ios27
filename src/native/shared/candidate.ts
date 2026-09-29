@@ -3,6 +3,7 @@ import { frame, isDark, isVerticalBarsSource, text, visible } from './dom';
 import { iconSource } from './icons';
 
 export interface Candidate {
+  buttonProjection?: VerticalControlAreaOptions['buttonProjection'];
   buttonDefaultFill?: VerticalControlAreaOptions['buttonDefaultFill'];
   element: HTMLElement;
   sources?: HTMLElement[];
@@ -24,6 +25,7 @@ export const createCandidate = (
   const style = getComputedStyle(element);
   return {
     element,
+    buttonProjection: options.buttonProjection,
     buttonDefaultFill: options.buttonDefaultFill,
     control: {
       id: id(element),
@@ -62,9 +64,30 @@ export const appendItem = (
   const badge = child.querySelector<HTMLElement>('ion-badge');
   const badgeStyle = badge && visible(badge) ? getComputedStyle(badge) : undefined;
   const sourceFill = (child as HTMLIonButtonElement).fill;
-  const fill = !sourceFill || sourceFill === 'default' ? candidate.buttonDefaultFill : sourceFill;
-  const outline =
-    isVerticalBarsSource(child) && child.matches('ion-button') && fill === 'outline' ? getComputedStyle(native ?? child) : undefined;
+  const projectionOwner = [child, child.closest('ion-buttons')].find((element) =>
+    element?.matches('[data-projection="source"], [data-projection="system"], .ios-theme-projection-source, .ios-theme-projection-system'),
+  );
+  const attributeProjection = projectionOwner?.getAttribute('data-projection');
+  const projection =
+    attributeProjection === 'source' || attributeProjection === 'system'
+      ? attributeProjection
+      : projectionOwner
+        ? projectionOwner.classList.contains('ios-theme-projection-system')
+          ? 'system'
+          : 'source'
+        : candidate.buttonProjection;
+  const systemButton = projection !== 'source' && isVerticalBarsSource(child) && child.matches('ion-button, ion-menu-button');
+  // Ionic defaults buttons inside ion-buttons to clear, even when the app defaults to solid.
+  const defaultFill = child.closest('ion-buttons') ? 'clear' : candidate.buttonDefaultFill;
+  const fill = !sourceFill || sourceFill === 'default' ? defaultFill : sourceFill;
+  const buttonFill =
+    !systemButton &&
+    isVerticalBarsSource(child) &&
+    child.matches('ion-button') &&
+    (fill === 'clear' || fill === 'solid' || fill === 'outline')
+      ? fill
+      : undefined;
+  const outline = buttonFill === 'outline' ? getComputedStyle(native ?? child) : undefined;
   const item: ShellItem = {
     id: id(child),
     ...frame(child.getBoundingClientRect(), candidate.element.getBoundingClientRect()),
@@ -81,11 +104,10 @@ export const appendItem = (
     selected: !!(child as ItemElement).selected,
     fontSize: parseFloat(labelStyle.fontSize),
     fontWeight: parseInt(labelStyle.fontWeight, 10) || 400,
-    color: getComputedStyle(native ?? child).color,
-    backgroundColor:
-      isVerticalBarsSource(child) && child.matches('ion-button') && fill === 'solid'
-        ? getComputedStyle(native ?? child).backgroundColor
-        : undefined,
+    color: systemButton ? 'currentColor' : getComputedStyle(native ?? child).color,
+    iconTemplate: systemButton ? true : undefined,
+    buttonFill,
+    backgroundColor: buttonFill === 'solid' ? getComputedStyle(native ?? child).backgroundColor : undefined,
     borderColor: outline?.borderTopColor,
     borderWidth: outline ? parseFloat(outline.borderTopWidth) : undefined,
     badge: badgeStyle

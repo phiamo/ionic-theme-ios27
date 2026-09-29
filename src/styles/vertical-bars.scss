@@ -11,6 +11,7 @@
   initial-value: 320px;
 }
 
+ion-app.ios-theme-fold-half-opened ion-split-pane.split-pane-fold-layout,
 ion-split-pane.ios-theme-split-pane-half-open {
   --ios-theme-split-pane-width: 50vw;
 }
@@ -282,7 +283,8 @@ html.ios-theme-native-ui-shell-prehide
     [icon],
     [color],
     .ios-theme-vertical-bars-back-web-owned,
-    .ionic-theme-disabled,
+    .ios-theme-shell-disabled,
+    [data-shell='disabled'],
     .ios-theme-disabled,
     .ios26-disabled,
     .ios-theme-vertical-bars-back-button-projection
@@ -295,7 +297,7 @@ html.ios-theme-native-ui-shell-prehide
       ion-footer[collapse] *,
       ion-buttons.ios-theme-horizontal-only *,
       .ios-theme-shell-disabled *,
-      .ionic-theme-disabled *,
+      [data-shell='disabled'] *,
       .ios-theme-disabled *,
       .ios26-disabled *
     )

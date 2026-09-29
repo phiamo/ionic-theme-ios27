@@ -104,19 +104,23 @@ import { enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-ba
 const rail = await enableVerticalControlArea();
 ```
 
-If your existing theme gives buttons a CSS background without an explicit `fill="solid"`, opt into background projection:
-
-```ts
-const rail = await enableVerticalControlArea({ buttonDefaultFill: 'solid' });
-```
-
-`buttonDefaultFill` accepts `'solid'` (Ionic's default design) or `null` (the iOS theme's glass design). Omitting it is equivalent to `null`. It applies only to native vertical button projection when Ionic's `fill` is omitted or `default`. Explicit `clear`, `solid`, and `outline` values take precedence. Solid projection reads the existing computed foreground and background colors; outline projection reads the computed border. Source buttons and Web clones are unchanged. Omitting the option preserves the existing behavior. Native Liquid Glass tinting may differ visually from the CSS background, especially for translucent colors.
-
 **What you should see:** your existing tab bar moves to the side, and fixed-toolbar buttons with an `ion-icon` or SVG using `slot="icon-only"` appear there too. Content keeps its existing theme and leaves room for the controls. The Web tab rail displays icons; pressing and dragging reveals tab labels.
 
 Use your existing Ionic click handlers, routing, and form associations. All button fills (`default`, `clear`, `solid`, and `outline`) use the same `icon-only` rule, including submit buttons. Actions without that slot remain horizontal. Add `.ios-theme-horizontal-only` to an `ion-buttons` group or individual `ion-button` to keep an action in the horizontal toolbar.
 
 When the application owner is disposed, call `await rail.destroy()` to restore the original controls and release the runtime. If you already use `enableNativeUIShell()`, keep that runtime and follow the [shared placement guide](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#project-controls-into-the-rail).
+
+### Optional: choose native button appearance
+
+`buttonProjection` and local projection settings are available in `1.2.0`. See [Choose button appearance](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#choose-button-appearance) for availability and migration details.
+
+The new default is `system`: SwiftUI styles vertical buttons and tints their icons. If your existing theme should supply their fill and colors, use:
+
+```ts
+const rail = await enableVerticalControlArea({ buttonProjection: 'source', buttonDefaultFill: 'solid' });
+```
+
+The `solid` default suits ordinary Ionic buttons. Buttons inside `ion-buttons` still default to clear; set `fill="solid"` explicitly to project their background. For one-off exceptions, use the [local projection settings](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#override-individual-buttons-or-groups). These settings affect native vertical buttons only; Web clones keep their existing appearance.
 
 ### If the preview does not appear
 
@@ -124,7 +128,7 @@ When the application owner is disposed, call `await rail.destroy()` to restore t
 | --- | --- |
 | No space at the side | Load `vertical-bars.css` and put the class on `ion-app`. |
 | Space appears, but controls stay horizontal | Start `enableVerticalControlArea()` after mounting the app root. Use existing tabs or `slot="icon-only"` actions in a fixed header/footer toolbar. |
-| One action stays horizontal | Check for `slot="icon-only"` on the icon and a fixed toolbar outside scrolling content. Explicitly excluded controls and controls in centered modals stay horizontal; `fill` and `type="submit"` do not prevent movement. See [control requirements](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#toolbar-actions). |
+| One action stays horizontal | Check for `slot="icon-only"` on the icon and a fixed toolbar outside scrolling content. Explicitly excluded controls and controls in centered modals stay horizontal; `fill` and `type="submit"` do not prevent movement. See [control requirements](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars#toolbar-actions). |
 
 ## Connect an iPhone Duo
 
@@ -137,41 +141,18 @@ npx cap sync ios
 
 Use Capacitor 8.5 or later and build with Xcode 27.1 or newer for actual rail placement and hinge posture on iOS 27.1. Native UI Shell uses Swift Package Manager; existing CocoaPods apps can follow [Native UI Shell setup](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/native-ui-shell#enable-the-shell). Keep this package's `vertical-bars.css`; the device plugin's `ionic-tabs.css` is not needed with our rail projection.
 
-Replace the browser-only startup above with this after `ion-app` is mounted:
+Replace the browser-only startup with the [device placement setup](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#project-controls-into-the-rail). That setup sends initial values and `barPlacementChange` events to `setVerticalControlAreaPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset })`, with subscriptions and cleanup kept in your application.
 
-```ts
-import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
-import { enableVerticalControlArea } from '@rdlabo/ionic-theme-ios27/vertical-bars';
-import { Foldable } from '@erkamyaman/capacitor-foldable';
+Pass both the requested and native edge with Foldable's measured inset. The placement API resolves RTL. A null edge restores the ordinary layout.
 
-const rail = await enableVerticalControlArea();
-let layoutListener: PluginListenerHandle | undefined;
-
-if (Capacitor.getPlatform() === 'ios') {
-  layoutListener = await Foldable.addListener('barPlacementChange', ({ verticalBarEdge, inset }) =>
-    rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset }),
-  );
-  const { verticalBarEdge, inset } = await Foldable.getBarPlacement();
-  rail.setPlacement({ edge: verticalBarEdge, nativeEdge: verticalBarEdge, inset });
-}
-
-// Call when the application owner is disposed.
-const stopVerticalArea = async () => {
-  await layoutListener?.remove();
-  await rail.destroy();
-};
-```
-
-`setPlacement()` resolves the logical edge through the document direction. Pass Foldable’s measured `inset` with the reported edge so the theme reserves the actual bar width and follows width changes. An inset of `0` clears the explicit width; manually requested rails then use the theme’s CSS safe-area rules. A `null` edge restores the ordinary layout. Devices without a reported rail return `null`, so this example restores the ordinary layout there. On iOS 27.1 or later, Foldable can infer Duo bar placement from safe-area insets when the app is built with an older SDK. To deliberately request a rail when the plugin reports no edge, have your application choose a fixed edge with `rail.setPlacement('trailing')` instead of applying that null placement. This simulates the layout; it does not provide a real system rail or hinge measurements.
-
-On supported iOS, controls in the rail use the system SwiftUI appearance; your custom Web styling still applies to ordinary content and horizontal controls. Web and Android use Web clones.
+On supported iOS, controls in the rail use native SwiftUI rendering; your custom Web styling still applies to ordinary content and horizontal controls. Web and Android use Web clones.
 
 ## Use hinge posture without projecting controls
 
-If your existing theme needs only a posture-driven split pane or a layout switch, do not start a projection runtime or add `.ios-theme-vertical-bars`. Use `Foldable.getFoldState()` and `foldStateChange` directly, removing the listener when finished. There is no separate start/stop monitoring call.
+If your existing theme needs only a posture-driven split pane or a layout switch, do not start a projection runtime or add `.ios-theme-vertical-bars`. Pass `Foldable.getFoldState()` results and `foldStateChange` events to `applyFoldStateClasses(root, fold)`, removing the listener when finished. There is no separate start/stop monitoring call.
 
 See [Read the device layout](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#read-the-device-layout) for the subscription example, null values, and monitoring lifetime. See [Adapt the split pane](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo#adapt-the-split-pane) for the opt-in width rules and half-open state.
 
 ## Shared layout rules and API
 
-Safe-area handling, overlays, RTL, control eligibility, Web simulation, and the handle API are documented in [iPhone Duo support](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/iphone-duo). Those rules apply to this standalone setup too.
+Safe-area handling, overlays, RTL, control eligibility, Web simulation, and the handle API are documented in [Vertical Bars](https://docs.rdlabo.dev/projects/ionic-theme-ios27/docs/vertical-bars). Those rules apply to this standalone setup too.

@@ -11,10 +11,20 @@ export interface NativeUIShellStatus {
 }
 
 export interface VerticalControlAreaOptions {
-  /** Default fill for native vertical button projection when Ionic's fill is omitted or `default`.
-   * Use `solid` for Ionic's default design, or `null` for the iOS theme's glass design.
-   * Omitted is equivalent to `null` and preserves existing behavior.
-   * Explicit button fills take precedence. Source buttons and Web clones are unchanged.
+  /** Appearance of native vertical ion-button and ion-menu-button actions.
+   * `system` (default) uses SwiftUI styling and template icons; `source` projects supported Ionic fill and colors.
+   * Local data-projection="source|system" or ios-theme-projection-source / ios-theme-projection-system take precedence:
+   * the button itself, then its nearest ion-buttons, then this option. On the same element, a valid attribute wins;
+   * otherwise system wins if both classes are present. Invalid attribute values are ignored.
+   * Local settings update live; removing them restores inheritance. Actions, disabled state and grouping are preserved.
+   * Does not affect back buttons, tabs, FABs, horizontal controls, source elements or Web clones.
+   */
+  buttonProjection?: 'source' | 'system';
+  /** Default fill for native vertical ion-button actions resolved to `source`, including local overrides.
+   * Use `solid` for Ionic's default design, or `null` (also the omitted default) for the iOS theme's glass design.
+   * Applies when fill is omitted or `default`, outside ion-buttons. Inside ion-buttons the default is clear.
+   * Explicit clear, solid and outline take precedence; clear and outline cannot be configured as defaults.
+   * Source elements and Web clones are unchanged.
    */
   buttonDefaultFill?: 'solid' | null;
 }
@@ -91,6 +101,8 @@ export interface ShellItem extends Frame {
   fontSize: number;
   fontWeight: number;
   color: string;
+  /** Resolved ion-button fill for vertical projection; clear omits the native glass background. */
+  buttonFill?: 'clear' | 'solid' | 'outline';
   backgroundColor?: string;
   borderColor?: string;
   borderWidth?: number;

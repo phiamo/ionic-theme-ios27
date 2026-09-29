@@ -74,6 +74,8 @@ export const prehideVerticalBarsToolbarSources = (doc: Document): { suspend: () 
     };
     const sources = scope.matches('ion-back-button') ? [scope] : Array.from(scope.querySelectorAll<HTMLElement>(sourceSelector));
     sources.forEach((element) => {
+      // Shell opt-out is temporary; decide initial placement once it is lifted.
+      if (isShellDisabled(element)) return;
       if (!modalUsesVerticalBars(element) || element.closest(overlays) || (scope.matches('.ion-page') && routedPage(element) !== scope))
         return;
       if (element.matches('ion-buttons')) {
@@ -228,7 +230,7 @@ export const prehideVerticalBarsToolbarSources = (doc: Document): { suspend: () 
     childList: true,
     attributes: true,
     attributeOldValue: true,
-    attributeFilter: ['class', 'hidden', 'inert', 'icon', 'color'],
+    attributeFilter: ['class', 'data-shell', 'hidden', 'inert', 'icon', 'color'],
   });
   return {
     suspend: () => {
