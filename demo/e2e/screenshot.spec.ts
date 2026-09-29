@@ -179,12 +179,18 @@ test('Settings split-menu widths on iPhone Duo', async ({ page }) => {
   });
   await expect(splitPane).toHaveClass(/split-pane-visible/);
   await page.evaluate(() => document.fonts.ready);
+  await expect(splitPane).toHaveCSS('--ios-theme-split-pane-width', '320px');
   await expect(page).toHaveScreenshot('duo-split-menu-flat.png', { animations: 'disabled' });
 
   await splitPane.evaluate((element) => {
-    element.classList.add('ios-theme-split-pane-half-open');
+    element.closest('ion-app')!.classList.add('ios-theme-fold-half-opened');
   });
+  await expect(splitPane).toHaveCSS('--ios-theme-split-pane-width', '475.5px');
   await expect(page).toHaveScreenshot('duo-split-menu-half-open.png', { animations: 'disabled' });
+
+  // Half-open state must not resize panes that have not opted in.
+  await splitPane.evaluate((element) => element.classList.remove('split-pane-fold-layout'));
+  await expect(splitPane).toHaveCSS('--ios-theme-split-pane-width', '320px');
 });
 
 test.describe('Screenshot Tests - VerticalBars Back Button', () => {
