@@ -235,6 +235,13 @@ for (const fixed of [false, true]) {
     const checkBack = async (pageTag: string) => {
       destination = pageTag;
       await Promise.all([page, web].map((p) => expect(p.locator(backSelector())).toHaveCount(1)));
+      // Both pages remain visible during a push. Wait until Ionic retires the
+      // outgoing page before comparing headers or activating a native control.
+      await Promise.all(
+        [page, web].map((p) =>
+          expect(p.locator(`${pageTag}.ion-page`).locator('..').locator(':scope > .ion-page:not(.ion-page-hidden)')).toHaveCount(1),
+        ),
+      );
       if (fixed) {
         await Promise.all(
           [page, web].map((p) =>
