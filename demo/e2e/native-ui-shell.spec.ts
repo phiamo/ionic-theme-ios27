@@ -1164,6 +1164,42 @@ test('shell opt-out restores the element and descendants while preserving Web gl
   await expect(tabs).toHaveAttribute('data-native-ui-shell', '');
 });
 
+for (const renderer of ['native', 'web'] as const) {
+  test(`initial shell opt-out can rejoin the ${renderer} rail without page re-entry`, async ({ page }) => {
+    await mockNative(page, renderer === 'web');
+    await page.goto('/main/index/native-ui-shell?verticalBarsOnly');
+    await page.locator('ion-app').evaluate((app) => app.classList.add('ios-theme-vertical-bars'));
+    for (const attribute of ['class', 'data-shell']) {
+      const value = attribute === 'class' ? 'ios-theme-shell-disabled' : 'disabled';
+      await page.locator('app-native-ui-shell ion-header').evaluate(
+        (header, { attribute, value }) => {
+          const toolbar = document.createElement('ion-toolbar');
+          toolbar.id = 'initial-shell-opt-out';
+          toolbar.setAttribute(attribute, value);
+          toolbar.innerHTML = `<ion-buttons><ion-button aria-label="First"><ion-icon slot="icon-only" name="add"></ion-icon></ion-button><ion-button aria-label="Second"><ion-icon slot="icon-only" name="heart"></ion-icon></ion-button></ion-buttons><ion-buttons class="ios-theme-disabled"><ion-button id="initial-individual" aria-label="Individual"><ion-icon slot="icon-only" name="add"></ion-icon></ion-button></ion-buttons>`;
+          header.append(toolbar);
+        },
+        { attribute, value },
+      );
+      const toolbar = page.locator('#initial-shell-opt-out');
+      const individual = toolbar.locator('#initial-individual');
+      const grouped = toolbar.locator(renderer === 'native' ? 'ion-buttons' : 'ion-buttons ion-button').first();
+      await expect(individual).toHaveClass(/hydrated/);
+      await expect(individual).toBeVisible();
+      await expect(toolbar.locator('[data-native-ui-shell]')).toHaveCount(0);
+      for (let i = 0; i < 2; i++) {
+        await toolbar.evaluate((element, attribute) => element.removeAttribute(attribute), attribute);
+        await expect(individual).toHaveAttribute('data-native-ui-shell', '');
+        await expect(grouped).toHaveAttribute('data-native-ui-shell', '');
+        await toolbar.evaluate((element, { attribute, value }) => element.setAttribute(attribute, value), { attribute, value });
+        await expect(toolbar.locator('[data-native-ui-shell]')).toHaveCount(0);
+        await expect(individual).toBeVisible();
+      }
+      await toolbar.evaluate((element) => element.remove());
+    }
+  });
+}
+
 test('shell opt-out in shared surface children keeps the whole surface on Web', async ({ page }) => {
   await mockNative(page);
   await page.goto('/main/index/native-ui-shell');

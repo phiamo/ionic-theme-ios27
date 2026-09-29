@@ -61,25 +61,26 @@ test('captures a group whose child accessors are virtualized', () => {
   }
 });
 
-// Opting out before the native bridge is ready must release prehidden Web controls.
-test('shell data attribute releases prehidden controls and removal restores eligibility', async () => {
+// Initial opt-out and later toggles must both preserve the ability to join the rail.
+test.each(['class', 'data-shell'] as const)('shell opt-out via %s can be removed before page re-entry', async (attribute) => {
   document.documentElement.className = '';
   document.body.innerHTML = markup;
   const toolbar = document.querySelector<HTMLElement>('ion-toolbar')!;
   const group = document.querySelector<HTMLElement>('ion-buttons')!;
+  const value = attribute === 'class' ? 'ios-theme-shell-disabled' : 'disabled';
+  toolbar.setAttribute(attribute, value);
   const prehide = prehideVerticalBarsToolbarSources(document);
   try {
-    expect(group.classList.contains(prehiddenClass)).toBe(true);
-    toolbar.setAttribute('data-shell', 'disabled');
-    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(group.classList.contains(prehiddenClass)).toBe(false);
-    toolbar.setAttribute('data-shell', '');
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(group.classList.contains(prehiddenClass)).toBe(true);
-    toolbar.setAttribute('data-shell', 'disabled');
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(group.classList.contains(prehiddenClass)).toBe(false);
-    toolbar.removeAttribute('data-shell');
+    for (let i = 0; i < 2; i++) {
+      toolbar.removeAttribute(attribute);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(group.classList.contains(prehiddenClass)).toBe(true);
+      toolbar.setAttribute(attribute, value);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(group.classList.contains(prehiddenClass)).toBe(false);
+    }
+    toolbar.setAttribute(attribute, '');
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(group.classList.contains(prehiddenClass)).toBe(true);
   } finally {
