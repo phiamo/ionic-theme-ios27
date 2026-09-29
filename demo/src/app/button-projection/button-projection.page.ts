@@ -1,11 +1,47 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonTitle, IonToolbar } from '@demo/ionic';
+import {
+  IonBackButton,
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonItem,
+  IonItemGroup,
+  IonLabel,
+  IonList,
+  IonListHeader,
+  IonNote,
+  IonSelect,
+  IonSelectOption,
+  IonTitle,
+  IonToggle,
+  IonToolbar,
+} from '@demo/ionic';
 
 @Component({
   selector: 'app-button-projection',
   templateUrl: './button-projection.page.html',
   styleUrl: './button-projection.page.scss',
-  imports: [IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonTitle, IonToolbar],
+  imports: [
+    IonBackButton,
+    IonButton,
+    IonButtons,
+    IonContent,
+    IonHeader,
+    IonIcon,
+    IonItem,
+    IonItemGroup,
+    IonLabel,
+    IonList,
+    IonListHeader,
+    IonNote,
+    IonSelect,
+    IonSelectOption,
+    IonTitle,
+    IonToggle,
+    IonToolbar,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ButtonProjectionPage {

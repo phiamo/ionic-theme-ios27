@@ -52,81 +52,86 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content class="ion-padding">
-  <h1>Compare toolbar buttons</h1>
-  <p class="intro">Compare the four icons in the vertical bar.</p>
-  <p class="last-action" role="status">Last action: {{ lastAction() }}</p>
-
-  <fieldset>
-    <legend>1. Button placement</legend>
-    <div class="placement-options">
-      @for (option of placements; track option) {
-        <button type="button" [attr.aria-pressed]="placement() === option" (click)="placement.set(option)">{{ option }}</button>
-      }
-    </div>
-    <p class="hint">
-      @switch (placement()) {
-        @case ('Grouped') {
-          <code>ion-buttons</code> — the iOS theme projects these together on a shared surface.
-        }
-        @case ('Separate') {
-          <code>ion-buttons.ios-theme-disabled</code> — separate controls. Omitted fill defaults to clear.
-        }
-        @case ('Standalone') {
-          Standalone <code>ion-button</code> — omitted fill follows <code>buttonDefaultFill</code>.
-        }
-      }
-    </p>
-  </fieldset>
-
-  <fieldset>
-    <legend>2. Change appearance</legend>
-    <div class="appearance-options">
-      <button type="button" [attr.aria-pressed]="styled()" (click)="styled.set(!styled())">
-        <span>Custom CSS background</span><strong aria-hidden="true">{{ styled() ? 'On' : 'Off' }}</strong>
-      </button>
-      <button type="button" [attr.aria-pressed]="disabled()" (click)="disabled.set(!disabled())">
-        <span>Disabled</span><strong aria-hidden="true">{{ disabled() ? 'On' : 'Off' }}</strong>
-      </button>
-    </div>
-    <p class="hint">CSS on: red background + light icons. Only solid projects the background.</p>
-  </fieldset>
-
-  <section aria-labelledby="check-buttons">
-    <h2 id="check-buttons">3. Check each button</h2>
-    <ul class="button-guide">
+<ion-content color="light">
+  <ion-list [inset]="true">
+    <ion-list-header><ion-label>Compare toolbar buttons</ion-label></ion-list-header>
+    <ion-item-group>
       @for (action of actions; track action.label) {
-        <li>
-          <ion-icon [name]="action.icon" aria-hidden="true"></ion-icon>
-          <div>
-            <strong>{{ action.label }}</strong>
-            <code>{{ action.fill ? 'fill="' + action.fill + '"' : 'No fill attribute' }}</code>
+        <ion-item>
+          <ion-icon slot="start" [name]="action.icon" aria-hidden="true"></ion-icon>
+          <ion-label>
+            <h2>{{ action.fill ? 'fill="' + action.fill + '"' : 'No fill attribute' }}</h2>
             <p>
               @switch (action.label) {
                 @case ('Omitted') {
-                  {{
-                    placement() === 'Standalone'
-                      ? 'Uses buttonDefaultFill.'
-                      : 'Clear: no
-            button background.'
-                  }}
+                  {{ placement() === 'Standalone' ? 'Uses buttonDefaultFill.' : 'Clear: no button background.' }}
                 }
                 @case ('Clear') {
-                  Icon color only; no button background.
+                  Icon color only.
                 }
                 @case ('Solid') {
                   Background and icon color.
                 }
                 @case ('Outline') {
-                  Border and icon color; no button background.
+                  Border and icon color.
                 }
               }
             </p>
-          </div>
-        </li>
+          </ion-label>
+        </ion-item>
       }
-    </ul>
-    <p class="hint">With Disabled on, taps should not change “Last action”. Turn it off to check that taps work again.</p>
-  </section>
-  <p class="hint">No vertical bar? Enable iPhone Duo Mode on the index page first.</p>
+      <ion-item
+        ><ion-label role="status">Last action: {{ lastAction() }}</ion-label></ion-item
+      >
+    </ion-item-group>
+  </ion-list>
+
+  <ion-list [inset]="true">
+    <ion-list-header><ion-label>Placement</ion-label></ion-list-header>
+    <ion-item-group>
+      <ion-item>
+        <ion-select label="Placement" interface="popover" [value]="placement()" (ionChange)="placement.set($event.detail.value)">
+          @for (option of placements; track option) {
+            <ion-select-option [value]="option">{{ option }}</ion-select-option>
+          }
+        </ion-select>
+      </ion-item>
+      <ion-item>
+        <ion-label class="ion-text-wrap">
+          <p>
+            @switch (placement()) {
+              @case ('Grouped') {
+                ion-buttons: the iOS theme projects these together on a shared surface.
+              }
+              @case ('Separate') {
+                ion-buttons.ios-theme-disabled: separate controls; omitted fill defaults to clear.
+              }
+              @case ('Standalone') {
+                Outside ion-buttons: omitted fill follows buttonDefaultFill.
+              }
+            }
+          </p>
+        </ion-label>
+      </ion-item>
+    </ion-item-group>
+  </ion-list>
+
+  <ion-list [inset]="true">
+    <ion-list-header><ion-label>Appearance</ion-label></ion-list-header>
+    <ion-item-group>
+      <ion-item>
+        <ion-toggle [checked]="styled()" (ionChange)="styled.set($event.detail.checked)">Custom CSS background</ion-toggle>
+      </ion-item>
+      <ion-item>
+        <ion-toggle [checked]="disabled()" (ionChange)="disabled.set($event.detail.checked)">Disabled</ion-toggle>
+      </ion-item>
+      <ion-item>
+        <ion-label class="ion-text-wrap">
+          <p>Custom CSS sets a red background and light icons. Only solid projects the background.</p>
+          <p>Tap a vertical bar icon to update “Last action”. Disabled buttons should not respond.</p>
+        </ion-label>
+      </ion-item>
+    </ion-item-group>
+  </ion-list>
+  <p class="ion-padding-horizontal"><ion-note>No vertical bar? Enable iPhone Duo Mode on the index page first.</ion-note></p>
 </ion-content>

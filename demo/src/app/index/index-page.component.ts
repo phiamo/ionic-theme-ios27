@@ -18,7 +18,7 @@ import {
   IonToolbar,
   ToggleCustomEvent,
 } from '@demo/ionic';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { setVerticalControlAreaPlacement } from '../../../../src/vertical-bars';
 import { Foldable } from '@erkamyaman/capacitor-foldable';
 
@@ -47,6 +47,7 @@ interface IComponent {
     IonItemGroup,
     IonToggle,
     IonMenuButton,
+    RouterLink,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -57,7 +58,6 @@ export class IndexPageComponent {
     { name: 'alert', enable: true },
     { name: 'breadcrumbs', enable: true },
     { name: 'button', enable: true },
-    { name: 'button-projection', enable: true },
     { name: 'card', enable: true },
     { name: 'checkbox', enable: true },
     { name: 'chip', enable: true },

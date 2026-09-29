@@ -3208,13 +3208,13 @@ test('button projection sends contextual fills and state updates to the native b
     );
   await expect.poll(async () => (await items()).length).toBe(4);
   await expect.poll(async () => (await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor).toBeUndefined();
-  await page.getByRole('button', { name: 'Custom CSS background', exact: true }).click();
+  await page.getByRole('switch', { name: 'Custom CSS background', exact: true }).click();
   await expect
     .poll(async () => (await items()).find((item) => item.accessibilityLabel === 'Solid')?.backgroundColor)
     .toBe('rgb(184, 54, 42)');
   expect((await items()).find((item) => item.accessibilityLabel === 'Clear')?.backgroundColor).toBeUndefined();
   expect((await items()).find((item) => item.accessibilityLabel === 'Omitted')?.backgroundColor).toBeUndefined();
-  await page.getByRole('button', { name: 'Disabled', exact: true }).click();
+  await page.getByRole('switch', { name: 'Disabled', exact: true }).click();
   await expect.poll(async () => (await items()).map((item) => item.disabled)).toEqual([true, true, true, true]);
 });
 
