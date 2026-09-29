@@ -149,14 +149,14 @@ This rule applies to `fill="default"`, `clear`, `solid`, and `outline`, includin
 
 For existing themes that style a button background through CSS while leaving `fill` omitted or `default`, use `enableVerticalControlArea({ buttonProjection: 'source', buttonDefaultFill: 'solid' })`. For buttons resolved to `source`, the option accepts `'solid'` (Ionic's default design) or `null` (the iOS theme's glass design); omission is equivalent to `null`. Buttons inside `ion-buttons` default to `clear`, even with this option set to `solid`. To project their background, explicitly set `fill="solid"`; CSS backgrounds on clear buttons are not projected. With the iOS theme, ordinary `ion-buttons` retain group projection, while `ion-buttons.ios-theme-disabled` projects eligible buttons individually. Explicit button fills take precedence. It affects native vertical projection only and never changes source buttons or Web clones. The full `enableNativeUIShell()` also accepts this option for its vertical buttons. Restart the runtime before changing the option.
 
-Use `data-projection="source"` or `data-projection="system"` for local exceptions. For native vertical `ion-button` and `ion-menu-button` actions, the button attribute takes precedence over its nearest `ion-buttons` attribute, then the startup `buttonProjection`. Other ancestors and control types do not interpret this attribute yet. Removing it or using an unrecognized value falls back to the next level. Attribute changes update the projection without restarting the runtime; grouping and placement stay unchanged.
+Use `ios-theme-projection-source` or `ios-theme-projection-system` for local exceptions. For native vertical `ion-button` and `ion-menu-button` actions, the button’s projection class takes precedence over its nearest `ion-buttons` projection class, then the startup `buttonProjection`. Other ancestors and control types do not interpret these classes yet. Removing both classes falls back to the next level. If both classes are present on the same element, `system` wins. Class changes update the projection without restarting the runtime; grouping and placement stay unchanged.
 
 ```html
-<ion-buttons data-projection="source">
+<ion-buttons class="ios-theme-projection-source">
   <ion-button fill="solid" aria-label="Add">
     <ion-icon name="add-outline" slot="icon-only"></ion-icon>
   </ion-button>
-  <ion-button data-projection="system" aria-label="Search">
+  <ion-button class="ios-theme-projection-system" aria-label="Search">
     <ion-icon name="search-outline" slot="icon-only"></ion-icon>
   </ion-button>
 </ion-buttons>

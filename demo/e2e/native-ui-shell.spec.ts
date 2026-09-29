@@ -3277,13 +3277,13 @@ for (const projection of ['source', 'system'] as const) {
         })
         .toEqual({ id, fill: mode === 'source' ? 'solid' : undefined, template: mode === 'system' ? true : undefined });
     };
-    await group.evaluate((element, mode) => element.setAttribute('data-projection', mode), opposite);
+    await group.evaluate((element, mode) => element.classList.add(`ios-theme-projection-${mode}`), opposite);
     await expectProjection(opposite);
-    await solid.evaluate((element, mode) => element.setAttribute('data-projection', mode), projection);
+    await solid.evaluate((element, mode) => element.classList.add(`ios-theme-projection-${mode}`), projection);
     await expectProjection(projection);
-    await solid.evaluate((element) => element.removeAttribute('data-projection'));
+    await solid.evaluate((element) => element.classList.remove('ios-theme-projection-source', 'ios-theme-projection-system'));
     await expectProjection(opposite);
-    await group.evaluate((element) => element.removeAttribute('data-projection'));
+    await group.evaluate((element) => element.classList.remove('ios-theme-projection-source', 'ios-theme-projection-system'));
     await expectProjection(projection);
   });
 }

@@ -129,19 +129,19 @@ test.each(['source', 'system'] as const)('local projection overrides button, gro
   const opposite = buttonProjection === 'source' ? 'system' : 'source';
   const read = () => readCandidate(group, (e) => e.id || e.localName, { buttonProjection })!.control.items[0];
   const expectedFill = (projection: string) => (projection === 'source' ? 'solid' : undefined);
-  group.setAttribute('data-projection', opposite);
+  group.classList.add(`ios-theme-projection-${opposite}`);
   expect(read().buttonFill).toBe(expectedFill(opposite));
-  button.setAttribute('data-projection', buttonProjection);
+  button.classList.add(`ios-theme-projection-${buttonProjection}`);
   expect(read().buttonFill).toBe(expectedFill(buttonProjection));
-  button.setAttribute('data-projection', 'invalid');
+  button.classList.add(`ios-theme-projection-${opposite}`);
+  expect(read().buttonFill).toBeUndefined();
+  button.classList.remove('ios-theme-projection-source', 'ios-theme-projection-system');
   expect(read().buttonFill).toBe(expectedFill(opposite));
-  button.removeAttribute('data-projection');
-  expect(read().buttonFill).toBe(expectedFill(opposite));
-  group.removeAttribute('data-projection');
+  group.classList.remove(`ios-theme-projection-${opposite}`);
   expect(read().buttonFill).toBe(expectedFill(buttonProjection));
 
   const standalone = mount([undefined]);
-  standalone.setAttribute('data-projection', 'source');
+  standalone.classList.add('ios-theme-projection-source');
   expect(readCandidate(standalone, () => 'button', { buttonProjection, buttonDefaultFill: 'solid' })!.control.items[0].buttonFill).toBe(
     'solid',
   );

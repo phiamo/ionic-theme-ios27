@@ -160,7 +160,7 @@ Both builds default to system projection. To compare source styling, open
 enable iPhone Duo Mode, and select **button-projection**. Omit `buttonProjection`
 to compare SwiftUI's standard appearance. The setting applies for the runtime's lifetime.
 
-For local exceptions, set `data-projection="source"` or `data-projection="system"` on
-an `ion-button` / `ion-menu-button`, or on its `ion-buttons` group. The button takes
-precedence over its group and then the startup mode; changing or removing the
-attribute updates native projection without restarting the demo.
+For local exceptions, add the `ios-theme-projection-source` or `ios-theme-projection-system` class to
+an `ion-button` / `ion-menu-button`, or its `ion-buttons` group. The button takes
+precedence over its group and then the startup mode; changing or removing these
+classes updates native projection without restarting the demo.

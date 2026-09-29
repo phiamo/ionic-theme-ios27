@@ -14,13 +14,13 @@ export interface VerticalControlAreaOptions {
   /** Appearance projection for native vertical toolbar buttons, including ion-buttons.
    * `system` (default) lets SwiftUI style the buttons and template icons.
    * `source` projects Ionic fill and computed colors. Actions, disabled state and grouping are preserved in both.
-   * data-projection="source|system" on a button overrides its ion-buttons group, then this option.
-   * Removing the attribute or using an unrecognized value falls back to the next level.
+   * ios-theme-projection-source / ios-theme-projection-system on a button override its ion-buttons group, then this option.
+   * Removing the classes falls back to the next level. If both classes are present, system wins.
    * Source buttons and Web clones are unchanged.
    */
   buttonProjection?: 'source' | 'system';
   /** Default fill for native vertical button projection when Ionic's fill is omitted or `default`.
-   * Only used for buttons resolved to `source`, including data-projection overrides.
+   * Only used for buttons resolved to `source`, including local projection classes.
    * Use `solid` for Ionic's default design, or `null` for the iOS theme's glass design.
    * Omitted is equivalent to `null`.
    * Clear buttons have no native glass background, including the default inside ion-buttons.
