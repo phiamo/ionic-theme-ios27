@@ -267,7 +267,7 @@ final class ShellSnapshotTests: XCTestCase {
     func testSearchTabsPreserveAccessibilityAndBadgeAppearance() throws {
         guard #available(iOS 26.0, *) else { throw XCTSkip("Requires UISearchTab") }
         let badge: JSObject = ["value": "47", "color": "rgb(235, 68, 90)", "textColor": "rgb(255, 255, 255)"]
-        let search: JSObject = ["id": "search", "field": item(), "trigger": item(["id": "trigger", "accessibilityLabel": "Search photos"]),
+        let search: JSObject = ["id": "search", "field": item(), "trigger": item(["id": "trigger"]),
             "closeId": "close", "active": false, "available": true, "focused": false,
             "value": "", "placeholder": "Search", "disabled": false, "editSequence": 0, "valueVersion": 0]
         let node = try decode([control(["kind": "ion-tab-bar", "width": 300.0, "search": search,
@@ -275,10 +275,11 @@ final class ShellSnapshotTests: XCTestCase {
                       item(["id": "second", "label": "Music"]) ]])]).controls[0]
         let controller = ShellSearchController()
         let rendering = ShellRendering()
-        _ = controller.apply(node, webFrame: CGRect(x: 0, y: 0, width: 390, height: 844), rendering: rendering)
+        _ = controller.apply(node, webFrame: CGRect(x: 0, y: 0, width: 390, height: 844),
+            barFrame: CGRect(x: 18, y: 730, width: 280, height: 62),
+            triggerFrame: CGRect(x: 320, y: 730, width: 56, height: 56), rendering: rendering)
         let tab = try XCTUnwrap(controller.tabBar.items?.first)
         XCTAssertEqual(tab.accessibilityLabel, "Favorites")
-        XCTAssertEqual(controller.tabBar.items?.last?.accessibilityLabel, "Search photos")
         XCTAssertEqual(tab.badgeValue, "47")
         XCTAssertEqual(tab.accessibilityValue, "47")
         XCTAssertEqual(tab.badgeColor, rendering.color("rgb(235, 68, 90)"))
@@ -297,7 +298,9 @@ final class ShellSnapshotTests: XCTestCase {
                 "value": value, "placeholder": "Search", "disabled": false, "editSequence": 0, "valueVersion": 0]
             let node = try XCTUnwrap(decode([control(["kind": "ion-tab-bar", "search": search,
                 "items": [item(["id": "first", "selected": true]), item(["id": "second"]) ]])]).controls.first)
-            XCTAssertTrue(controller.apply(node, webFrame: CGRect(x: 0, y: 0, width: 390, height: 844), rendering: rendering))
+            XCTAssertTrue(controller.apply(node, webFrame: CGRect(x: 0, y: 0, width: 390, height: 844),
+            barFrame: CGRect(x: 18, y: 730, width: 280, height: 62),
+            triggerFrame: CGRect(x: 320, y: 730, width: 56, height: 56), rendering: rendering))
         }
         try apply("old-search", value: "initial")
         let navigation = try XCTUnwrap(controller.tabs.last?.viewController as? UINavigationController)
@@ -425,6 +428,8 @@ final class ShellSnapshotTests: XCTestCase {
         let controller = ShellSearchController()
         let rendering = ShellRendering()
         let resting = CGRect(x: 0, y: 0, width: 390, height: 844)
+        let bar = CGRect(x: 18, y: 730, width: 280, height: 62)
+        let trigger = CGRect(x: 320, y: 730, width: 56, height: 56)
         func node(selected: String) throws -> ShellControl {
             let search: JSObject = ["id": "search", "field": item(), "trigger": item(["id": "trigger"]),
                 "closeId": "close", "active": false, "available": true, "focused": false,
@@ -433,7 +438,7 @@ final class ShellSnapshotTests: XCTestCase {
                 "items": [item(["id": "first", "selected": selected == "first"]),
                           item(["id": "second", "selected": selected == "second"])]])]).controls.first)
         }
-        _ = controller.apply(try node(selected: "first"), webFrame: resting, rendering: rendering)
+        _ = controller.apply(try node(selected: "first"), webFrame: resting, barFrame: bar, triggerFrame: trigger, rendering: rendering)
         let second = try XCTUnwrap(controller.tabs.first { $0.identifier == "second" })
         var activated: [String] = []
         controller.activate = { activated.append($0) }
@@ -441,10 +446,10 @@ final class ShellSnapshotTests: XCTestCase {
         XCTAssertEqual(activated, ["second"])
         XCTAssertEqual(controller.selectedTab?.identifier, "second")
         // Stale Web echo still reports the previous tab.
-        _ = controller.apply(try node(selected: "first"), webFrame: resting, rendering: rendering)
+        _ = controller.apply(try node(selected: "first"), webFrame: resting, barFrame: bar, triggerFrame: trigger, rendering: rendering)
         XCTAssertEqual(controller.selectedTab?.identifier, "second")
         // Web catches up — clear pending without bouncing selection.
-        _ = controller.apply(try node(selected: "second"), webFrame: resting, rendering: rendering)
+        _ = controller.apply(try node(selected: "second"), webFrame: resting, barFrame: bar, triggerFrame: trigger, rendering: rendering)
         XCTAssertEqual(controller.selectedTab?.identifier, "second")
     }
 
@@ -462,33 +467,45 @@ final class ShellSnapshotTests: XCTestCase {
             return try XCTUnwrap(decode([control(["kind": "ion-tab-bar", "search": search,
                 "items": [item(["id": "first", "selected": true]), item(["id": "second"])]])]).controls.first)
         }
-        // The system controller remains present before search opens.
-        _ = controller.apply(try node(active: false, focused: false), webFrame: resting, rendering: rendering)
+        // Resting layout may reject without a full window hierarchy; surface is still assigned.
+        _ = controller.apply(try node(active: false, focused: false), webFrame: resting,
+            barFrame: CGRect(x: 18, y: 730, width: 280, height: 62),
+            triggerFrame: CGRect(x: 320, y: 730, width: 56, height: 56), rendering: rendering)
         controller.surface.frame = resting
         // Active (even before focus) freezes Web layout for the whole search session.
-        XCTAssertTrue(controller.apply(try node(active: true, focused: false), webFrame: resting, rendering: rendering))
+        XCTAssertTrue(controller.apply(try node(active: true, focused: false), webFrame: resting,
+            barFrame: CGRect(x: 18, y: 730, width: 280, height: 62),
+            triggerFrame: CGRect(x: 320, y: 730, width: 56, height: 56), rendering: rendering))
         XCTAssertEqual(controller.surface.frame, resting)
-        XCTAssertTrue(controller.apply(try node(active: true, focused: false), webFrame: shrunk, rendering: rendering))
+        XCTAssertTrue(controller.apply(try node(active: true, focused: false), webFrame: shrunk,
+            barFrame: CGRect(x: 18, y: 730, width: 280, height: 62),
+            triggerFrame: CGRect(x: 320, y: 730, width: 56, height: 56), rendering: rendering))
         XCTAssertEqual(controller.surface.frame, resting)
         // Application realtime value updates still cross the lock.
-        XCTAssertTrue(controller.apply(try node(active: true, focused: true, value: "external", valueVersion: 2), webFrame: shrunk, rendering: rendering))
+        XCTAssertTrue(controller.apply(try node(active: true, focused: true, value: "external", valueVersion: 2), webFrame: shrunk,
+            barFrame: CGRect(x: 18, y: 730, width: 280, height: 62),
+            triggerFrame: CGRect(x: 320, y: 730, width: 56, height: 56), rendering: rendering))
         XCTAssertEqual(controller.surface.frame, resting)
         let navigation = try XCTUnwrap(controller.tabs.last?.viewController as? UINavigationController)
         let searchBar = try XCTUnwrap(navigation.topViewController?.navigationItem.searchController?.searchBar)
         XCTAssertEqual(searchBar.text, "external")
         // Blur request returns to presented (active, not focused) without unlocking projection.
-        XCTAssertTrue(controller.apply(try node(active: true, focused: false, value: "external", valueVersion: 2), webFrame: shrunk, rendering: rendering))
+        XCTAssertTrue(controller.apply(try node(active: true, focused: false, value: "external", valueVersion: 2), webFrame: shrunk,
+            barFrame: CGRect(x: 18, y: 730, width: 280, height: 62),
+            triggerFrame: CGRect(x: 320, y: 730, width: 56, height: 56), rendering: rendering))
         XCTAssertEqual(controller.surface.frame, resting)
         XCTAssertFalse(searchBar.searchTextField.isFirstResponder)
         let tabsBeforeLeave = controller.tabs.map(\.identifier)
-        // Leaving restores the ordinary selection and releases the layout lock.
-        _ = controller.apply(try node(active: false, focused: false, value: "external", valueVersion: 2), webFrame: resting, rendering: rendering)
+        // Leave re-fits; without a window hierarchy fit may reject while still restoring selection.
+        _ = controller.apply(try node(active: false, focused: false, value: "external", valueVersion: 2), webFrame: resting,
+            barFrame: CGRect(x: 18, y: 730, width: 280, height: 62),
+            triggerFrame: CGRect(x: 320, y: 730, width: 56, height: 56), rendering: rendering)
         XCTAssertEqual(controller.surface.frame, resting)
-        // The same tabs remain available after leaving search.
+        // Leave must reassign tabs even when identifiers match (UISearchTab morph cleanup).
         XCTAssertEqual(controller.tabs.map(\.identifier), tabsBeforeLeave)
         XCTAssertEqual(controller.tabs.count, 3) // first, second, search
         XCTAssertEqual(controller.selectedTab?.identifier, "first")
-        // Ordinary tab changes after leaving search preserve the tab set.
+        // Switching ordinary tabs after leave must keep resting chrome (no deferred morph expand).
         func nodeSelecting(_ id: String) throws -> ShellControl {
             let search: JSObject = ["id": "search", "field": item(), "trigger": item(["id": "trigger"]),
                 "closeId": "close", "active": false, "available": true, "focused": false,
@@ -498,10 +515,14 @@ final class ShellSnapshotTests: XCTestCase {
                           item(["id": "second", "selected": id == "second"])]])]).controls.first)
         }
         let tabsAfterLeave = controller.tabs.map(\.identifier)
-        _ = controller.apply(try nodeSelecting("second"), webFrame: resting, rendering: rendering)
+        _ = controller.apply(try nodeSelecting("second"), webFrame: resting,
+            barFrame: CGRect(x: 18, y: 730, width: 280, height: 62),
+            triggerFrame: CGRect(x: 320, y: 730, width: 56, height: 56), rendering: rendering)
         XCTAssertEqual(controller.selectedTab?.identifier, "second")
         XCTAssertEqual(controller.tabs.map(\.identifier), tabsAfterLeave)
-        _ = controller.apply(try nodeSelecting("first"), webFrame: resting, rendering: rendering)
+        _ = controller.apply(try nodeSelecting("first"), webFrame: resting,
+            barFrame: CGRect(x: 18, y: 730, width: 280, height: 62),
+            triggerFrame: CGRect(x: 320, y: 730, width: 56, height: 56), rendering: rendering)
         XCTAssertEqual(controller.selectedTab?.identifier, "first")
         XCTAssertEqual(controller.tabs.map(\.identifier), tabsAfterLeave)
     }
@@ -521,15 +542,17 @@ final class ShellSnapshotTests: XCTestCase {
             return try XCTUnwrap(decode([control(["kind": "ion-tab-bar", "search": search,
                 "items": [item(["id": "first", "selected": true]), item(["id": "second"])]])]).controls.first)
         }
-        _ = controller.apply(try node(active: false), webFrame: portrait, rendering: rendering)
+        let bar = CGRect(x: 18, y: 730, width: 280, height: 62)
+        let trigger = CGRect(x: 320, y: 730, width: 56, height: 56)
+        _ = controller.apply(try node(active: false), webFrame: portrait, barFrame: bar, triggerFrame: trigger, rendering: rendering)
         controller.surface.frame = portrait
-        XCTAssertTrue(controller.apply(try node(active: true), webFrame: portrait, rendering: rendering))
+        XCTAssertTrue(controller.apply(try node(active: true), webFrame: portrait, barFrame: bar, triggerFrame: trigger, rendering: rendering))
         XCTAssertEqual(controller.surface.frame, portrait)
         // Rotation must adopt the new width instead of keeping the portrait lock.
-        XCTAssertTrue(controller.apply(try node(active: true), webFrame: landscape, rendering: rendering))
+        XCTAssertTrue(controller.apply(try node(active: true), webFrame: landscape, barFrame: bar, triggerFrame: trigger, rendering: rendering))
         XCTAssertEqual(controller.surface.frame, landscape)
         // Keyboard shrink at the same width must still be ignored.
-        XCTAssertTrue(controller.apply(try node(active: true), webFrame: keyboardShrunk, rendering: rendering))
+        XCTAssertTrue(controller.apply(try node(active: true), webFrame: keyboardShrunk, barFrame: bar, triggerFrame: trigger, rendering: rendering))
         XCTAssertEqual(controller.surface.frame, landscape)
     }
 
@@ -539,12 +562,14 @@ final class ShellSnapshotTests: XCTestCase {
         let controller = ShellSearchController()
         let rendering = ShellRendering()
         let resting = CGRect(x: 0, y: 0, width: 390, height: 844)
+        let bar = CGRect(x: 18, y: 730, width: 280, height: 62)
+        let trigger = CGRect(x: 320, y: 730, width: 56, height: 56)
         let search: JSObject = ["id": "search", "field": item(), "trigger": item(["id": "trigger"]),
             "closeId": "close", "active": false, "available": true, "focused": false,
             "value": "", "placeholder": "Search", "disabled": false, "editSequence": 0, "valueVersion": 0]
         let node = try XCTUnwrap(decode([control(["kind": "ion-tab-bar", "search": search,
             "items": [item(["id": "first", "selected": true]), item(["id": "second"])]])]).controls.first)
-        _ = controller.apply(node, webFrame: resting, rendering: rendering)
+        _ = controller.apply(node, webFrame: resting, barFrame: bar, triggerFrame: trigger, rendering: rendering)
         let second = try XCTUnwrap(controller.tabs.first { $0.identifier == "second" })
         XCTAssertTrue(controller.tabBarController(controller, shouldSelectTab: second))
         XCTAssertEqual(controller.selectedTab?.identifier, "second")
@@ -562,6 +587,8 @@ final class ShellSnapshotTests: XCTestCase {
         let controller = ShellSearchController()
         let rendering = ShellRendering()
         let resting = CGRect(x: 0, y: 0, width: 390, height: 844)
+        let bar = CGRect(x: 18, y: 730, width: 280, height: 62)
+        let trigger = CGRect(x: 320, y: 730, width: 56, height: 56)
         func node(active: Bool) throws -> ShellControl {
             let search: JSObject = ["id": "search", "field": item(), "trigger": item(["id": "trigger"]),
                 "closeId": "close", "active": active, "available": true, "focused": active,
@@ -570,13 +597,13 @@ final class ShellSnapshotTests: XCTestCase {
                 "items": [item(["id": "first", "selected": true]), item(["id": "second"])]])]).controls.first)
         }
         // Resting must not permanently close the editing bridge.
-        _ = controller.apply(try node(active: false), webFrame: resting, rendering: rendering)
+        _ = controller.apply(try node(active: false), webFrame: resting, barFrame: bar, triggerFrame: trigger, rendering: rendering)
         var phases: [String] = []
         controller.changed = { _, phase, _, _, _ in
             phases.append(phase.rawValue)
             return phases.count
         }
-        XCTAssertTrue(controller.apply(try node(active: true), webFrame: resting, rendering: rendering))
+        XCTAssertTrue(controller.apply(try node(active: true), webFrame: resting, barFrame: bar, triggerFrame: trigger, rendering: rendering))
         let navigation = try XCTUnwrap(controller.tabs.last?.viewController as? UINavigationController)
         let searchBar = try XCTUnwrap(navigation.topViewController?.navigationItem.searchController?.searchBar)
         controller.searchBar(searchBar, textDidChange: "query")

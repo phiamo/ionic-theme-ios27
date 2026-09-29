@@ -209,7 +209,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             }
             var rejectedControls: [String] = []
             var fabs: [(ShellFab, ShellControl)] = []
-            var searches: [(ShellSearchControlling, ShellControl, UIView?, Bool)] = []
+            var searches: [(ShellSearchControlling, ShellControl, CGRect, CGRect, UIView?, Bool)] = []
             var rejectedSearches: [String] = []
             if verticalBars.isEmpty || (self.keyboardVisible && !verticalSearchActive) {
                 self.verticalBars?.detach()
@@ -268,7 +268,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                     let local = node.frame.rect
                     let bounds = webView.convert(CGRect(x: local.minX * scale, y: local.minY * scale,
                                                        width: local.width * scale, height: local.height * scale), to: parent)
-                    if node.search != nil {
+                    if let search = node.search {
                         guard let owner = self.bridge?.viewController else { rejectedSearches.append(id); continue }
                         let controller: ShellSearchControlling
                         let previousCover = self.controls[id]
@@ -285,7 +285,12 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                             self.searchControllers[id] = controller
                             self.controls[id] = controller.surface
                         }
-                        searches.append((controller, node, previousCover, replacing == nil))
+                        let trigger = search.trigger.frame.rect
+                        let searchBarFrame = webView.convert(CGRect(x: webView.bounds.minX + local.minX * scale,
+                            y: webView.bounds.minY + local.minY * scale, width: local.width * scale, height: local.height * scale), to: owner.view)
+                        let triggerFrame = webView.convert(CGRect(x: webView.bounds.minX + trigger.minX * scale,
+                            y: webView.bounds.minY + trigger.minY * scale, width: trigger.width * scale, height: trigger.height * scale), to: owner.view)
+                        searches.append((controller, node, searchBarFrame, triggerFrame, previousCover, replacing == nil))
                         continue
                     } else if self.searchControllers[id] != nil {
                         self.removeControl(id)
@@ -328,10 +333,10 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             for (fab, node) in fabs {
                 fab.apply(node, scale: scale, rendering: self.rendering, activate: { [weak self] id in self?.activate(id) })
             }
-            for (controller, node, previousCover, created) in searches {
+            for (controller, node, frame, triggerFrame, previousCover, created) in searches {
                 let id = node.id
                 let webFrame = webView.convert(webView.bounds, to: controller.surface.superview)
-                if !controller.apply(node, webFrame: webFrame, rendering: self.rendering) {
+                if !controller.apply(node, webFrame: webFrame, barFrame: frame, triggerFrame: triggerFrame, rendering: self.rendering) {
                     if created {
                         self.searchControllers.removeValue(forKey: id)
                         controller.detach()

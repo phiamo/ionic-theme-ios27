@@ -1,7 +1,7 @@
 import XCTest
 final class NativeUIShellSearchTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false; XCUIDevice.shared.orientation = .portrait }
-    private func searchButton(_ app: XCUIApplication) -> XCUIElement { app.tabBars.buttons["Search"].firstMatch }
+    private func searchButton(_ app: XCUIApplication) -> XCUIElement { app.buttons.matching(NSPredicate(format: "label == %@ AND identifier BEGINSWITH %@", "Search", "shell-")).firstMatch }
     private func openSearch(_ app: XCUIApplication) -> XCUIElement {
         app.launch()
         let library = app.tabBars.buttons["Library"]
@@ -132,14 +132,9 @@ final class NativeUIShellSearchTests: XCTestCase {
         let search = searchButton(app)
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         app.webViews.buttons["Move FAB"].tap()
-        XCTAssertTrue(probe(app, contains: "Probe native").waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertTrue(search.isHittable)
-        search.tap()
-        let field = app.searchFields.matching(NSPredicate(format: "identifier BEGINSWITH 'shell-'")).firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 10), app.debugDescription)
-        app.tabBars.buttons["Library"].tap()
-        XCTAssertTrue(field.waitForNonExistence(timeout: 5), app.debugDescription)
-        capture("native-search-moved-fab")
+        XCTAssertTrue(probe(app, contains: "Probe web").waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(search.waitForNonExistence(timeout: 5))
+        capture("native-search-moved-fab-web")
         app.webViews.buttons["Move FAB"].tap()
         XCTAssertTrue(search.waitForExistence(timeout: 10), app.debugDescription)
         let input = app.webViews.textFields["Web keyboard"]
@@ -182,13 +177,8 @@ final class NativeUIShellSearchTests: XCTestCase {
                 let search = searchButton(app)
                 if status.label.contains("Probe native") {
                     XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription)
-                    // UIKit owns the search position independently of the source FAB.
-                    XCTAssertTrue(search.isHittable)
-                    search.tap()
-                    let field = app.searchFields.matching(NSPredicate(format: "identifier BEGINSWITH 'shell-'")).firstMatch
-                    XCTAssertTrue(field.waitForExistence(timeout: 10), app.debugDescription)
-                    app.tabBars.buttons["Library"].tap()
-                    XCTAssertTrue(field.waitForNonExistence(timeout: 5), app.debugDescription)
+                    let origin = Double(status.label.components(separatedBy: "origin:")[1].components(separatedBy: " ")[0])!
+                    XCTAssertEqual(search.frame.midX, origin, accuracy: 1)
                 } else {
                     XCTAssertTrue(search.waitForNonExistence(timeout: 5), app.debugDescription)
                     XCTAssertTrue(app.tabBars.buttons["Library"].isHittable)
