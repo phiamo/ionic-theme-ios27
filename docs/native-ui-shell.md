@@ -49,6 +49,7 @@ The table below describes the ordinary Native UI Shell. Vertical Bars uses the s
 | `ion-back-button`                             | Standard icon and color in a fixed header/footer toolbar                                                  | Glass `UIButton`, using the resolved Ionic label/icon                 |
 | `ion-menu-button`                             | Fixed toolbar, inside the theme glass `ion-buttons`                                                       | Glass `UIButton`; original Ionic menu toggle                          |
 | `ion-tab-bar`                                 | Fixed tabs, icon-only/label-only items, one icon per item, dot/text badges, selection and disabled state  | `UITabBar` and `UITabBarItem`                                         |
+| `ion-toolbar.ios-theme-tab-accessory`         | Mini-player in a fixed footer region above `ion-tab-bar`: thumbnail, title, subtitle, play/pause button, progress | iOS 26+ `UITabAccessory` glass capsule in the system gap above the projected tab bar; Web CSS on other platforms    |
 | `ion-segment`                                 | Fixed toolbar, non-scrollable, text **or** one icon per item                                              | `UISegmentedControl`                                                  |
 | `ion-fab` / `ion-fab-button` / `ion-fab-list` | Glass FAB in an `ion-content` fixed slot; one main button and optional directional lists                  | Persistent glass `UIButton` per button; one FAB synchronization group |
 
@@ -67,6 +68,24 @@ Only the exact value `disabled` opts out; an empty or unknown value is ignored. 
 If a child inside a shared native surface opts out, the entire surface stays on the Web: this includes button groups, tab bars, segments and FAB lists. Opting out of the search FAB or any part of the search footer disables native search integration; the tab bar can still render natively if it remains eligible.
 
 Placement is required even when the appearance is glass. In the ordinary Native UI Shell, buttons, back buttons, menu-button groups and segments need a toolbar directly inside `ion-header` or `ion-footer`, with no `ion-content` ancestor around the control. Buttons directly inside a header/footer, standalone toolbars, and toolbars or headers nested in scrolling content stay on the Web. FABs without `slot="fixed"` also stay on the Web. Moving a projected control to an excluded location restores its Web rendering; moving it back re-evaluates eligibility. When `.ios-theme-vertical-bars` is enabled, a standard `ion-back-button` can instead be projected to the Vertical Control Area from outside a fixed toolbar, including routed content or a persistent app shell. The application chooses where to enable this mode and which Ionic component mode to use; Vertical Bars projection does not require `ios` mode classes. Collapsed headers, opted-out controls and departed pages are excluded. Full-width foreground modals can participate in Vertical Bars as described below; other overlay surfaces keep their own layout.
+
+```html
+<ion-toolbar class="ios-theme-tab-accessory">
+  <ion-thumbnail slot="start">
+    <img data-tab-accessory="artwork" src="cover.jpg" alt="" />
+  </ion-thumbnail>
+  <ion-label>
+    <h2 data-tab-accessory="title">Teaching title</h2>
+    <p data-tab-accessory="subtitle">Teacher · place</p>
+  </ion-label>
+  <ion-button slot="end" data-tab-accessory="play" fill="clear">
+    <ion-icon slot="icon-only" name="pause"></ion-icon>
+  </ion-button>
+  <ion-progress-bar value="0.4"></ion-progress-bar>
+</ion-toolbar>
+```
+
+Place the toolbar in a fixed footer region above `ion-tab-bar` (not inside `ion-content` or an overlay). Native activation clicks the original play button or the toolbar. `data-shell="disabled"` opts it out with the rest of the shell. Without native projection the same markup uses the theme CSS capsule.
 
 Native tabs accept equal-width items with Ionic's default `layout="icon-top"`. The native bar uses a local compact horizontal and regular vertical size class to preserve the Web's stacked icon/label arrangement on iPad and in landscape. This does not change the app's size class. Label size and weight follow the Web snapshot. Other explicit Ionic layouts (`icon-start`, `icon-end`, `icon-bottom`, `icon-hide`, `label-hide`) and unequal item widths keep the entire tab bar on the Web. Start, center and end placement follow the original `ion-tab-bar`, including RTL. Directional `ion-icon` artwork preserves its rendered RTL flip.
 

@@ -15,8 +15,6 @@ import { createVerticalBarsWebProjection } from './vertical-bars-web';
 import { prehideVerticalBarsToolbarSources } from './prehide';
 import { observeVerticalBarsModals } from './shared/modal';
 export type {
-  BottomAccessoryOptions,
-  BottomAccessoryProgressOptions,
   NativeUIShellComponent,
   NativeUIShellControls,
   NativeUIShellHandle,

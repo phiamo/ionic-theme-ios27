@@ -92,7 +92,7 @@ export const createRuntime = async (
   let searchListener: PluginListenerHandle | undefined;
   let waiters: (() => void)[] = [];
   const control = (kind: Candidate['control']['kind']): keyof NonNullable<NativeUIShellOptions['controls']> => {
-    if (kind === 'ion-tab-bar') return 'tabs';
+    if (kind === 'ion-tab-bar' || kind === 'ion-toolbar') return 'tabs';
     if (kind === 'ion-segment') return 'segment';
     if (kind === 'ion-fab') return 'fab';
     return 'toolbar';

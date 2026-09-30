@@ -647,4 +647,24 @@ final class ShellSnapshotTests: XCTestCase {
         XCTAssertFalse(model.focused)
     }
 
+    func testTabAccessoryDecodesOptionalFieldsAndRejectsEmptyItems() throws {
+        var payload = control([
+            "kind": "ion-toolbar",
+            "title": "Mahamudra",
+            "subtitle": "Lama Ole",
+            "artworkUrl": "https://example.test/cover.jpg",
+            "progress": 0.4,
+            "progressColor": "rgb(205, 22, 43)",
+            "items": [item(["id": "play", "label": "Pause", "selected": true])],
+        ])
+        let snapshot = try decode([payload])
+        XCTAssertTrue(snapshot.isValid)
+        XCTAssertEqual(snapshot.controls[0].kind, .tabAccessory)
+        XCTAssertEqual(snapshot.controls[0].title, "Mahamudra")
+        XCTAssertEqual(snapshot.controls[0].subtitle, "Lama Ole")
+        XCTAssertEqual(snapshot.controls[0].progress, 0.4)
+        payload["items"] = [] as [JSObject]
+        XCTAssertFalse(try decode([payload]).isValid)
+    }
+
 }

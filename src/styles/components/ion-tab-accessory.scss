@@ -1,0 +1,70 @@
+@use '../utils/api';
+
+ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled) {
+  --ios-theme-glass-background-rgb: var(--ios26-glass-background-rgb);
+  --background: rgba(var(--ios-theme-glass-background-rgb, var(--ios26-glass-background-rgb)), 0.53);
+  --border-width: 0;
+  --padding-start: 12px;
+  --padding-end: 8px;
+  --min-height: 56px;
+  position: absolute;
+  left: calc(16px + var(--ion-safe-area-left, 0px));
+  right: calc(16px + var(--ion-safe-area-right, 0px));
+  margin-inline: auto;
+  bottom: calc(
+    54px + 8px + var(--ios-theme-floating-safe-area-bottom, var(--ios26-floating-safe-area-bottom, env(safe-area-inset-bottom, 0px)))
+  );
+  width: calc(100% - calc(18px + var(--ion-safe-area-left, 0px)) - calc(18px + var(--ion-safe-area-right, 0px)));
+  max-width: 471px;
+  height: 56px;
+  min-height: 56px;
+  contain: size layout style;
+  border-radius: 28px;
+  overflow: hidden;
+  z-index: 3;
+  pointer-events: auto;
+
+  &::part(background) {
+    background: var(--background);
+    backdrop-filter: blur(6px) saturate(180%) brightness(1.05);
+    border-radius: inherit;
+  }
+
+  ion-thumbnail {
+    --size: 32px;
+    --border-radius: 6px;
+    margin-inline-end: 10px;
+  }
+
+  ion-label {
+    h2 {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    p {
+      font-size: 0.75rem;
+      color: var(--ion-text-color-step-400, var(--ion-color-step-400, #999));
+      margin: 0;
+    }
+  }
+
+  ion-button[data-tab-accessory='play'],
+  ion-button[slot='end'] {
+    --padding-start: 6px;
+    --padding-end: 6px;
+    margin: 0;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  ion-progress-bar {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 4px;
+    height: 2px;
+    --progress-background: var(--ion-color-primary, #cd162b);
+    --background: color-mix(in srgb, var(--progress-background) 22%, transparent);
+  }
+}

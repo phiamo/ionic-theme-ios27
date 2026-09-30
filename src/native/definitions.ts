@@ -134,6 +134,13 @@ export interface ShellControl extends Frame {
   rtl: boolean;
   tabBarAnchor?: { x: 0 | 0.5 | 1; y: 0 | 1 };
   search?: ShellSearch;
+  /** Mini-player title projected from `ion-toolbar.ios-theme-tab-accessory`. */
+  title?: string;
+  subtitle?: string;
+  artworkUrl?: string;
+  /** Playback progress 0–1. Omit or pass a negative value to hide the bar. */
+  progress?: number;
+  progressColor?: string;
 }
 
 export interface ShellSearch {
@@ -180,32 +187,12 @@ export interface WebViewMetrics {
   radius: number;
 }
 
-export interface BottomAccessoryOptions {
-  visible?: boolean;
-  title?: string;
-  subtitle?: string;
-  isPlaying?: boolean;
-  animated?: boolean;
-  artworkUrl?: string;
-  progress?: number;
-}
-
-export interface BottomAccessoryProgressOptions {
-  progress: number;
-}
-
 export interface NativeUIShellPlugin {
   configure(options?: { verticalBarsOnly?: boolean }): Promise<{ supported: boolean }>;
   getWebViewMetrics(): Promise<WebViewMetrics>;
   update(snapshot: ShellSnapshot): Promise<{ revision: number; rejectedSearches?: string[]; rejectedControls?: string[] }>;
   clear(options: { revision: number }): Promise<void>;
-  /** iOS 26+ `UITabAccessory` mini-player. Requires a `UITabBarController` host (searchable tabs today). */
-  setBottomAccessory(options: BottomAccessoryOptions): Promise<void>;
-  setBottomAccessoryProgress(options: BottomAccessoryProgressOptions): Promise<void>;
-  clearBottomAccessory(options?: { animated?: boolean }): Promise<void>;
   addListener(name: 'activate', listener: (event: ShellActivation) => void): Promise<PluginListenerHandle>;
   addListener(name: 'search', listener: (event: ShellSearchEvent) => void): Promise<PluginListenerHandle>;
   addListener(name: 'webViewMetricsChange', listener: (event: WebViewMetrics) => void): Promise<PluginListenerHandle>;
-  addListener(name: 'accessoryPlayPause', listener: () => void): Promise<PluginListenerHandle>;
-  addListener(name: 'accessoryTapped', listener: () => void): Promise<PluginListenerHandle>;
 }

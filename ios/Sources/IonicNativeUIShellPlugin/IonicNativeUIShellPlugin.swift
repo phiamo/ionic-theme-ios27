@@ -10,12 +10,9 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
         CAPPluginMethod(name: "configure", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getWebViewMetrics", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "update", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "clear", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setBottomAccessory", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setBottomAccessoryProgress", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "clearBottomAccessory", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "clear", returnType: CAPPluginReturnPromise)
     ]
-    private var bottomAccessoryContent: AnyObject?
+    private var tabAccessoryHost: AnyObject?
     private var host: ShellHost?
     private var verticalBars: ShellVerticalBarsControlling?
     private var controls: [String: UIView] = [:]
@@ -146,6 +143,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
         Array(controls.keys).forEach { removeControl($0, duration: duration) }
         host?.removeFromSuperview()
         host = nil
+        detachTabAccessory()
         verticalBars?.detach()
         verticalBars = nil
         rendering.clear()
@@ -215,6 +213,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             var fabs: [(ShellFab, ShellControl)] = []
             var searches: [(ShellSearchControlling, ShellControl, CGRect, CGRect, UIView?, Bool)] = []
             var rejectedSearches: [String] = []
+            var accessory: ShellControl?
             if verticalBars.isEmpty || (self.keyboardVisible && !verticalSearchActive) {
                 self.verticalBars?.detach()
                 self.verticalBars = nil
@@ -240,6 +239,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             if snapshots.isEmpty {
                 self.host?.removeFromSuperview()
                 self.host = nil
+                self.detachTabAccessory()
                 call.resolve(["revision": next, "rejectedControls": rejectedControls])
                 return
             }
@@ -268,6 +268,14 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                     // Only native search owns its keyboard; other controls return to Web.
                     if self.keyboardVisible && self.searchControllers[id]?.ownsKeyboard != true {
                         reject(); continue
+                    }
+                    if node.kind == .tabAccessory {
+                        if self.keyboardVisible {
+                            reject()
+                        } else {
+                            accessory = node
+                        }
+                        continue
                     }
                     let local = node.frame.rect
                     let bounds = webView.convert(CGRect(x: local.minX * scale, y: local.minY * scale,
@@ -366,6 +374,21 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             for (id, control) in self.controls where !existing.contains(id) && self.searchControllers[id] == nil {
                 ShellCrossfade.enter(control, duration: duration)
             }
+            if let accessory, let owner = self.bridge?.viewController,
+               let tabBar = snapshots.first(where: { $0.kind == .tabBar }) {
+                let local = tabBar.frame.rect
+                let bounds = webView.convert(CGRect(x: local.minX * scale, y: local.minY * scale,
+                                                   width: local.width * scale, height: local.height * scale), to: parent)
+                if #available(iOS 26.0, *) {
+                    let host = (self.tabAccessoryHost as? ShellTabAccessory.Host) ?? ShellTabAccessory.Host()
+                    self.tabAccessoryHost = host
+                    host.apply(node: accessory, tabBarBounds: bounds, owner: owner, parent: parent, shellHost: self.host, activate: { [weak self] id in
+                        self?.activate(id)
+                    })
+                }
+            } else {
+                self.detachTabAccessory()
+            }
             let complete = { call.resolve(["revision": next, "rejectedSearches": rejectedSearches, "rejectedControls": rejectedControls]) }
             if let coordinator = searches.first?.0.transitionCoordinator,
                coordinator.animate(alongsideTransition: nil, completion: { _ in complete() }) { return }
@@ -397,66 +420,10 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
         notifyListeners("activate", data: ["id": id, "revision": revision, "sequence": sequence])
     }
 
-    private func tabBarControllerHost() -> UITabBarController? {
+    private func detachTabAccessory() {
         if #available(iOS 26.0, *) {
-            for controller in searchControllers.values {
-                if let search = controller as? ShellSearchController { return search }
-            }
+            (tabAccessoryHost as? ShellTabAccessory.Host)?.detach()
         }
-        return nil
-    }
-
-    @objc func setBottomAccessory(_ call: CAPPluginCall) {
-        let visible = call.getBool("visible") ?? true
-        let title = call.getString("title")
-        let subtitle = call.getString("subtitle")
-        let isPlaying = call.getBool("isPlaying") ?? false
-        let animated = call.getBool("animated") ?? true
-        let progress = call.getDouble("progress").map { CGFloat($0) }
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { call.resolve(); return }
-            guard #available(iOS 26.0, *) else {
-                call.reject("Requires iOS 26")
-                return
-            }
-            guard let host = self.tabBarControllerHost() else {
-                call.reject("UITabAccessory requires a UITabBarController (enable searchable tabs, or host ordinary tabs in UITabBarController)")
-                return
-            }
-            let content: ShellBottomAccessoryContentView
-            if let existing = self.bottomAccessoryContent as? ShellBottomAccessoryContentView {
-                content = existing
-            } else {
-                let created = ShellBottomAccessoryContentView()
-                created.onPlayPause = { [weak self] in self?.notifyListeners("accessoryPlayPause", data: [:]) }
-                created.onTap = { [weak self] in self?.notifyListeners("accessoryTapped", data: [:]) }
-                self.bottomAccessoryContent = created
-                content = created
-            }
-            content.update(title: title, subtitle: subtitle, isPlaying: isPlaying)
-            if let progress { content.setProgress(progress) }
-            ShellBottomAccessory.apply(to: host, content: content, visible: visible, animated: animated)
-            call.resolve()
-        }
-    }
-
-    @objc func setBottomAccessoryProgress(_ call: CAPPluginCall) {
-        let progress = CGFloat(call.getDouble("progress") ?? -1)
-        DispatchQueue.main.async { [weak self] in
-            (self?.bottomAccessoryContent as? ShellBottomAccessoryContentView)?.setProgress(progress)
-            call.resolve()
-        }
-    }
-
-    @objc func clearBottomAccessory(_ call: CAPPluginCall) {
-        let animated = call.getBool("animated") ?? true
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { call.resolve(); return }
-            if #available(iOS 26.0, *), let host = self.tabBarControllerHost(),
-               let content = self.bottomAccessoryContent as? ShellBottomAccessoryContentView {
-                ShellBottomAccessory.apply(to: host, content: content, visible: false, animated: animated)
-            }
-            call.resolve()
-        }
+        tabAccessoryHost = nil
     }
 }
