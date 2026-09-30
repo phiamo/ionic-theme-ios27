@@ -87,6 +87,55 @@ Placement is required even when the appearance is glass. In the ordinary Native 
 
 Place the toolbar in a fixed footer region above `ion-tab-bar` (not inside `ion-content` or an overlay). Native activation clicks the original play button or the toolbar. `data-shell="disabled"` opts it out with the rest of the shell. Without native projection the same markup uses the theme CSS capsule.
 
+### Web fallback and older iOS
+
+Native glass (`UITabAccessory`) requires iOS 26+. The Web mini-player is CSS, and it is **not** tied to the iOS 26/27 generation gate (`overflow-anchor` / `text-wrap: pretty`). Load it next to the theme so Safari 15–18 still get a bar:
+
+```scss
+@use 'sass:meta';
+
+// iOS 27 / Safari 27+
+@supports (overflow-anchor: auto) { /* ionic-theme-ios27 */ }
+// iOS 26 / Safari 17.4–26
+@supports (text-wrap: pretty) and (not (overflow-anchor: auto)) { /* ionic-theme-ios26 */ }
+
+@include meta.load-css('@rdlabo/ionic-theme-ios27/src/styles/components/ion-tab-accessory');
+```
+
+| Surface | CSS feature | Mini-player |
+| --- | --- | --- |
+| iOS 26+ Capacitor with Native UI Shell | — | Native `UITabAccessory` glass capsule |
+| Safari 27+ / iOS 27 without native | `overflow-anchor: auto` | Theme CSS capsule (28px) |
+| Safari 17.4–26 / iOS 17.4–26 | `text-wrap: pretty` | Theme CSS capsule, if accessory CSS is loaded |
+| Safari 15–17.3 / iOS 15–17.3 | neither | Ionic chrome + accessory CSS (use `.ios-theme-tab-accessory-classic`) |
+| Safari 15–16.1 | no `color-mix` | Progress track uses `rgba(var(--ion-color-primary-rgb), .22)` |
+
+The default Web look is the 56×28px capsule. Add `.ios-theme-tab-accessory-classic` for a 12px rounded rectangle that sits 8px above the in-flow tab bar (closer to iOS 15–18 Music / segmented controls than the pill):
+
+```html
+<ion-toolbar class="ios-theme-tab-accessory ios-theme-tab-accessory-classic">
+```
+
+Override layout with CSS variables (defaults in parentheses):
+
+| Variable | Default | Classic |
+| --- | --- | --- |
+| `--ios-theme-tab-accessory-radius` | `28px` | `12px` |
+| `--ios-theme-tab-accessory-height` | `56px` | `56px` |
+| `--ios-theme-tab-accessory-inset` | `16px` | `8px` |
+| `--ios-theme-tab-accessory-thumb-size` | `32px` | `32px` |
+| `--ios-theme-tab-accessory-thumb-radius` | `6px` | `6px` |
+| `--ios-theme-tab-accessory-bottom` | floating 62px island + 8px | same on iOS 17.4+; in-flow 50px + 8px on iOS 15–17.3 |
+
+Thumbnail sizing applies to `ion-thumbnail` and to any `[slot="start"]` host (for example a custom `app-image`).
+
+Plain-plugin shots from the demo Library tab (`/main/album`; add `?classic=` for the 12px preset):
+
+<p>
+  <img src="../screenshots/mini-player/webkit-capsule.png" width="32%" alt="Web CSS capsule mini-player above the tab bar" />
+  <img src="../screenshots/mini-player/webkit-classic.png" width="32%" alt="Classic 12px rounded-rectangle mini-player" />
+</p>
+
 Native tabs accept equal-width items with Ionic's default `layout="icon-top"`. The native bar uses a local compact horizontal and regular vertical size class to preserve the Web's stacked icon/label arrangement on iPad and in landscape. This does not change the app's size class. Label size and weight follow the Web snapshot. Other explicit Ionic layouts (`icon-start`, `icon-end`, `icon-bottom`, `icon-hide`, `label-hide`) and unequal item widths keep the entire tab bar on the Web. Start, center and end placement follow the original `ion-tab-bar`, including RTL. Directional `ion-icon` artwork preserves its rendered RTL flip.
 
 Outside Vertical Bars, standalone clear, solid and outline buttons are excluded. A glass `ion-buttons` group of two or more clear buttons is projected as one surface; its children retain separate actions. Menu buttons can also share that group. A single menu button uses its parent `ion-buttons` as the glass surface, so no Web glass is left underneath the native button. A menu button outside this theme glass remains on the Web. Mixed fills, unsupported children, or a theme-disabled child keep the group on the Web. Single clear buttons remain on the Web. Custom button colors, custom back icons/colors, collapsing headers, toolbars inside scrolling content, modal content, scrollable/expanded segments and segment-view integration remain on the Web. Complex slots and unsupported SVG features also fall back to Web. The plugin does not translate arbitrary application CSS into UIKit styles.

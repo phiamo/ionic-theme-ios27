@@ -4,6 +4,8 @@ import { readCandidate } from '../../src/native/components';
 const size = () => ({ x: 16, y: 700, width: 358, height: 56, top: 700, left: 16, right: 374, bottom: 756 }) as DOMRect;
 
 const mount = (playing = true) => {
+  document.documentElement.style.cssText = 'display: block; visibility: visible; opacity: 1; transform: none';
+  document.body.style.cssText = 'display: block; visibility: visible; opacity: 1; transform: none';
   document.body.innerHTML = `
     <ion-toolbar class="ios ios-theme-tab-accessory">
       <img data-tab-accessory="artwork" src="https://example.test/cover.jpg" alt="" />
@@ -22,7 +24,7 @@ const mount = (playing = true) => {
   const shadow = icon.attachShadow({ mode: 'open' });
   shadow.innerHTML = '<svg viewBox="0 0 24 24"><path d="M0 0h24v24H0z"/></svg>';
   for (const element of [toolbar, play, icon, ...Array.from(document.querySelectorAll<HTMLElement>('img, ion-label, ion-progress-bar'))]) {
-    element.style.cssText = 'display: block; visibility: visible; opacity: 1';
+    element.style.cssText = 'display: flex; visibility: visible; opacity: 1; width: 358px; height: 56px';
     element.getBoundingClientRect = size;
   }
   return toolbar;
@@ -63,7 +65,9 @@ test('maps play icon to unselected and skips unmarked toolbars', () => {
   expect(candidate?.control.items[0].selected).toBe(false);
   document.body.innerHTML = '<ion-toolbar class="ios"><ion-button slot="end"><svg></svg></ion-button></ion-toolbar>';
   const plain = document.querySelector<HTMLElement>('ion-toolbar')!;
-  plain.style.cssText = 'display: block; visibility: visible; opacity: 1';
+  document.documentElement.style.cssText = 'display: block; visibility: visible; opacity: 1; transform: none';
+  document.body.style.cssText = 'display: block; visibility: visible; opacity: 1; transform: none';
+  plain.style.cssText = 'display: flex; visibility: visible; opacity: 1; width: 358px; height: 56px; transform: none';
   plain.getBoundingClientRect = size;
   expect(readCandidate(plain, () => 'plain')).toBeUndefined();
 });
@@ -74,4 +78,13 @@ test('does not project an accessory inside ion-modal', () => {
   modal.append(toolbar);
   document.body.append(modal);
   expect(readCandidate(toolbar, () => 'accessory')).toBeUndefined();
+});
+
+test('projects a classic-preset toolbar', () => {
+  const toolbar = mount(true);
+  toolbar.classList.add('ios-theme-tab-accessory-classic');
+  const candidate = readCandidate(toolbar, () => 'accessory');
+  expect(candidate?.control.kind).toBe('ion-toolbar');
+  expect(candidate?.control.title).toBe('Mahamudra');
+  expect(candidate?.control.progress).toBe(0.4);
 });
