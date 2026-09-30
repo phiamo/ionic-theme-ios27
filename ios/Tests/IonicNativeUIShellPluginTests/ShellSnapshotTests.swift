@@ -655,6 +655,8 @@ final class ShellSnapshotTests: XCTestCase {
             "artworkUrl": "https://example.test/cover.jpg",
             "progress": 0.4,
             "progressColor": "rgb(205, 22, 43)",
+            "elapsed": "1:09:29",
+            "duration": "3:04:05",
             "items": [item(["id": "play", "label": "Pause", "selected": true])],
         ])
         let snapshot = try decode([payload])
@@ -662,10 +664,24 @@ final class ShellSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.controls[0].kind, .tabAccessory)
         XCTAssertEqual(snapshot.controls[0].title, "Mahamudra")
         XCTAssertEqual(snapshot.controls[0].subtitle, "Lama Ole")
+        XCTAssertEqual(snapshot.controls[0].elapsed, "1:09:29")
+        XCTAssertEqual(snapshot.controls[0].duration, "3:04:05")
         XCTAssertEqual(snapshot.controls[0].progress, 0.4)
         payload["progress"] = 0
         XCTAssertEqual(try decode([payload]).controls[0].progress, 0)
         payload["items"] = [] as [JSObject]
+        XCTAssertFalse(try decode([payload]).isValid)
+        payload["items"] = [
+            item(["id": "play", "label": "Pause", "selected": true]),
+            item(["id": "artwork", "label": "Artwork", "selected": false]),
+        ] as [JSObject]
+        XCTAssertTrue(try decode([payload]).isValid)
+        XCTAssertEqual(try decode([payload]).controls[0].items.count, 2)
+        payload["items"] = [
+            item(["id": "play", "label": "Pause", "selected": true]),
+            item(["id": "artwork", "label": "Artwork", "selected": false]),
+            item(["id": "extra", "label": "Extra", "selected": false]),
+        ] as [JSObject]
         XCTAssertFalse(try decode([payload]).isValid)
     }
 

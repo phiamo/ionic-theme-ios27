@@ -141,6 +141,9 @@ export interface ShellControl extends Frame {
   /** Playback progress 0–1. Omit or pass a negative value to hide the bar. */
   progress?: number;
   progressColor?: string;
+  /** Elapsed / duration from `[data-tab-accessory="time"]`. */
+  elapsed?: string;
+  duration?: string;
 }
 
 export interface ShellSearch {

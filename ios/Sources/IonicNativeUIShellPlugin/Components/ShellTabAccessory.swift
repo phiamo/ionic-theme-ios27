@@ -5,16 +5,20 @@ import UIKit
 final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
     var onPlayPause: (() -> Void)?
     var onTap: (() -> Void)?
+    var onArtwork: (() -> Void)?
 
-    private static let swipeUpThreshold: CGFloat = 36
+    private static let swipeUpThreshold: CGFloat = 50
     private static let swipeMaxHorizontalDrift: CGFloat = 48
 
-    private let artworkView = UIImageView()
+    private let artworkButton = UIButton(type: .custom)
     private let titleLabel = UILabel()
     private let subtitleLabel = UILabel()
     private let playPauseButton = UIButton(type: .system)
+    private let elapsedLabel = UILabel()
+    private let durationLabel = UILabel()
     private let stack = UIStackView()
     private let textStack = UIStackView()
+    private let timeStack = UIStackView()
     private let progressTrack = UIView()
     private let progressFill = UIView()
     private var isPlaying = false
@@ -29,7 +33,7 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
     private var panGesture: UIPanGestureRecognizer?
     private var suppressNextTap = false
     var currentArtworkUrl: String?
-    var hasArtwork: Bool { artworkView.image != nil }
+    var hasArtwork: Bool { artworkButton.image(for: .normal) != nil }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -44,15 +48,29 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
         subtitleLabel.numberOfLines = 1
         subtitleLabel.lineBreakMode = .byTruncatingTail
         subtitleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        artworkView.contentMode = .scaleAspectFill
-        artworkView.clipsToBounds = true
-        artworkView.layer.cornerRadius = 6
-        artworkView.layer.cornerCurve = .continuous
-        artworkView.backgroundColor = .secondarySystemFill
-        let artworkHeight = artworkView.heightAnchor.constraint(equalToConstant: 32)
+        elapsedLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
+        elapsedLabel.textColor = .label
+        elapsedLabel.textAlignment = .right
+        elapsedLabel.setContentHuggingPriority(.required, for: .horizontal)
+        elapsedLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        durationLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        durationLabel.textColor = .secondaryLabel
+        durationLabel.textAlignment = .right
+        durationLabel.setContentHuggingPriority(.required, for: .horizontal)
+        durationLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        artworkButton.imageView?.contentMode = .scaleAspectFill
+        artworkButton.contentHorizontalAlignment = .fill
+        artworkButton.contentVerticalAlignment = .fill
+        artworkButton.clipsToBounds = true
+        artworkButton.layer.cornerRadius = 6
+        artworkButton.layer.cornerCurve = .continuous
+        artworkButton.backgroundColor = .secondarySystemFill
+        artworkButton.accessibilityLabel = "Artwork"
+        artworkButton.addTarget(self, action: #selector(artworkTapped), for: .touchUpInside)
+        let artworkHeight = artworkButton.heightAnchor.constraint(equalToConstant: 36)
         artworkHeight.isActive = true
         artworkSize = artworkHeight
-        artworkView.widthAnchor.constraint(equalTo: artworkView.heightAnchor).isActive = true
+        artworkButton.widthAnchor.constraint(equalTo: artworkButton.heightAnchor).isActive = true
         playPauseButton.addTarget(self, action: #selector(playPauseTapped), for: .touchUpInside)
         playPauseButton.tintColor = .label
         playPauseButton.accessibilityLabel = "Play or pause"
@@ -70,15 +88,25 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
         textStack.addArrangedSubview(titleLabel)
         textStack.addArrangedSubview(subtitleLabel)
         textStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        timeStack.axis = .vertical
+        timeStack.spacing = 1
+        timeStack.alignment = .trailing
+        timeStack.addArrangedSubview(elapsedLabel)
+        timeStack.addArrangedSubview(durationLabel)
+        timeStack.setContentHuggingPriority(.required, for: .horizontal)
+        timeStack.setContentCompressionResistancePriority(.required, for: .horizontal)
+        timeStack.isHidden = true
         stack.axis = .horizontal
         stack.alignment = .center
         stack.distribution = .fill
         stack.spacing = 10
         stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.addArrangedSubview(artworkView)
+        stack.addArrangedSubview(artworkButton)
         stack.addArrangedSubview(textStack)
+        stack.addArrangedSubview(timeStack)
         stack.addArrangedSubview(playPauseButton)
         stack.setCustomSpacing(8, after: textStack)
+        stack.setCustomSpacing(4, after: timeStack)
         addSubview(stack)
         progressTrack.translatesAutoresizingMaskIntoConstraints = false
         progressTrack.isUserInteractionEnabled = false
@@ -108,6 +136,7 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
         pan.delegate = self
         pan.cancelsTouchesInView = false
+        pan.maximumNumberOfTouches = 1
         addGestureRecognizer(pan)
         panGesture = pan
     }
@@ -119,6 +148,12 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
         let subtitle = node.subtitle
         subtitleLabel.text = subtitle
         subtitleLabel.isHidden = isInlineLayout || subtitle?.isEmpty != false
+        elapsedLabel.text = node.elapsed
+        durationLabel.text = node.duration
+        let hasTime = !(node.elapsed?.isEmpty ?? true) || !(node.duration?.isEmpty ?? true)
+        elapsedLabel.isHidden = node.elapsed?.isEmpty ?? true
+        durationLabel.isHidden = node.duration?.isEmpty ?? true
+        timeStack.isHidden = !hasTime
         isPlaying = node.items.first?.content.selected == true
             || node.items.first?.content.label.lowercased().contains("pause") == true
         updatePlayImage()
@@ -142,14 +177,17 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
     }
 
     func setArtwork(_ image: UIImage?) {
-        artworkView.image = image
-        artworkView.backgroundColor = image == nil ? .secondarySystemFill : .clear
+        artworkButton.setImage(image, for: .normal)
+        artworkButton.backgroundColor = image == nil ? .secondarySystemFill : .clear
     }
 
     func reset() {
         titleLabel.text = nil
         subtitleLabel.text = nil
         subtitleLabel.isHidden = true
+        elapsedLabel.text = nil
+        durationLabel.text = nil
+        timeStack.isHidden = true
         isPlaying = false
         currentArtworkUrl = nil
         setArtwork(nil)
@@ -164,7 +202,7 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
         titleLabel.font = inline
             ? .preferredFont(forTextStyle: .caption1)
             : .preferredFont(forTextStyle: .subheadline).withWeight(.semibold)
-        artworkSize?.constant = inline ? 28 : 32
+        artworkSize?.constant = inline ? 28 : 36
         stack.spacing = inline ? 8 : 10
         stackLeading?.constant = inline ? 14 : 16
         stackTrailing?.constant = inline ? -12 : -10
@@ -182,9 +220,9 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
         super.layoutSubviews()
         let width = progressTrack.bounds.width * max(0, min(1, progress))
         progressFill.frame = CGRect(x: 0, y: 0, width: width, height: progressTrack.bounds.height)
-        let size = min(artworkView.bounds.width, artworkView.bounds.height)
+        let size = min(artworkButton.bounds.width, artworkButton.bounds.height)
         if size > 0 {
-            artworkView.layer.cornerRadius = size * 0.22
+            artworkButton.layer.cornerRadius = size * 0.22
         }
     }
 
@@ -206,6 +244,14 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
 
     @objc private func playPauseTapped() { onPlayPause?() }
 
+    @objc private func artworkTapped() {
+        if suppressNextTap {
+            suppressNextTap = false
+            return
+        }
+        onArtwork?()
+    }
+
     @objc private func bodyTapped() {
         if suppressNextTap {
             suppressNextTap = false
@@ -221,9 +267,8 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
             if translation.y < -12 { suppressNextTap = true }
         case .ended, .cancelled:
             let velocity = gesture.velocity(in: self)
-            let isUpwardSwipe = translation.y < -Self.swipeUpThreshold
+            let isUpwardSwipe = (translation.y < -Self.swipeUpThreshold || velocity.y < -280)
                 && abs(translation.x) < Self.swipeMaxHorizontalDrift
-                && velocity.y < 0
             if isUpwardSwipe {
                 suppressNextTap = true
                 onTap?()
@@ -234,8 +279,20 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
     }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        let point = touch.location(in: playPauseButton)
-        return !playPauseButton.bounds.contains(point)
+        let playPoint = touch.location(in: playPauseButton)
+        if playPauseButton.bounds.contains(playPoint) { return false }
+        if gestureRecognizer is UITapGestureRecognizer {
+            let artPoint = touch.location(in: artworkButton)
+            if artworkButton.bounds.contains(artPoint) { return false }
+        }
+        return true
+    }
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        true
     }
 }
 

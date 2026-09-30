@@ -4,7 +4,7 @@ import { frame, text } from '../shared/dom';
 
 export const tag = 'ion-toolbar';
 export const selector = 'ion-toolbar.ios-theme-tab-accessory';
-export const shadowSelector = 'ion-button, ion-label, ion-progress-bar, img';
+export const shadowSelector = 'ion-button, ion-label, ion-progress-bar, img, [data-tab-accessory="artwork"], [data-tab-accessory="elapsed"], [data-tab-accessory="duration"]';
 export const tracksMotion = false;
 
 const playSelector = 'ion-button[data-tab-accessory="play"], ion-button[slot="end"]';
@@ -59,6 +59,30 @@ export const read = (element: HTMLElement, id: Identify): Candidate | undefined 
   candidate.actions.set(playId, play);
   candidate.actions.set(candidate.control.id, element);
 
+  const artworkEl =
+    element.querySelector<HTMLElement>('[data-tab-accessory="artwork"]') ??
+    element.querySelector<HTMLElement>('[slot="start"]:not(ion-buttons)');
+  if (artworkEl) {
+    const artworkRect = artworkEl.getBoundingClientRect();
+    const artworkId = id(artworkEl);
+    const artworkFrame =
+      artworkRect.width > 0 && artworkRect.height > 0
+        ? frame(artworkRect, hostRect)
+        : { x: 12, y: Math.max(0, (hostRect.height - 36) / 2), width: 36, height: 36 };
+    candidate.control.items.push({
+      id: artworkId,
+      ...artworkFrame,
+      label: artworkEl.getAttribute('aria-label')?.trim() || 'Artwork',
+      accessibilityLabel: artworkEl.getAttribute('aria-label') ?? 'Artwork',
+      disabled: false,
+      selected: false,
+      fontSize: 17,
+      fontWeight: 400,
+      color: 'currentColor',
+    });
+    candidate.actions.set(artworkId, artworkEl);
+  }
+
   const title =
     element.querySelector('[data-tab-accessory="title"]')?.textContent?.trim() ||
     element.querySelector('ion-label h2')?.textContent?.trim() ||
@@ -74,9 +98,14 @@ export const read = (element: HTMLElement, id: Identify): Candidate | undefined 
     (element.querySelector('ion-thumbnail img, img') as HTMLImageElement | null)?.src ||
     undefined;
 
+  const elapsed = element.querySelector('[data-tab-accessory="elapsed"]')?.textContent?.trim() || undefined;
+  const duration = element.querySelector('[data-tab-accessory="duration"]')?.textContent?.trim() || undefined;
+
   if (title) candidate.control.title = title;
   if (subtitle) candidate.control.subtitle = subtitle;
   if (artwork) candidate.control.artworkUrl = artwork;
+  if (elapsed) candidate.control.elapsed = elapsed;
+  if (duration) candidate.control.duration = duration;
   const progress = parseProgress(element);
   if (progress !== undefined) candidate.control.progress = progress;
   const color = progressColor(element);

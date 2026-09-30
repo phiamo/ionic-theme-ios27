@@ -43,6 +43,7 @@ final class ShellTabsController: UIViewController, UITabBarControllerDelegate {
     private var pendingExpiryWork: DispatchWorkItem?
     private var artworkLoad: URLSessionDataTask?
     private var playId = ""
+    private var artworkId = ""
     private var tapId = ""
     private var tabBar: UITabBar { barController.tabBar }
 
@@ -83,6 +84,10 @@ final class ShellTabsController: UIViewController, UITabBarControllerDelegate {
         content.onPlayPause = { [weak self] in
             guard let self, !self.playId.isEmpty else { return }
             self.activate?(self.playId)
+        }
+        content.onArtwork = { [weak self] in
+            guard let self, !self.artworkId.isEmpty else { return }
+            self.activate?(self.artworkId)
         }
         content.onTap = { [weak self] in
             guard let self, !self.tapId.isEmpty else { return }
@@ -180,6 +185,7 @@ final class ShellTabsController: UIViewController, UITabBarControllerDelegate {
         }
         resolveSelection(items)
         playId = accessory.items.first?.id ?? ""
+        artworkId = accessory.items.dropFirst().first?.id ?? ""
         tapId = accessory.id
         content.apply(accessory)
         loadArtwork(accessory.artworkUrl)

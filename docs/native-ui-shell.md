@@ -85,7 +85,7 @@ Placement is required even when the appearance is glass. In the ordinary Native 
 </ion-toolbar>
 ```
 
-Place the toolbar in a fixed footer region above `ion-tab-bar` (not inside `ion-content` or an overlay). Native activation clicks the original play button or the toolbar. `data-shell="disabled"` opts it out with the rest of the shell. Without native projection the same markup uses the theme CSS capsule.
+Place the toolbar in a fixed footer region above `ion-tab-bar` (not inside `ion-content` or an overlay). Native activation clicks the original play button, the toolbar, or `[data-tab-accessory="artwork"]` when present. The plugin does not interpret artwork (hosts wire video, album, or any other action). `data-shell="disabled"` opts it out with the rest of the shell. Without native projection the same markup uses the theme CSS capsule.
 
 ### Web fallback and older iOS
 
@@ -110,7 +110,7 @@ Native glass (`UITabAccessory`) requires iOS 26+. The Web mini-player is CSS, an
 | Safari 15–17.3 / iOS 15–17.3 | neither | Ionic chrome + accessory CSS (use `.ios-theme-tab-accessory-classic`) |
 | Safari 15–16.1 | no `color-mix` | Progress track uses `rgba(var(--ion-color-primary-rgb), .22)` |
 
-The default Web look is the 56×28px capsule. Add `.ios-theme-tab-accessory-classic` for a 12px rounded rectangle that sits 8px above the in-flow tab bar (closer to iOS 15–18 Music / segmented controls than the pill):
+The default Web look is the 64×28px capsule. Override `--ios-theme-tab-accessory-height` (and `--ios-theme-tab-accessory-padding-block`, `--ios-theme-tab-accessory-thumb-size`) on `:root` or `.accessory-slide-clip` if a host needs a taller or tighter bar. Add `.ios-theme-tab-accessory-classic` for a 12px rounded rectangle that sits 8px above the in-flow tab bar (closer to iOS 15–18 Music / segmented controls than the pill):
 
 ```html
 <ion-toolbar class="ios-theme-tab-accessory ios-theme-tab-accessory-classic">
@@ -121,9 +121,10 @@ Override layout with CSS variables (defaults in parentheses):
 | Variable | Default | Classic |
 | --- | --- | --- |
 | `--ios-theme-tab-accessory-radius` | `28px` | `12px` |
-| `--ios-theme-tab-accessory-height` | `56px` | `56px` |
+| `--ios-theme-tab-accessory-height` | `64px` | `64px` |
+| `--ios-theme-tab-accessory-padding-block` | `8px` | `8px` |
 | `--ios-theme-tab-accessory-inset` | `16px` | `8px` |
-| `--ios-theme-tab-accessory-thumb-size` | `32px` | `32px` |
+| `--ios-theme-tab-accessory-thumb-size` | `36px` | `36px` |
 | `--ios-theme-tab-accessory-thumb-radius` | `6px` | `6px` |
 | `--ios-theme-tab-accessory-bottom` | floating 62px island + 8px | same on iOS 17.4+; in-flow 50px + 8px on iOS 15–17.3 |
 

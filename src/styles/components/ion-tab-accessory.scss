@@ -2,9 +2,10 @@
 
 ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled) {
   --ios-theme-tab-accessory-radius: 28px;
-  --ios-theme-tab-accessory-height: 56px;
+  --ios-theme-tab-accessory-height: 64px;
+  --ios-theme-tab-accessory-padding-block: 8px;
   --ios-theme-tab-accessory-inset: 16px;
-  --ios-theme-tab-accessory-thumb-size: 32px;
+  --ios-theme-tab-accessory-thumb-size: 36px;
   --ios-theme-tab-accessory-thumb-radius: 6px;
   --ios-theme-tab-accessory-bottom: calc(
     62px + 8px + var(--ios-theme-floating-safe-area-bottom, var(--ios26-floating-safe-area-bottom, env(safe-area-inset-bottom, 0px)))
@@ -53,8 +54,7 @@ ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled
     overflow: hidden;
     height: 100%;
     min-height: var(--ios-theme-tab-accessory-height);
-    padding-top: 0;
-    padding-bottom: 6px;
+    padding-block: var(--ios-theme-tab-accessory-padding-block, 8px);
   }
 
   ion-thumbnail,
@@ -71,6 +71,8 @@ ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled
     margin-block: 0;
     margin-inline-end: 10px;
     align-self: center;
+    pointer-events: auto;
+    cursor: pointer;
   }
 
   [slot='start']:not(ion-buttons) ion-thumbnail,
@@ -219,7 +221,8 @@ ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled
 
 html.ios .accessory-slide-clip {
   --ios-theme-tab-accessory-radius: 28px;
-  --ios-theme-tab-accessory-height: 56px;
+  --ios-theme-tab-accessory-height: 64px;
+  --ios-theme-tab-accessory-padding-block: 8px;
   --ios-theme-tab-accessory-inset: 16px;
   --ios-theme-tab-accessory-bottom: calc(
     62px + 8px + var(--ios-theme-floating-safe-area-bottom, var(--ios26-floating-safe-area-bottom, env(safe-area-inset-bottom, 0px)))

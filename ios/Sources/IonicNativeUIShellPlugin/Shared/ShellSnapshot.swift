@@ -53,10 +53,12 @@ struct ShellControl: Decodable, Equatable {
     let artworkUrl: String?
     let progress: Double?
     let progressColor: String?
+    let elapsed: String?
+    let duration: String?
 
     private enum CodingKeys: String, CodingKey {
         case id, kind, placement, toolbarSlot, items, dark, rtl, tabBarAnchor, search
-        case title, subtitle, artworkUrl, progress, progressColor
+        case title, subtitle, artworkUrl, progress, progressColor, elapsed, duration
     }
 
     init(from decoder: Decoder) throws {
@@ -76,12 +78,14 @@ struct ShellControl: Decodable, Equatable {
         artworkUrl = try values.decodeIfPresent(String.self, forKey: .artworkUrl)
         progress = try values.decodeIfPresent(Double.self, forKey: .progress)
         progressColor = try values.decodeIfPresent(String.self, forKey: .progressColor)
+        elapsed = try values.decodeIfPresent(String.self, forKey: .elapsed)
+        duration = try values.decodeIfPresent(String.self, forKey: .duration)
     }
 
     var isValid: Bool {
         ShellComponents.supported.contains(kind) && !id.isEmpty && frame.isValid && !items.isEmpty && items.count <= 30 &&
         (!ShellButton.kinds.contains(kind) || items.count == 1) &&
-        (kind != .tabAccessory || items.count == 1) &&
+        (kind != .tabAccessory || (items.count >= 1 && items.count <= 2)) &&
         (toolbarSlot == nil || (placement == .verticalBars && [.button, .buttons, .menuButton].contains(kind))) &&
         Set(items.map(\.id)).count == items.count && items.allSatisfy(\.isValid) &&
         (tabBarAnchor.map { kind == .tabBar && $0.isValid } ?? true) &&
