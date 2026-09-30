@@ -204,7 +204,7 @@ export const createRuntime = async (
     (!isVerticalBarsSource(element) &&
       (Array.from(suspended).some((scopes) => scopes.some((scope) => scope.contains(element))) ||
         Array.from(pages).some((scope) => scope.contains(element)) ||
-        Array.from(moving.keys()).some((surface) => surface.contains(element))));
+        Array.from(moving.keys()).some((surface) => surface !== element && surface.contains(element))));
   const painted = () => new Promise<void>((resolve) => win.requestAnimationFrame(() => win.requestAnimationFrame(() => resolve())));
   const overlayOpen = (includeMenu = true, allowModal = false) => {
     const modal = topModal(doc);
@@ -714,9 +714,10 @@ export const createRuntime = async (
     const direct = !blocked(owner) && unprojected(sources.keys(), () => readEnabledCandidate(owner));
     const candidate = direct || read().find((candidate) => candidate.actions.has(event.id));
     const item = candidate?.control.items.find((item) => item.id === event.id);
+    const hostAction = candidate?.control.id === event.id;
     const searchAction =
       candidate?.control.search && [candidate.control.search.trigger.id, candidate.control.search.closeId].includes(event.id);
-    if (!searchAction && (!item || item.disabled || item.visible === false)) return;
+    if (!searchAction && !hostAction && (!item || item.disabled || item.visible === false)) return;
     // The original Ionic host owns form submission, routerLink and selection events.
     activateProjectedElement(element);
     lastSnapshot = ''; // Reconcile even if Ionic rejects the proposed native selection.

@@ -63,7 +63,10 @@ ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled
     left: 16px;
     right: 16px;
     bottom: 4px;
-    height: 2px;
+    height: 2.5px;
+    min-height: 2.5px;
+    z-index: 5;
+    pointer-events: none;
     --progress-background: var(--ion-color-primary, #cd162b);
     --background: color-mix(in srgb, var(--progress-background) 22%, transparent);
   }

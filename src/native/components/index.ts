@@ -36,7 +36,7 @@ export const readCandidate = (element: HTMLElement, id: Identify, options: Verti
   const tabAccessory = element.matches('ion-toolbar.ios-theme-tab-accessory');
   if (
     (!element.classList.contains('ios') && !verticalBars && !tabAccessory) ||
-    !visible(element, verticalBars) ||
+    !visible(element, verticalBars || tabAccessory) ||
     element.closest('ion-popover') ||
     (element.closest('ion-modal') && !verticalBars)
   )
@@ -50,6 +50,6 @@ export const readCandidate = (element: HTMLElement, id: Identify, options: Verti
     !verticalBars
   )
     return;
-  if (element.contains(element.ownerDocument.activeElement)) return;
+  if (!tabAccessory && element.contains(element.ownerDocument.activeElement)) return;
   return components.find((component) => component.tag === element.localName)?.read(element, id, options);
 };

@@ -12,7 +12,8 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
         CAPPluginMethod(name: "update", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "clear", returnType: CAPPluginReturnPromise)
     ]
-    private var tabAccessoryHost: AnyObject?
+    private var tabsController: AnyObject?
+    private var tabsBarId: String?
     private var host: ShellHost?
     private var verticalBars: ShellVerticalBarsControlling?
     private var controls: [String: UIView] = [:]
@@ -46,6 +47,9 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                 if !keyboard {
                     self.host?.isHidden = true
                     self.verticalBars?.view.isHidden = true
+                    if #available(iOS 26.0, *) {
+                        (self.tabsController as? ShellTabsController)?.surface.isHidden = true
+                    }
                 }
                 var searchOwnsKeyboard = self.verticalBars?.ownsKeyboardChrome == true
                 self.searchControllers.values.forEach { controller in
@@ -132,6 +136,10 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
     }
 
     private func removeControl(_ id: String, duration: TimeInterval = 0) {
+        if tabsBarId == id {
+            detachTabsController(duration: duration)
+            return
+        }
         searchControllers.removeValue(forKey: id)?.detach()
         if let control = controls.removeValue(forKey: id) { ShellCrossfade.retire(control, duration: duration) }
         fingerprints.removeValue(forKey: id)
@@ -143,7 +151,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
         Array(controls.keys).forEach { removeControl($0, duration: duration) }
         host?.removeFromSuperview()
         host = nil
-        detachTabAccessory()
+        detachTabsController(duration: duration)
         verticalBars?.detach()
         verticalBars = nil
         rendering.clear()
@@ -213,7 +221,6 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             var fabs: [(ShellFab, ShellControl)] = []
             var searches: [(ShellSearchControlling, ShellControl, CGRect, CGRect, UIView?, Bool)] = []
             var rejectedSearches: [String] = []
-            var accessory: ShellControl?
             if verticalBars.isEmpty || (self.keyboardVisible && !verticalSearchActive) {
                 self.verticalBars?.detach()
                 self.verticalBars = nil
@@ -239,9 +246,14 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             if snapshots.isEmpty {
                 self.host?.removeFromSuperview()
                 self.host = nil
-                self.detachTabAccessory()
+                self.detachTabsController(duration: duration)
                 call.resolve(["revision": next, "rejectedControls": rejectedControls])
                 return
+            }
+            let accessoryNode = self.keyboardVisible ? nil : snapshots.first(where: { $0.kind == .tabAccessory })
+            let accessoryBarId = accessoryNode == nil ? nil : snapshots.first(where: { $0.kind == .tabBar && $0.search == nil })?.id
+            if accessoryBarId == nil {
+                self.detachTabsController(duration: duration)
             }
             let host = self.host ?? ShellHost()
             self.host = host
@@ -270,13 +282,10 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                         reject(); continue
                     }
                     if node.kind == .tabAccessory {
-                        if self.keyboardVisible {
-                            reject()
-                        } else {
-                            accessory = node
-                        }
+                        if self.keyboardVisible { reject() }
                         continue
                     }
+                    if node.id == accessoryBarId { continue }
                     let local = node.frame.rect
                     let bounds = webView.convert(CGRect(x: local.minX * scale, y: local.minY * scale,
                                                        width: local.width * scale, height: local.height * scale), to: parent)
@@ -374,20 +383,25 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             for (id, control) in self.controls where !existing.contains(id) && self.searchControllers[id] == nil {
                 ShellCrossfade.enter(control, duration: duration)
             }
-            if let accessory, let owner = self.bridge?.viewController,
-               let tabBar = snapshots.first(where: { $0.kind == .tabBar }) {
-                let local = tabBar.frame.rect
-                let bounds = webView.convert(CGRect(x: local.minX * scale, y: local.minY * scale,
-                                                   width: local.width * scale, height: local.height * scale), to: parent)
-                if #available(iOS 26.0, *) {
-                    let host = (self.tabAccessoryHost as? ShellTabAccessory.Host) ?? ShellTabAccessory.Host()
-                    self.tabAccessoryHost = host
-                    host.apply(node: accessory, tabBarBounds: bounds, owner: owner, parent: parent, shellHost: self.host, activate: { [weak self] id in
-                        self?.activate(id)
-                    })
+            if let accessoryNode, let bar = snapshots.first(where: { $0.id == accessoryBarId }),
+               let owner = self.bridge?.viewController {
+                let created = self.tabsController == nil
+                let controller = (self.tabsController as? ShellTabsController) ?? ShellTabsController()
+                controller.activate = { [weak self] id in self?.activate(id) }
+                if created, let overlay = self.controls[bar.id], overlay !== controller.surface {
+                    ShellCrossfade.retire(overlay, duration: duration)
+                }
+                controller.attach(to: owner, in: owner.view)
+                controller.apply(tabBar: bar, accessory: accessoryNode, rendering: self.rendering)
+                self.tabsController = controller
+                self.tabsBarId = bar.id
+                self.controls[bar.id] = controller.surface
+                self.fingerprints[bar.id] = bar
+                if created {
+                    ShellCrossfade.enter(controller.surface, duration: duration)
                 }
             } else {
-                self.detachTabAccessory()
+                self.detachTabsController(duration: duration)
             }
             let complete = { call.resolve(["revision": next, "rejectedSearches": rejectedSearches, "rejectedControls": rejectedControls]) }
             if let coordinator = searches.first?.0.transitionCoordinator,
@@ -420,10 +434,20 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
         notifyListeners("activate", data: ["id": id, "revision": revision, "sequence": sequence])
     }
 
-    private func detachTabAccessory() {
+    private func detachTabsController(duration: TimeInterval = 0) {
         if #available(iOS 26.0, *) {
-            (tabAccessoryHost as? ShellTabAccessory.Host)?.detach()
+            if let controller = tabsController as? ShellTabsController {
+                if let id = tabsBarId, let surface = controls[id], surface === controller.surface {
+                    ShellCrossfade.retire(surface, duration: duration)
+                    controls.removeValue(forKey: id)
+                    fingerprints.removeValue(forKey: id)
+                    pendingTabSelections.removeValue(forKey: id)
+                    pendingTabExpiryWorks.removeValue(forKey: id)?.cancel()
+                }
+                controller.detach()
+            }
         }
-        tabAccessoryHost = nil
+        tabsController = nil
+        tabsBarId = nil
     }
 }

@@ -1,11 +1,11 @@
 import { createCandidate } from '../shared/candidate';
 import type { Candidate, Identify } from '../shared/candidate';
-import { frame, text, visible } from '../shared/dom';
+import { frame, text } from '../shared/dom';
 
 export const tag = 'ion-toolbar';
 export const selector = 'ion-toolbar.ios-theme-tab-accessory';
 export const shadowSelector = 'ion-button, ion-label, ion-progress-bar, img';
-export const tracksMotion = true;
+export const tracksMotion = false;
 
 const playSelector = 'ion-button[data-tab-accessory="play"], ion-button[slot="end"]';
 
@@ -14,7 +14,7 @@ const parseProgress = (element: HTMLElement): number | undefined => {
   if (bar) {
     const attr = bar.getAttribute('value') ?? (bar as HTMLElement & { value?: number }).value;
     const numeric = typeof attr === 'number' ? attr : parseFloat(String(attr ?? ''));
-    if (Number.isFinite(numeric)) return numeric;
+    if (Number.isFinite(numeric)) return Math.round(numeric * 100) / 100;
   }
   const css = parseFloat(getComputedStyle(element).getPropertyValue('--progress'));
   return Number.isFinite(css) ? css : undefined;
@@ -32,16 +32,22 @@ export const read = (element: HTMLElement, id: Identify): Candidate | undefined 
   if (!element.classList.contains('ios-theme-tab-accessory')) return;
   if (element.closest('ion-content, ion-modal, ion-popover, ion-menu')) return;
   const play = element.querySelector<HTMLElement>(playSelector);
-  if (!play || !visible(play)) return;
+  if (!play) return;
 
   const candidate = createCandidate(element, tag, id);
   const iconName = play.querySelector('ion-icon')?.getAttribute('name') ?? '';
   const selected = /pause/i.test(iconName);
   const label = play.getAttribute('aria-label')?.trim() || text(play) || (selected ? 'Pause' : 'Play');
   const playId = id(play);
+  const playRect = play.getBoundingClientRect();
+  const hostRect = element.getBoundingClientRect();
+  const playFrame =
+    playRect.width > 0 && playRect.height > 0
+      ? frame(playRect, hostRect)
+      : { x: Math.max(0, hostRect.width - 44), y: Math.max(0, (hostRect.height - 44) / 2), width: 44, height: 44 };
   candidate.control.items.push({
     id: playId,
-    ...frame(play.getBoundingClientRect(), element.getBoundingClientRect()),
+    ...playFrame,
     label,
     accessibilityLabel: play.getAttribute('aria-label') ?? label,
     disabled: false,

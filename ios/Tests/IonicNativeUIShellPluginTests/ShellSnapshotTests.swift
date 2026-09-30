@@ -663,6 +663,8 @@ final class ShellSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.controls[0].title, "Mahamudra")
         XCTAssertEqual(snapshot.controls[0].subtitle, "Lama Ole")
         XCTAssertEqual(snapshot.controls[0].progress, 0.4)
+        payload["progress"] = 0
+        XCTAssertEqual(try decode([payload]).controls[0].progress, 0)
         payload["items"] = [] as [JSObject]
         XCTAssertFalse(try decode([payload]).isValid)
     }

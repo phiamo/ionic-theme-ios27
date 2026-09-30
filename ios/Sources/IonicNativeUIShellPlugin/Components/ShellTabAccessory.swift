@@ -2,9 +2,12 @@ import UIKit
 
 /// Mini-player content hosted in `UITabAccessory` (iOS 26+).
 @available(iOS 26.0, *)
-final class ShellTabAccessoryContentView: UIView {
+final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
     var onPlayPause: (() -> Void)?
     var onTap: (() -> Void)?
+
+    private static let swipeUpThreshold: CGFloat = 36
+    private static let swipeMaxHorizontalDrift: CGFloat = 48
 
     private let artworkView = UIImageView()
     private let titleLabel = UILabel()
@@ -15,9 +18,16 @@ final class ShellTabAccessoryContentView: UIView {
     private let progressTrack = UIView()
     private let progressFill = UIView()
     private var isPlaying = false
+    private var isInlineLayout = false
     private var progress: CGFloat = -1
     private var progressColor: UIColor?
-    private var targetWidth: CGFloat = 0
+    private var artworkSize: NSLayoutConstraint?
+    private var stackLeading: NSLayoutConstraint?
+    private var stackTrailing: NSLayoutConstraint?
+    private var stackTop: NSLayoutConstraint?
+    private var stackBottom: NSLayoutConstraint?
+    private var panGesture: UIPanGestureRecognizer?
+    private var suppressNextTap = false
     var currentArtworkUrl: String?
     var hasArtwork: Bool { artworkView.image != nil }
 
@@ -39,13 +49,17 @@ final class ShellTabAccessoryContentView: UIView {
         artworkView.layer.cornerRadius = 6
         artworkView.layer.cornerCurve = .continuous
         artworkView.backgroundColor = .secondarySystemFill
-        artworkView.widthAnchor.constraint(equalToConstant: 32).isActive = true
-        artworkView.heightAnchor.constraint(equalToConstant: 32).isActive = true
+        let artworkHeight = artworkView.heightAnchor.constraint(equalToConstant: 32)
+        artworkHeight.isActive = true
+        artworkSize = artworkHeight
+        artworkView.widthAnchor.constraint(equalTo: artworkView.heightAnchor).isActive = true
         playPauseButton.addTarget(self, action: #selector(playPauseTapped), for: .touchUpInside)
         playPauseButton.tintColor = .label
         playPauseButton.accessibilityLabel = "Play or pause"
         playPauseButton.setContentHuggingPriority(.required, for: .horizontal)
         playPauseButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        playPauseButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        playPauseButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         var config = UIButton.Configuration.plain()
         config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 6, bottom: 6, trailing: 6)
         playPauseButton.configuration = config
@@ -73,17 +87,29 @@ final class ShellTabAccessoryContentView: UIView {
         progressTrack.addSubview(progressFill)
         addSubview(progressTrack)
         applyProgressColors()
+        let leading = stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16)
+        let trailing = stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10)
+        let top = stack.topAnchor.constraint(equalTo: topAnchor, constant: 8)
+        let bottom = stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -10)
+        stackLeading = leading
+        stackTrailing = trailing
+        stackTop = top
+        stackBottom = bottom
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
-            stack.topAnchor.constraint(equalTo: topAnchor, constant: 8),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -10),
+            leading, trailing, top, bottom,
             progressTrack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             progressTrack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
             progressTrack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
-            progressTrack.heightAnchor.constraint(equalToConstant: 2),
+            progressTrack.heightAnchor.constraint(equalToConstant: 2.5),
         ])
-        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(bodyTapped)))
+        let tap = UITapGestureRecognizer(target: self, action: #selector(bodyTapped))
+        tap.delegate = self
+        addGestureRecognizer(tap)
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+        pan.delegate = self
+        pan.cancelsTouchesInView = false
+        addGestureRecognizer(pan)
+        panGesture = pan
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -92,7 +118,7 @@ final class ShellTabAccessoryContentView: UIView {
         titleLabel.text = node.title ?? node.items.first?.content.label
         let subtitle = node.subtitle
         subtitleLabel.text = subtitle
-        subtitleLabel.isHidden = subtitle?.isEmpty != false
+        subtitleLabel.isHidden = isInlineLayout || subtitle?.isEmpty != false
         isPlaying = node.items.first?.content.selected == true
             || node.items.first?.content.label.lowercased().contains("pause") == true
         updatePlayImage()
@@ -120,21 +146,40 @@ final class ShellTabAccessoryContentView: UIView {
         artworkView.backgroundColor = image == nil ? .secondarySystemFill : .clear
     }
 
-    func setTargetWidth(_ width: CGFloat) {
-        guard width > 0 else { return }
-        targetWidth = width
+    func reset() {
+        titleLabel.text = nil
+        subtitleLabel.text = nil
+        subtitleLabel.isHidden = true
+        isPlaying = false
+        currentArtworkUrl = nil
+        setArtwork(nil)
+        setProgress(-1)
+        updatePlayImage()
+    }
+
+    func setInlineLayout(_ inline: Bool) {
+        guard inline != isInlineLayout else { return }
+        isInlineLayout = inline
+        subtitleLabel.isHidden = inline || subtitleLabel.text?.isEmpty != false
+        titleLabel.font = inline
+            ? .preferredFont(forTextStyle: .caption1)
+            : .preferredFont(forTextStyle: .subheadline).withWeight(.semibold)
+        artworkSize?.constant = inline ? 28 : 32
+        stack.spacing = inline ? 8 : 10
+        stackLeading?.constant = inline ? 14 : 16
+        stackTrailing?.constant = inline ? -12 : -10
+        stackTop?.constant = inline ? 6 : 8
+        stackBottom?.constant = inline ? -6 : -10
+        var config = UIButton.Configuration.plain()
+        let pad: CGFloat = inline ? 4 : 6
+        config.contentInsets = NSDirectionalEdgeInsets(top: pad, leading: pad, bottom: pad, trailing: pad)
+        playPauseButton.configuration = config
+        updatePlayImage()
         setNeedsLayout()
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        if targetWidth > 0, let parent = superview {
-            let midX = parent.bounds.midX
-            if abs(bounds.width - targetWidth) > 1 || abs(center.x - midX) > 1 {
-                bounds.size.width = targetWidth
-                center = CGPoint(x: midX, y: center.y)
-            }
-        }
         let width = progressTrack.bounds.width * max(0, min(1, progress))
         progressFill.frame = CGRect(x: 0, y: 0, width: width, height: progressTrack.bounds.height)
         let size = min(artworkView.bounds.width, artworkView.bounds.height)
@@ -155,197 +200,48 @@ final class ShellTabAccessoryContentView: UIView {
 
     private func updatePlayImage() {
         let name = isPlaying ? "pause.fill" : "play.fill"
-        let symbol = UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
+        let symbol = UIImage.SymbolConfiguration(pointSize: isInlineLayout ? 14 : 16, weight: .semibold)
         playPauseButton.setImage(UIImage(systemName: name, withConfiguration: symbol), for: .normal)
     }
 
     @objc private func playPauseTapped() { onPlayPause?() }
-    @objc private func bodyTapped() { onTap?() }
+
+    @objc private func bodyTapped() {
+        if suppressNextTap {
+            suppressNextTap = false
+            return
+        }
+        onTap?()
+    }
+
+    @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+        let translation = gesture.translation(in: self)
+        switch gesture.state {
+        case .changed:
+            if translation.y < -12 { suppressNextTap = true }
+        case .ended, .cancelled:
+            let velocity = gesture.velocity(in: self)
+            let isUpwardSwipe = translation.y < -Self.swipeUpThreshold
+                && abs(translation.x) < Self.swipeMaxHorizontalDrift
+                && velocity.y < 0
+            if isUpwardSwipe {
+                suppressNextTap = true
+                onTap?()
+            }
+        default:
+            break
+        }
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        let point = touch.location(in: playPauseButton)
+        return !playPauseButton.bounds.contains(point)
+    }
 }
 
 @available(iOS 26.0, *)
 enum ShellTabAccessory {
     static let kind = ShellComponent.tabAccessory
-
-    /// Full-width bottom strip with a reserved tab bar so `UITabAccessory` sits in the
-    /// system gap above the overlay `UITabBar`, not inside the pill.
-    final class Host {
-        private var controller: UITabBarController?
-        private var cover: Passthrough?
-        private var content: ShellTabAccessoryContentView?
-        private var artworkLoad: URLSessionDataTask?
-        var playId: String?
-        var tapId: String?
-
-        func apply(
-            node: ShellControl,
-            tabBarBounds: CGRect,
-            owner: UIViewController,
-            parent: UIView,
-            shellHost: UIView?,
-            activate: @escaping (String) -> Void
-        ) {
-            let accessoryHeight: CGFloat = 56
-            let gap: CGFloat = 8
-            let lift = accessoryHeight + gap
-            let hostFrame = CGRect(
-                x: parent.bounds.minX,
-                y: max(0, tabBarBounds.minY - lift),
-                width: parent.bounds.width,
-                height: tabBarBounds.maxY - max(0, tabBarBounds.minY - lift)
-            )
-
-            let cover = ensureCover(parent: parent, shellHost: shellHost)
-            cover.frame = hostFrame
-            cover.autoresizingMask = [.flexibleWidth, .flexibleTopMargin]
-            cover.clipsToBounds = false
-
-            let host = ensureController(owner: owner, parent: cover)
-            host.view.frame = cover.bounds
-            host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            host.view.clipsToBounds = false
-            let view: ShellTabAccessoryContentView
-            if let existing = content {
-                view = existing
-            } else {
-                let created = ShellTabAccessoryContentView()
-                created.onPlayPause = { [weak self] in
-                    if let id = self?.playId { activate(id) }
-                }
-                created.onTap = { [weak self] in
-                    if let id = self?.tapId { activate(id) }
-                }
-                content = created
-                view = created
-            }
-            playId = node.items.first?.id
-            tapId = node.id
-            view.apply(node)
-            view.setTargetWidth(tabBarBounds.width)
-            loadArtwork(node.artworkUrl, into: view)
-            host.setBottomAccessory(UITabAccessory(contentView: view), animated: false)
-            cover.content = view
-            cover.isHidden = false
-            host.view.isHidden = false
-        }
-
-        func detach() {
-            artworkLoad?.cancel()
-            artworkLoad = nil
-            if let controller {
-                controller.setBottomAccessory(nil, animated: false)
-                controller.willMove(toParent: nil)
-                controller.view.removeFromSuperview()
-                controller.removeFromParent()
-            }
-            cover?.removeFromSuperview()
-            controller = nil
-            cover = nil
-            content = nil
-            playId = nil
-            tapId = nil
-        }
-
-        private func ensureCover(parent: UIView, shellHost: UIView?) -> Passthrough {
-            if let existing = cover {
-                if existing.superview !== parent {
-                    insertCover(existing, parent: parent, shellHost: shellHost)
-                } else if let shellHost, existing.superview === parent {
-                    parent.insertSubview(existing, belowSubview: shellHost)
-                }
-                return existing
-            }
-            let created = Passthrough()
-            created.backgroundColor = .clear
-            created.isOpaque = false
-            insertCover(created, parent: parent, shellHost: shellHost)
-            cover = created
-            return created
-        }
-
-        private func insertCover(_ cover: UIView, parent: UIView, shellHost: UIView?) {
-            if let shellHost, shellHost.superview === parent {
-                parent.insertSubview(cover, belowSubview: shellHost)
-            } else {
-                parent.addSubview(cover)
-            }
-        }
-
-        private func ensureController(owner: UIViewController, parent: UIView) -> UITabBarController {
-            if let existing = controller {
-                if existing.view.superview !== parent {
-                    parent.addSubview(existing.view)
-                }
-                return existing
-            }
-            let created = UITabBarController()
-            created.view.backgroundColor = .clear
-            created.view.isOpaque = false
-            created.view.clipsToBounds = false
-            let placeholder = UIViewController()
-            placeholder.view.backgroundColor = .clear
-            placeholder.tabBarItem = UITabBarItem(title: " ", image: UIImage(systemName: "circle"), tag: 0)
-            created.setViewControllers([placeholder], animated: false)
-            if #available(iOS 15.0, *) {
-                let appearance = UITabBarAppearance()
-                appearance.configureWithTransparentBackground()
-                created.tabBar.standardAppearance = appearance
-                created.tabBar.scrollEdgeAppearance = appearance
-            }
-            created.tabBar.alpha = 0
-            created.tabBar.isUserInteractionEnabled = false
-            created.additionalSafeAreaInsets.bottom = 0
-            owner.addChild(created)
-            parent.addSubview(created.view)
-            created.didMove(toParent: owner)
-            controller = created
-            return created
-        }
-
-        final class Passthrough: UIView {
-            weak var content: UIView?
-
-            override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-                guard let content, !content.isHidden, content.alpha > 0.01 else { return nil }
-                return content.hitTest(convert(point, to: content), with: event)
-            }
-        }
-
-        private func loadArtwork(_ urlString: String?, into content: ShellTabAccessoryContentView) {
-            guard let urlString, !urlString.isEmpty else {
-                artworkLoad?.cancel()
-                content.currentArtworkUrl = nil
-                content.setArtwork(nil)
-                return
-            }
-            if urlString == content.currentArtworkUrl, content.hasArtwork {
-                return
-            }
-            content.currentArtworkUrl = urlString
-            artworkLoad?.cancel()
-            if urlString.hasPrefix("data:image"),
-               let comma = urlString.firstIndex(of: ","),
-               let data = Data(base64Encoded: String(urlString[urlString.index(after: comma)...])),
-               let image = UIImage(data: data) {
-                content.setArtwork(image)
-                return
-            }
-            if urlString.hasPrefix("file://"), let url = URL(string: urlString) {
-                content.setArtwork(UIImage(contentsOfFile: url.path))
-                return
-            }
-            guard let url = URL(string: urlString) else { return }
-            let task = URLSession.shared.dataTask(with: url) { [weak content] data, _, _ in
-                let image = data.flatMap { UIImage(data: $0) }
-                DispatchQueue.main.async {
-                    guard content?.currentArtworkUrl == urlString else { return }
-                    content?.setArtwork(image)
-                }
-            }
-            artworkLoad = task
-            task.resume()
-        }
-    }
 }
 
 private extension UIFont {

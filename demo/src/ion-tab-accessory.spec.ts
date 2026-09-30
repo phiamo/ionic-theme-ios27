@@ -49,6 +49,15 @@ test('projects play without a hydrated ion-icon svg', () => {
   expect(candidate?.control.items[0].selected).toBe(true);
 });
 
+test('projects progress of 0', () => {
+  const toolbar = mount(false);
+  const bar = document.querySelector('ion-progress-bar')!;
+  bar.setAttribute('value', '0');
+  (bar as HTMLElement & { value?: number }).value = 0;
+  const candidate = readCandidate(toolbar, () => 'accessory');
+  expect(candidate?.control.progress).toBe(0);
+});
+
 test('maps play icon to unselected and skips unmarked toolbars', () => {
   const candidate = readCandidate(mount(false), () => 'accessory');
   expect(candidate?.control.items[0].selected).toBe(false);
