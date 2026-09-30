@@ -67,3 +67,11 @@ test('maps play icon to unselected and skips unmarked toolbars', () => {
   plain.getBoundingClientRect = size;
   expect(readCandidate(plain, () => 'plain')).toBeUndefined();
 });
+
+test('does not project an accessory inside ion-modal', () => {
+  const toolbar = mount(true);
+  const modal = document.createElement('ion-modal');
+  modal.append(toolbar);
+  document.body.append(modal);
+  expect(readCandidate(toolbar, () => 'accessory')).toBeUndefined();
+});
