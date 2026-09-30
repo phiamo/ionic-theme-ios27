@@ -49,10 +49,12 @@ ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled
 
   &::part(content) {
     align-items: center;
+    min-width: 0;
+    overflow: hidden;
     height: 100%;
     min-height: var(--ios-theme-tab-accessory-height);
     padding-top: 0;
-    padding-bottom: 0;
+    padding-bottom: 6px;
   }
 
   ion-thumbnail,
@@ -86,25 +88,74 @@ ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled
     flex-direction: column;
     justify-content: center;
     min-width: 0;
-    flex: 1 1 auto;
+    max-width: 100%;
+    flex: 1 1 0%;
     margin: 0;
+    margin-inline-end: 8px;
     align-self: center;
+    overflow: hidden;
     h2 {
-      font-size: 0.9375rem;
+      font-size: 0.875rem;
       font-weight: 600;
       margin: 0;
       line-height: 1.2;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     p {
       font-size: 0.75rem;
       color: var(--ion-text-color-step-400, var(--ion-color-step-400, #999));
       margin: 0;
       line-height: 1.2;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 
-  ion-button[data-tab-accessory='play'],
-  ion-button[slot='end'] {
+  ion-buttons[slot='end'] {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    margin: 0;
+  }
+
+  [data-tab-accessory='time'] {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    align-self: center;
+    min-width: 4.75em;
+    margin: 0;
+    margin-inline-end: 4px;
+    padding: 0;
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    text-align: end;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  [data-tab-accessory='elapsed'] {
+    color: var(--ion-text-color-step-150, var(--ion-color-step-150, #555));
+    font-weight: 600;
+  }
+
+  [data-tab-accessory='duration'] {
+    color: var(--ion-text-color-step-400, var(--ion-color-step-400, #999));
+  }
+
+  ion-button[data-tab-accessory='play'] {
     --padding-start: 6px;
     --padding-end: 6px;
     --padding-top: 0;
@@ -130,9 +181,9 @@ ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled
 
   ion-progress-bar {
     position: absolute;
-    left: 16px;
-    right: 16px;
-    bottom: 5px;
+    left: 12px;
+    right: 12px;
+    bottom: 3px;
     width: auto;
     height: 2.5px;
     min-height: 2.5px;
@@ -166,9 +217,58 @@ ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled
   }
 }
 
+html.ios .accessory-slide-clip {
+  --ios-theme-tab-accessory-radius: 28px;
+  --ios-theme-tab-accessory-height: 56px;
+  --ios-theme-tab-accessory-inset: 16px;
+  --ios-theme-tab-accessory-bottom: calc(
+    62px + 8px + var(--ios-theme-floating-safe-area-bottom, var(--ios26-floating-safe-area-bottom, env(safe-area-inset-bottom, 0px)))
+  );
+  position: absolute;
+  left: calc(var(--ios-theme-tab-accessory-inset) + var(--ion-safe-area-left, 0px));
+  right: calc(var(--ios-theme-tab-accessory-inset) + var(--ion-safe-area-right, 0px));
+  margin-inline: auto;
+  bottom: var(--ios-theme-tab-accessory-bottom);
+  width: calc(
+    100% - (var(--ios-theme-tab-accessory-inset) + var(--ion-safe-area-left, 0px)) -
+      (var(--ios-theme-tab-accessory-inset) + var(--ion-safe-area-right, 0px))
+  );
+  max-width: 471px;
+  height: var(--ios-theme-tab-accessory-height);
+  min-height: var(--ios-theme-tab-accessory-height);
+  contain: layout style;
+  border-radius: var(--ios-theme-tab-accessory-radius);
+  overflow: hidden;
+  z-index: 3;
+  pointer-events: auto;
+
+  &.keyboardOpen,
+  &.tab-bar-hidden {
+    display: none;
+  }
+
+  &.ios-theme-tab-accessory-classic {
+    --ios-theme-tab-accessory-radius: 12px;
+    --ios-theme-tab-accessory-inset: 8px;
+  }
+
+  ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled) {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+    height: 100%;
+    min-height: 100%;
+  }
+}
+
 // In-flow iOS 15–17.3 tab bar is ~50px, not the 62px content-box island.
 @supports not (text-wrap: pretty) {
-  ion-toolbar.ios.ios-theme-tab-accessory.ios-theme-tab-accessory-classic:not(.ios-theme-disabled, .ios26-disabled) {
+  ion-toolbar.ios.ios-theme-tab-accessory.ios-theme-tab-accessory-classic:not(.ios-theme-disabled, .ios26-disabled),
+  html.ios .accessory-slide-clip.ios-theme-tab-accessory-classic {
     --ios-theme-tab-accessory-bottom: calc(50px + 8px + env(safe-area-inset-bottom, 0px));
   }
 }
