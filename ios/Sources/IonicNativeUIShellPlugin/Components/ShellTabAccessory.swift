@@ -260,18 +260,39 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
         onTap?()
     }
 
+    private func resetLift(animated: Bool) {
+        let restore = {
+            self.transform = .identity
+            self.alpha = 1
+        }
+        if animated {
+            UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseOut, .beginFromCurrentState], animations: restore)
+        } else {
+            restore()
+        }
+    }
+
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-        let translation = gesture.translation(in: self)
+        let space = superview ?? self
+        let translation = gesture.translation(in: space)
         switch gesture.state {
         case .changed:
-            if translation.y < -12 { suppressNextTap = true }
+            let y = min(0, translation.y)
+            transform = CGAffineTransform(translationX: 0, y: y)
+            let fadeDistance = max(bounds.height * 2, 120)
+            alpha = max(0, 1 - abs(y) / fadeDistance)
+            if y < -12 { suppressNextTap = true }
         case .ended, .cancelled:
-            let velocity = gesture.velocity(in: self)
-            let isUpwardSwipe = (translation.y < -Self.swipeUpThreshold || velocity.y < -280)
+            let velocity = gesture.velocity(in: space)
+            let isUpwardSwipe = gesture.state == .ended
+                && (translation.y < -Self.swipeUpThreshold || velocity.y < -280)
                 && abs(translation.x) < Self.swipeMaxHorizontalDrift
             if isUpwardSwipe {
                 suppressNextTap = true
                 onTap?()
+                resetLift(animated: false)
+            } else {
+                resetLift(animated: true)
             }
         default:
             break

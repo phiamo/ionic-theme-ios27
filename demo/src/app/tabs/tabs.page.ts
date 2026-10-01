@@ -1,6 +1,7 @@
 import { AfterViewInit, Component, DestroyRef, ElementRef, inject, OnDestroy, OnInit, viewChild } from '@angular/core';
 import {
   IonButton,
+  IonButtons,
   IonContent,
   IonIcon,
   IonItem,
@@ -22,7 +23,7 @@ import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import { registeredEffect, registerTabBarEffect } from '../../../../src';
+import { enableTabAccessory, registeredEffect, registerTabBarEffect } from '../../../../src';
 import { applyFoldStateClasses } from '../../../../src/vertical-bars';
 import { Foldable, type FoldState } from '@erkamyaman/capacitor-foldable';
 import { Capacitor } from '@capacitor/core';
@@ -46,6 +47,7 @@ import { Capacitor } from '@capacitor/core';
     IonToolbar,
     IonThumbnail,
     IonButton,
+    IonButtons,
     IonProgressBar,
     RouterLink,
   ],
@@ -60,6 +62,7 @@ export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter,
   playing = true;
   showAccessory = false;
   classicAccessory = false;
+  accessoryActivated = false;
   ngOnInit() {
     this.#router.events
       .pipe(
@@ -124,11 +127,16 @@ export class TabsPage implements OnInit, AfterViewInit, OnDestroy, ViewDidEnter,
     this.playing = !this.playing;
   }
 
+  onAccessoryActivate() {
+    this.accessoryActivated = true;
+  }
+
   ionViewDidEnter() {
     const registerGesture = registerTabBarEffect(document.querySelector<HTMLElement>('ion-tab-bar')!);
     if (registerGesture) {
       this.registeredGestures.push(registerGesture);
     }
+    this.registeredGestures.push(enableTabAccessory());
   }
 
   ionViewDidLeave() {

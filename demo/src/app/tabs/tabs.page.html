@@ -31,6 +31,7 @@
         mode="ios"
         [class.tab-bar-hidden]="!showAccessory"
         [class.ios-theme-tab-accessory-classic]="classicAccessory"
+        (click)="onAccessoryActivate()"
       >
         <ion-thumbnail slot="start">
           <img data-tab-accessory="artwork" src="https://picsum.photos/128/128?id=12" alt="" />
@@ -44,12 +45,7 @@
             <span data-tab-accessory="elapsed">1:24</span>
             <span data-tab-accessory="duration">3:45</span>
           </span>
-          <ion-button
-            data-tab-accessory="play"
-            fill="clear"
-            (click)="togglePlay($event)"
-            [attr.aria-label]="playing ? 'Pause' : 'Play'"
-          >
+          <ion-button data-tab-accessory="play" fill="clear" (click)="togglePlay($event)" [attr.aria-label]="playing ? 'Pause' : 'Play'">
             <ion-icon slot="icon-only" [name]="playing ? 'pause' : 'play'" aria-hidden="true"></ion-icon>
           </ion-button>
         </ion-buttons>
