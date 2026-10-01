@@ -1,5 +1,6 @@
 @use '../utils/api';
 
+ion-toolbar.ios.tab-accessory:not(.ios-theme-disabled, .ios26-disabled),
 ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled) {
   --ios-theme-tab-accessory-radius: 28px;
   --ios-theme-tab-accessory-height: 64px;
@@ -261,6 +262,7 @@ html.ios .accessory-slide-clip {
     --ios-theme-tab-accessory-inset: 8px;
   }
 
+  ion-toolbar.ios.tab-accessory:not(.ios-theme-disabled, .ios26-disabled),
   ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled) {
     position: relative;
     left: auto;
@@ -276,6 +278,7 @@ html.ios .accessory-slide-clip {
 
 // In-flow iOS 15–17.3 tab bar is ~50px, not the 62px content-box island.
 @supports not (text-wrap: pretty) {
+  ion-toolbar.ios.tab-accessory.ios-theme-tab-accessory-classic:not(.ios-theme-disabled, .ios26-disabled),
   ion-toolbar.ios.ios-theme-tab-accessory.ios-theme-tab-accessory-classic:not(.ios-theme-disabled, .ios26-disabled),
   html.ios .accessory-slide-clip.ios-theme-tab-accessory-classic {
     --ios-theme-tab-accessory-bottom: calc(50px + 8px + env(safe-area-inset-bottom, 0px));

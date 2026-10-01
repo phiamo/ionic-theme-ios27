@@ -33,7 +33,7 @@ export const isVerticalBarsCandidate = isVerticalBarsSource;
 
 export const readCandidate = (element: HTMLElement, id: Identify, options: VerticalControlAreaOptions = {}): Candidate | undefined => {
   const verticalBars = isVerticalBarsCandidate(element);
-  const tabAccessory = element.matches('ion-toolbar.ios-theme-tab-accessory');
+  const tabAccessory = element.matches('ion-toolbar.tab-accessory, ion-toolbar.ios-theme-tab-accessory');
   if (
     (!element.classList.contains('ios') && !verticalBars && !tabAccessory) ||
     !visible(element, verticalBars || tabAccessory) ||

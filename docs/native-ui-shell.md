@@ -49,7 +49,7 @@ The table below describes the ordinary Native UI Shell. Vertical Bars uses the s
 | `ion-back-button`                             | Standard icon and color in a fixed header/footer toolbar                                                  | Glass `UIButton`, using the resolved Ionic label/icon                 |
 | `ion-menu-button`                             | Fixed toolbar, inside the theme glass `ion-buttons`                                                       | Glass `UIButton`; original Ionic menu toggle                          |
 | `ion-tab-bar`                                 | Fixed tabs, icon-only/label-only items, one icon per item, dot/text badges, selection and disabled state  | `UITabBar` and `UITabBarItem`                                         |
-| `ion-toolbar.ios-theme-tab-accessory`         | Mini-player in a fixed footer region above `ion-tab-bar`: thumbnail, title, subtitle, play/pause button, progress | iOS 26+ `UITabAccessory` glass capsule in the system gap above the projected tab bar; Web CSS on other platforms    |
+| `ion-toolbar.tab-accessory` (alias `ios-theme-tab-accessory`) | Mini-player in a fixed footer region above `ion-tab-bar`: thumbnail, title, subtitle, play/pause button, progress | iOS 26+ `UITabAccessory` glass capsule in the system gap above the projected tab bar; Web CSS on other platforms    |
 | `ion-segment`                                 | Fixed toolbar, non-scrollable, text **or** one icon per item                                              | `UISegmentedControl`                                                  |
 | `ion-fab` / `ion-fab-button` / `ion-fab-list` | Glass FAB in an `ion-content` fixed slot; one main button and optional directional lists                  | Persistent glass `UIButton` per button; one FAB synchronization group |
 
@@ -70,7 +70,7 @@ If a child inside a shared native surface opts out, the entire surface stays on 
 Placement is required even when the appearance is glass. In the ordinary Native UI Shell, buttons, back buttons, menu-button groups and segments need a toolbar directly inside `ion-header` or `ion-footer`, with no `ion-content` ancestor around the control. Buttons directly inside a header/footer, standalone toolbars, and toolbars or headers nested in scrolling content stay on the Web. FABs without `slot="fixed"` also stay on the Web. Moving a projected control to an excluded location restores its Web rendering; moving it back re-evaluates eligibility. When `.ios-theme-vertical-bars` is enabled, a standard `ion-back-button` can instead be projected to the Vertical Control Area from outside a fixed toolbar, including routed content or a persistent app shell. The application chooses where to enable this mode and which Ionic component mode to use; Vertical Bars projection does not require `ios` mode classes. Collapsed headers, opted-out controls and departed pages are excluded. Full-width foreground modals can participate in Vertical Bars as described below; other overlay surfaces keep their own layout.
 
 ```html
-<ion-toolbar class="ios-theme-tab-accessory">
+<ion-toolbar class="tab-accessory">
   <ion-thumbnail slot="start">
     <img data-tab-accessory="artwork" src="cover.jpg" alt="" />
   </ion-thumbnail>

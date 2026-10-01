@@ -3,16 +3,18 @@ import type { Gesture, GestureDetail } from '@ionic/core';
 import { isNativeUIShell } from '../native-integration';
 import type { registeredEffect } from '../sheets-of-glass/interfaces';
 
-export const TAB_ACCESSORY_SELECTOR = 'ion-toolbar.ios-theme-tab-accessory';
-export const TAB_ACCESSORY_LIFT_SELECTOR = '[data-tab-accessory-lift], .ios-theme-tab-accessory-lift';
-export const TAB_ACCESSORY_PANNING_X_CLASS = 'ios-theme-tab-accessory-panning-x';
-export const TAB_ACCESSORY_GESTURE_ACTIVE_CLASS = 'ios-theme-tab-accessory-gesture-active';
-export const TAB_ACCESSORY_SWIPING_CLASS = 'ios-theme-tab-accessory-swiping';
+export const TAB_ACCESSORY_SELECTOR = 'ion-toolbar.tab-accessory, ion-toolbar.ios-theme-tab-accessory';
+export const TAB_ACCESSORY_LIFT_SELECTOR =
+  '[data-tab-accessory-lift], .tab-accessory-lift, .ios-theme-tab-accessory-lift';
+export const TAB_ACCESSORY_PANNING_X_CLASS = 'tab-accessory-panning-x';
+export const TAB_ACCESSORY_PANNING_X_ALIAS = 'ios-theme-tab-accessory-panning-x';
+export const TAB_ACCESSORY_GESTURE_ACTIVE_CLASS = 'tab-accessory-gesture-active';
+export const TAB_ACCESSORY_SWIPING_CLASS = 'tab-accessory-swiping';
 
 const PLAY_SELECTOR = '[data-tab-accessory="play"], ion-button[slot="end"]';
 const OPEN_DISTANCE = 50;
 const OPEN_VELOCITY = -0.3;
-const GESTURE_NAME = 'ios-theme-tab-accessory-swipe';
+const GESTURE_NAME = 'tab-accessory-swipe';
 
 export interface TabAccessoryOptions {
   liftTarget?: HTMLElement;
@@ -28,7 +30,9 @@ const playHit = (event: Event | undefined): boolean => {
 };
 
 const panningX = (el: HTMLElement): boolean =>
-  el.classList.contains(TAB_ACCESSORY_PANNING_X_CLASS) || !!el.closest(`.${TAB_ACCESSORY_PANNING_X_CLASS}`);
+  el.classList.contains(TAB_ACCESSORY_PANNING_X_CLASS) ||
+  el.classList.contains(TAB_ACCESSORY_PANNING_X_ALIAS) ||
+  !!el.closest(`.${TAB_ACCESSORY_PANNING_X_CLASS}, .${TAB_ACCESSORY_PANNING_X_ALIAS}`);
 
 const hidden = (el: HTMLElement): boolean => el.style.opacity === '0';
 
@@ -45,8 +49,9 @@ const resetLift = (el: HTMLElement, later: (fn: () => void, ms: number) => void)
 /**
  * Swipe-up on a web/classic tab accessory: follow-the-finger lift + fade, then activate
  * the host toolbar (click). Matches native `onTap`. Skips Native UI Shell hosts.
- * Put `.ios-theme-tab-accessory-lift` (or `data-tab-accessory-lift`) on a wrapper to lift
- * that node instead of the toolbar. Hosts may set `.ios-theme-tab-accessory-panning-x`
+ * Put `.tab-accessory-lift` or `.ios-theme-tab-accessory-lift` (or `data-tab-accessory-lift`)
+ * on a wrapper to lift that node instead of the toolbar. Hosts may set
+ * `.tab-accessory-panning-x` (or `.ios-theme-tab-accessory-panning-x`)
  * while they own a horizontal gesture so swipe-up does not steal it.
  */
 export const attachTabAccessory = (toolbar: HTMLElement, options?: TabAccessoryOptions): registeredEffect | undefined => {
@@ -133,7 +138,7 @@ export const attachTabAccessory = (toolbar: HTMLElement, options?: TabAccessoryO
 
 const enabled = new WeakMap<object, registeredEffect>();
 
-/** Observes `ion-toolbar.ios-theme-tab-accessory` and attaches swipe-up. Call once at app start. */
+/** Observes `ion-toolbar.tab-accessory` (and the `ios-theme-tab-accessory` alias) and attaches swipe-up. Call once at app start. */
 export const enableTabAccessory = (root?: ParentNode): registeredEffect => {
   const scope = root ?? (typeof document === 'undefined' ? undefined : document);
   if (!scope) return { destroy: () => {} };

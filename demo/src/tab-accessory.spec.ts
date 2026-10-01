@@ -35,11 +35,12 @@ const config = (): GestureConfig => {
   return last[0];
 };
 
-const mount = (lift = false) => {
+const mount = (lift = false, alias = false) => {
   const clip = document.createElement('div');
-  if (lift) clip.className = 'ios-theme-tab-accessory-lift';
+  if (lift) clip.className = alias ? 'ios-theme-tab-accessory-lift' : 'tab-accessory-lift';
+  const toolbarClass = alias ? 'ios ios-theme-tab-accessory' : 'ios tab-accessory';
   clip.innerHTML = `
-    <ion-toolbar class="ios ios-theme-tab-accessory">
+    <ion-toolbar class="${toolbarClass}">
       <img data-tab-accessory="artwork" alt="" />
       <ion-button data-tab-accessory="play"></ion-button>
     </ion-toolbar>`;
@@ -72,6 +73,12 @@ test('attaches an upward swipe gesture with follow-the-finger priority', () => {
   expect(config().disableScroll).toBe(true);
   expect(config().maxAngle).toBe(45);
   effect?.destroy();
+});
+
+test('attaches to the ios-theme-tab-accessory alias', () => {
+  const { toolbar } = mount(false, true);
+  attachTabAccessory(toolbar);
+  expect(createGestureMock).toHaveBeenCalledTimes(1);
 });
 
 test('lifts a marked wrapper instead of the toolbar', () => {

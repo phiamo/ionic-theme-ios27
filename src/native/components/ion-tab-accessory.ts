@@ -3,7 +3,7 @@ import type { Candidate, Identify } from '../shared/candidate';
 import { frame, text } from '../shared/dom';
 
 export const tag = 'ion-toolbar';
-export const selector = 'ion-toolbar.ios-theme-tab-accessory';
+export const selector = 'ion-toolbar.tab-accessory, ion-toolbar.ios-theme-tab-accessory';
 export const shadowSelector = 'ion-button, ion-label, ion-progress-bar, img, [data-tab-accessory="artwork"], [data-tab-accessory="elapsed"], [data-tab-accessory="duration"]';
 export const tracksMotion = false;
 
@@ -29,7 +29,7 @@ const progressColor = (element: HTMLElement): string | undefined => {
 };
 
 export const read = (element: HTMLElement, id: Identify): Candidate | undefined => {
-  if (!element.classList.contains('ios-theme-tab-accessory')) return;
+  if (!element.classList.contains('tab-accessory') && !element.classList.contains('ios-theme-tab-accessory')) return;
   if (element.closest('ion-content, ion-modal, ion-popover, ion-menu')) return;
   const play = element.querySelector<HTMLElement>(playSelector);
   if (!play) return;

@@ -134,7 +134,7 @@ export interface ShellControl extends Frame {
   rtl: boolean;
   tabBarAnchor?: { x: 0 | 0.5 | 1; y: 0 | 1 };
   search?: ShellSearch;
-  /** Mini-player title projected from `ion-toolbar.ios-theme-tab-accessory`. */
+  /** Mini-player title projected from `ion-toolbar.tab-accessory`. */
   title?: string;
   subtitle?: string;
   artworkUrl?: string;
