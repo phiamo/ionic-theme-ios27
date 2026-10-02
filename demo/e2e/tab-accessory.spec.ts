@@ -13,12 +13,12 @@ const openAlbum = async (page: import('@playwright/test').Page) => {
 };
 
 test.describe('tab accessory web fallback', () => {
-  test('default capsule uses a 28px radius, 32px thumb and rgba progress fallback', async ({ page }) => {
+  test('default capsule uses a 28px radius, 36px thumb and rgba progress fallback', async ({ page }) => {
     await openAlbum(page);
     const toolbar = page.locator('ion-toolbar.ios-theme-tab-accessory');
     await expect(toolbar).toHaveCSS('border-radius', '28px');
     await expect(toolbar).toHaveCSS('align-items', 'center');
-    await expect(toolbar.locator('ion-thumbnail')).toHaveCSS('width', '32px');
+    await expect(toolbar.locator('ion-thumbnail')).toHaveCSS('width', '36px');
     const track = await toolbar.locator('ion-progress-bar').evaluate((el) => getComputedStyle(el).getPropertyValue('--background').trim());
     expect(track).toMatch(/rgba?\(|color-mix/);
     const bottom = await toolbar.evaluate((el) => getComputedStyle(el).bottom);

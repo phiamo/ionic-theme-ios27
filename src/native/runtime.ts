@@ -714,10 +714,12 @@ export const createRuntime = async (
     const direct = !blocked(owner) && unprojected(sources.keys(), () => readEnabledCandidate(owner));
     const candidate = direct || read().find((candidate) => candidate.actions.has(event.id));
     const item = candidate?.control.items.find((item) => item.id === event.id);
+    // Tab accessory registers the toolbar host id as an action with no matching item.
     const hostAction = candidate?.control.id === event.id;
     const searchAction =
       candidate?.control.search && [candidate.control.search.trigger.id, candidate.control.search.closeId].includes(event.id);
-    if (!searchAction && !hostAction && (!item || item.disabled || item.visible === false)) return;
+    if (!searchAction && item && (item.disabled || item.visible === false)) return;
+    if (!searchAction && !hostAction && !item) return;
     // The original Ionic host owns form submission, routerLink and selection events.
     activateProjectedElement(element);
     lastSnapshot = ''; // Reconcile even if Ionic rejects the proposed native selection.
