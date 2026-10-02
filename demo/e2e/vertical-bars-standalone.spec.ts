@@ -4,6 +4,59 @@ import { compile } from 'sass';
 
 const verticalBars = compile(resolve(__dirname, '../../src/styles/vertical-bars.scss')).css;
 
+for (const direction of ['ltr', 'rtl']) {
+  for (const edge of ['left', 'right']) {
+    test(`iOS title centers in the remaining foreground with a ${edge} rail in ${direction}`, async ({ page }) => {
+      await page.setViewportSize({ width: 700, height: 900 });
+      await page.goto('/main/index/native-ui-shell?verticalBarsOnly=1');
+      await page.addStyleTag({ content: verticalBars });
+      const app = page.locator('ion-app');
+      const title = page.locator('app-native-ui-shell ion-header ion-title').first();
+      await expect(title).toBeVisible();
+      await app.evaluate(
+        (element, placement) => {
+          document.documentElement.dir = placement.direction;
+          element.classList.add('ios-theme-vertical-bars');
+          element.classList.toggle('ios-theme-vertical-bars-left', placement.edge === 'left');
+        },
+        { direction, edge },
+      );
+
+      for (const inset of [0, 64, 80, 112]) {
+        await app.evaluate((element, value) => element.style.setProperty('--ios-theme-vertical-bars-native-inset', `${value}px`), inset);
+        await expect
+          .poll(() =>
+            title.evaluate(
+              (element, placement) => {
+                const toolbar = element.closest('ion-toolbar')!.getBoundingClientRect();
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                const text = range.getBoundingClientRect();
+                const expected = toolbar.x + toolbar.width / 2 + (placement.edge === 'left' ? placement.inset : -placement.inset) / 2;
+                return Math.abs(text.x + text.width / 2 - expected);
+              },
+              { edge, inset },
+            ),
+          )
+          .toBeLessThan(0.5);
+      }
+
+      await app.evaluate((element) => element.classList.remove('ios-theme-vertical-bars'));
+      await expect
+        .poll(() =>
+          title.evaluate((element) => {
+            const toolbar = element.closest('ion-toolbar')!.getBoundingClientRect();
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            const text = range.getBoundingClientRect();
+            return Math.abs(text.x + text.width / 2 - toolbar.x - toolbar.width / 2);
+          }),
+        )
+        .toBeLessThan(0.5);
+    });
+  }
+}
+
 test('Vertical Control Area works in md mode with Ionic CSS and no iOS 27 theme', async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto('/main/index/native-ui-shell?verticalBarsOnly=1&ionicMode=md');
@@ -56,3 +109,60 @@ test('Vertical Control Area works in md mode with Ionic CSS and no iOS 27 theme'
   await back.click();
   await expect(page).toHaveURL(/\/main\/index$/);
 });
+
+for (const placement of ['Separate', 'Grouped']) {
+  test(`empty ${placement.toLowerCase()} toolbar collapses only while its controls are projected`, async ({ page }) => {
+    await page.setViewportSize({ width: 700, height: 900 });
+    await page.goto('/main/index/button-projection');
+    await page.locator('app-button-projection ion-select').evaluate((element, value) => {
+      element.dispatchEvent(new CustomEvent('ionChange', { bubbles: true, detail: { value } }));
+    }, placement);
+    const toolbars = page.locator('app-button-projection ion-header > ion-toolbar');
+    const actions = toolbars.nth(1);
+    await expect(actions).toBeVisible();
+    const beforeProjection = await page.locator('ion-app').evaluate(async (element) => {
+      element.classList.add('ios-theme-vertical-bars');
+      // Flush prehide's mutation microtask, before the projection's animation frame.
+      await new Promise<void>((resolve) => queueMicrotask(() => queueMicrotask(resolve)));
+      const toolbar = element.querySelectorAll('app-button-projection ion-header > ion-toolbar')[1];
+      return { display: getComputedStyle(toolbar).display, projected: toolbar.querySelector('[data-native-ui-shell]') !== null };
+    });
+    expect(beforeProjection).toEqual({ display: 'none', projected: false });
+    await expect(page.locator('ion-app > .ios-theme-vertical-bars-toolbar-projection').first()).toBeVisible();
+    await expect(actions).toBeHidden();
+    await expect(toolbars.first()).toBeVisible();
+
+    // Direct text is slotted toolbar content too; whitespace alone is not.
+    await actions.evaluate((element) => element.append('Draft'));
+    await expect(actions).toBeVisible();
+    await actions.evaluate((element) => {
+      const text = Array.from(element.childNodes).find((node) => node.nodeType === Node.TEXT_NODE && node.textContent === 'Draft')!;
+      text.textContent = ' ';
+    });
+    await expect(actions).toBeHidden();
+    await actions.evaluate((element) => {
+      const text = Array.from(element.childNodes).find((node) => node.nodeType === Node.TEXT_NODE && node.textContent === ' ')!;
+      text.textContent = 'Saved';
+    });
+    await expect(actions).toBeVisible();
+    await actions.evaluate((element) => {
+      Array.from(element.childNodes)
+        .find((node) => node.nodeType === Node.TEXT_NODE && node.textContent === 'Saved')!
+        .remove();
+    });
+    await expect(actions).toBeHidden();
+
+    // Retain a toolbar as soon as the application adds non-projected content.
+    await actions.evaluate((element) => {
+      const title = document.createElement('ion-title');
+      title.textContent = 'Actions';
+      element.append(title);
+    });
+    await expect(actions).toBeVisible();
+    await actions.locator('ion-title').evaluate((element) => element.remove());
+    await expect(actions).toBeHidden();
+    await page.locator('ion-app').evaluate((element) => element.classList.remove('ios-theme-vertical-bars'));
+    await expect(actions).toBeVisible();
+    await expect(actions.locator('ion-button').first()).toBeVisible();
+  });
+}

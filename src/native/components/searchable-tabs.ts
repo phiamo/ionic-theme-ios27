@@ -202,7 +202,7 @@ export const createSearchSupport = (doc: Document, id: (element: Element) => str
       const retainInactive = (candidate: Candidate, state?: SearchState, keepAvailable = false) => {
         // Keep ShellSearchController across page transitions instead of demoting to UITabBar.
         // While the searchable page is only blocked mid-transition (not yet hidden), keep
-        // available:true so native chrome does not swap to ordinary idleBar over album content.
+        // available:true so the system search button stays available over album content.
         if (state?.last) inactive.push([candidate, { ...state.last, active: false, available: keepAvailable, focused: false }]);
       };
       for (const binding of bindings) {
@@ -226,7 +226,7 @@ export const createSearchSupport = (doc: Document, id: (element: Element) => str
         if (binding.active && existing && isCurrent(existing) && existing.last && !pageUnavailable) {
           const back = binding.footer.querySelector<HTMLIonButtonElement>('ion-buttons[slot=start] ion-button');
           // Close must stay eligible; otherwise fall through and demote instead of caching active.
-          if (back && !back.disabled && !back.closest(excluded)) {
+          if (back && !back.disabled && !back.closest(excluded) && !existing.bar.closest(excluded)) {
             candidate.control.search = {
               ...existing.last,
               active: true,

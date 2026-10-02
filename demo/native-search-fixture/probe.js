@@ -39,7 +39,7 @@ for (const [label, action] of [
     },
   ],
   ['Toggle native theme', () => document.documentElement.classList.toggle('ios-theme-disabled')],
-  ['Destroy native', () => window.nativeUIShell.destroy()],
+  ['Destroy native', () => document.querySelector('ion-app').nativeUIShell.destroy()],
   [
     'External value',
     () => {

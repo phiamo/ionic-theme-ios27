@@ -292,6 +292,39 @@ final class NativeUIShellTests: XCTestCase {
         XCTAssertTrue(app.webViews.staticTexts["Last action: Outline"].waitForExistence(timeout: 5), app.debugDescription)
     }
 
+    func testVerticalSearchPlacementAndEditing() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication(bundleIdentifier: "io.ionic.theme.ios27")
+        app.launch()
+        let toggle = app.webViews.switches["iPhone Duo Mode"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 15), app.debugDescription)
+        if toggle.value as? String == "0" { toggle.tap() }
+        let library = app.buttons["Library"].firstMatch
+        XCTAssertTrue(library.waitForExistence(timeout: 10))
+        try XCTSkipUnless(library.frame.midX > app.frame.width * 0.8, "Requires a device with a right-hand native vertical rail")
+        library.tap()
+        let search = app.buttons["Search"].firstMatch
+        let field = app.searchFields.matching(NSPredicate(format: "identifier BEGINSWITH 'shell-'")).firstMatch
+        for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
+            XCUIDevice.shared.orientation = orientation
+            XCTAssertTrue(search.waitForExistence(timeout: 10), app.debugDescription)
+            assertOnVerticalBars(search, in: app)
+            capture("vertical-search-resting-\(orientation.rawValue)")
+            search.tap()
+            XCTAssertTrue(field.waitForExistence(timeout: 10), app.debugDescription)
+            field.tap()
+            field.typeText("native")
+            XCTAssertTrue((field.value as? String)?.contains("native") == true)
+            let cancel = app.buttons.matching(NSPredicate(format: "label ==[c] 'Cancel' OR label ==[c] 'Close'")).firstMatch
+            XCTAssertTrue(cancel.waitForExistence(timeout: 5), app.debugDescription)
+            capture("vertical-search-editing-\(orientation.rawValue)")
+            cancel.tap()
+            XCTAssertTrue(field.waitForNonExistence(timeout: 10))
+            XCTAssertTrue(search.waitForExistence(timeout: 10))
+            XCTAssertTrue(library.isSelected)
+        }
+    }
+
     func testNativeVerticalBars() throws {
         let app = XCUIApplication(bundleIdentifier: "io.ionic.theme.ios27")
         app.launch()

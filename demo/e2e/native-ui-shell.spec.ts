@@ -371,7 +371,7 @@ test('unsupported search morph releases and restores a native fixed-slot FAB int
   await activate(page, 'Search albums');
   await expect(fab).not.toHaveAttribute('data-native-ui-shell');
   await expect(page.locator('app-album-page ion-footer')).toHaveCSS('opacity', '1');
-  await page.locator('app-album-page ion-footer ion-button').click();
+  await page.locator('app-album-page ion-footer ion-buttons[slot=start] ion-button').click();
   await expect(fab).toHaveAttribute('data-native-ui-shell', '');
   await expect(page.locator('ion-tab-bar')).toHaveAttribute('data-native-ui-shell', '');
 });
@@ -511,7 +511,7 @@ test('vertical Web tabs remain visible while searching without a native rail', a
   await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
   const tabs = page.locator('ion-tab-bar');
   await expect(tabs).not.toHaveAttribute('data-native-ui-shell');
-  await page.locator('app-album-page ion-fab-button').click();
+  await page.locator('ion-app > .ios-theme-vertical-bars-search-projection').click();
   const footer = page.locator('app-album-page ion-footer');
   await expect(footer).toHaveCSS('opacity', '1');
   await tabs.evaluate((element) => element.classList.add('tab-bar-hidden'));
@@ -524,7 +524,7 @@ test('vertical Web tabs remain visible while searching without a native rail', a
   await expect(tabs).toHaveCSS('opacity', '1');
   let bounds: { x: number; width: number } | undefined;
   for (let cycle = 0; cycle < 3; cycle++) {
-    await page.locator('app-album-page ion-fab-button').click();
+    await page.locator('ion-app > .ios-theme-vertical-bars-search-projection').click();
     await expect(footer).toHaveCSS('opacity', '1');
     const frame = await footer.locator('ion-searchbar').evaluate((bar) => {
       const { x, width } = bar.getBoundingClientRect();
@@ -789,6 +789,18 @@ test('verticalBars toolbar sources are hidden before ownership and restored with
   await page.evaluate(() => (document.querySelector('ion-app') as TestAppElement).nativeUIShell!.destroy());
   await expect(source).not.toHaveClass(/ios-theme-native-ui-shell-prehidden/);
   await expect(source).toHaveCSS('visibility', 'visible');
+});
+
+test('verticalBars preserve toolbar layout around horizontal native controls and titles', async ({ page }) => {
+  await mockNative(page);
+  await page.goto('/main/index/native-ui-shell');
+  await page.locator('ion-app').evaluate((element) => element.classList.add('ios-theme-vertical-bars'));
+  await expect(page.locator('app-native-ui-shell ion-segment')).toHaveAttribute('data-native-ui-shell', '');
+  const toolbars = page.locator('app-native-ui-shell ion-header > ion-toolbar');
+  for (const toolbar of await toolbars.all()) {
+    await expect(toolbar).toBeVisible();
+  }
+  await expect(page.locator('app-native-ui-shell ion-title').last()).toHaveText('Actions: 0 / 0');
 });
 
 test('rejected verticalBars control returns to an operable Web source', async ({ page }) => {
@@ -2321,10 +2333,10 @@ test('search retirement keeps the value, rejects late input and allows a fresh W
   await expect(footer.locator('ion-searchbar')).toHaveJSProperty('value', 'retained');
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await footer.locator('ion-button').evaluate((button: HTMLElement) => button.click());
+  await footer.locator('ion-buttons[slot=start] ion-button').evaluate((button: HTMLElement) => button.click());
   await page.locator('app-album-page ion-fab-button').evaluate((button: HTMLElement) => button.click());
   await expect(footer).toHaveCSS('opacity', '1');
-  await footer.locator('ion-button').click();
+  await footer.locator('ion-buttons[slot=start] ion-button').click();
   await expect(footer).toHaveCSS('opacity', '0');
   await footer.evaluate((element) => element.classList.remove('ios-theme-disabled'));
   await expect(footer).toHaveAttribute('data-native-ui-shell', '');
@@ -2479,7 +2491,7 @@ test('a lost search bridge releases Enter and keeps the current value in Web', a
   await expect(footer).toHaveCSS('opacity', '1');
   await expect(footer.locator('ion-searchbar')).toHaveJSProperty('value', 'bridge retained');
   expect(await page.evaluate(() => (document.querySelector('ion-app') as TestAppElement).nativeUIShell!.getStatus().state)).toBe('web');
-  await footer.locator('ion-button').click();
+  await footer.locator('ion-buttons[slot=start] ion-button').click();
   await expect(footer).toHaveCSS('opacity', '0');
 });
 
@@ -3257,6 +3269,17 @@ for (const projection of ['source', 'system'] as const) {
             .filter((item) => ['Omitted', 'Clear', 'Solid', 'Outline'].includes(item.accessibilityLabel ?? '')) ?? [],
       );
     await expect.poll(async () => (await items()).length).toBe(4);
+    if (projection === 'system') {
+      const toolbar = page.locator('app-button-projection ion-header > ion-toolbar').nth(1);
+      await expect(toolbar).toBeHidden();
+      await toolbar.evaluate((element) => element.append('Draft'));
+      await expect(toolbar).toBeVisible();
+      await toolbar.evaluate((element) => {
+        Array.from(element.childNodes).find((node) => node.nodeType === Node.TEXT_NODE && node.textContent === 'Draft')!.textContent = '';
+      });
+      await expect(toolbar).toBeHidden();
+    }
+
     await expect
       .poll(async () => (await items()).map((item) => item.buttonFill))
       .toEqual(projection === 'source' ? ['clear', 'clear', 'solid', 'outline'] : [undefined, undefined, undefined, undefined]);

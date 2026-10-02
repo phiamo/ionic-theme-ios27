@@ -1,5 +1,5 @@
 import { modalUsesVerticalBars } from './shared/modal';
-import { LIFECYCLE_DID_ENTER, LIFECYCLE_DID_LEAVE, LIFECYCLE_WILL_ENTER, LIFECYCLE_WILL_LEAVE } from '@ionic/core';
+import { LIFECYCLE_DID_ENTER, LIFECYCLE_DID_LEAVE, LIFECYCLE_WILL_ENTER, LIFECYCLE_WILL_LEAVE } from '@ionic/core/components/index.js';
 import { VERTICAL_BARS_TRANSITION_CANCELED } from '../native-integration';
 import {
   childElements,
@@ -16,6 +16,7 @@ import {
   prehideRootClass,
   rejectedClass,
   setVerticalBarsPlacement,
+  syncToolbarText,
 } from './shared/dom';
 
 const overlays = 'ion-menu, ion-popover';
@@ -133,6 +134,7 @@ export const prehideVerticalBarsToolbarSources = (doc: Document): { suspend: () 
     scopes.set(scope, owned);
   };
   const reconcile = () => {
+    syncToolbarText(doc);
     const verticalBars = root();
     if (!verticalBars) {
       Array.from(scopes.keys()).forEach(release);
@@ -200,6 +202,8 @@ export const prehideVerticalBarsToolbarSources = (doc: Document): { suspend: () 
   doc.defaultView?.addEventListener('nativeUIShellRefresh', reconcile, { signal: listeners.signal });
   reconcile();
   const mutationRelevant = (record: MutationRecord) => {
+    if (record.type === 'characterData') return record.target.parentElement?.matches('ion-toolbar') === true;
+    if (record.type === 'childList' && asElement(record.target)?.matches('ion-toolbar')) return true;
     if (record.type === 'childList')
       return [...Array.from(record.addedNodes), ...Array.from(record.removedNodes)].some(
         (node) =>
@@ -228,6 +232,7 @@ export const prehideVerticalBarsToolbarSources = (doc: Document): { suspend: () 
   observer.observe(doc.documentElement, {
     subtree: true,
     childList: true,
+    characterData: true,
     attributes: true,
     attributeOldValue: true,
     attributeFilter: ['class', 'data-shell', 'hidden', 'inert', 'icon', 'color'],

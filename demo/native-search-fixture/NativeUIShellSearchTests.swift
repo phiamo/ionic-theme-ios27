@@ -1,7 +1,7 @@
 import XCTest
 final class NativeUIShellSearchTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false; XCUIDevice.shared.orientation = .portrait }
-    private func searchButton(_ app: XCUIApplication) -> XCUIElement { app.buttons["Search"].firstMatch }
+    private func searchButton(_ app: XCUIApplication) -> XCUIElement { app.buttons.matching(NSPredicate(format: "label == %@ AND identifier BEGINSWITH %@", "Search", "shell-")).firstMatch }
     private func openSearch(_ app: XCUIApplication) -> XCUIElement {
         app.launch()
         let library = app.tabBars.buttons["Library"]

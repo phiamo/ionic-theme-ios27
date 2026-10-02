@@ -45,9 +45,11 @@ final class ShellVerticalBarsModel: ObservableObject {
     func apply(_ controls: [ShellControl], rendering: ShellRendering,
                now: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()) {
         func item(_ source: ShellItem) -> Item {
-            Item(id: source.id, label: source.content.label,
+            let image = rendering.image(source.content)
+            return Item(id: source.id, label: source.content.label,
                  accessibilityLabel: source.content.accessibilityLabel,
-                 image: rendering.image(source.content),
+                 // UIKit toolbar extraction uses the UIImage's rendering mode.
+                 image: source.content.disabled ? image?.withRenderingMode(.alwaysTemplate) : image,
                  clear: source.content.buttonFill == .clear,
                  background: source.content.backgroundColor.map { Color(uiColor: rendering.color($0)) },
                  borderColor: source.content.borderColor.map { Color(uiColor: rendering.color($0)) },
@@ -195,6 +197,12 @@ private struct ShellVerticalBarsPage: View {
     var body: some View {
         NavigationStack {
             Color.clear.modifier(ShellVerticalBarsToolbarAdapter(model: model))
+                .toolbar {
+                    if model.search?.configuration.available == true {
+                        // Let the system adapt bottom-bar search to the vertical rail.
+                        DefaultToolbarItem(kind: .search, placement: .bottomBar)
+                    }
+                }
         }
     }
 }
@@ -333,6 +341,13 @@ final class ShellVerticalBarsController: ShellVerticalBarsControlling {
             let hit = super.hitTest(point, with: event)
             let inRail = railEdge == "left" ? point.x <= railWidth : point.x >= bounds.maxX - railWidth
             if inRail { return hit }
+            // Expanded system search leaves the rail; its field and close button
+            // must receive touches instead of passing them through to the WebView.
+            var ancestor = hit
+            while let view = ancestor, view !== self {
+                if view is UIControl { return hit }
+                ancestor = view.superview
+            }
             guard hit != nil, containsBarSurface(at: point) else { return nil }
             return hit
         }

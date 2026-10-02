@@ -92,8 +92,31 @@ ion-app.ios-theme-vertical-bars
   --ion-safe-area-left: 0px;
   --ion-safe-area-right: 0px;
 
+  // Reserve the final layout before a page transition, using the same prehide
+  // decision as its rail controls. Horizontal native projection keeps its space.
+  // Titles, custom content and horizontal-only controls keep the toolbar visible.
+  &:not([data-native-ui-shell-toolbar-text]):has(
+      > .ios-theme-native-ui-shell-prehidden,
+      > ion-buttons > .ios-theme-native-ui-shell-prehidden
+    ):not(:has(> :not(ion-buttons, .ios-theme-native-ui-shell-prehidden))):not(
+      :has(> ion-buttons:not(.ios-theme-native-ui-shell-prehidden) > :not(.ios-theme-native-ui-shell-prehidden))
+    ) {
+    display: none;
+  }
+
   // Collapse headers already sit inside the padded ion-content scroll area.
   &:not(:where(ion-header.header-collapse-condense *, ion-footer.footer-collapse-fade *)) {
+    // Ionic's centered iOS title is absolute and does not follow container padding.
+    // Center it within the same foreground width as the page content.
+    > ion-title.ios.title-default:not(.ios-theme-disabled, .ios26-disabled) {
+      inset-inline-start: var(--ios-theme-vertical-bars-safe-area-left-resolved);
+      width: calc(100% - var(--ios-theme-vertical-bars-safe-area-left-resolved) - var(--ios-theme-vertical-bars-safe-area-right-resolved));
+
+      &:dir(rtl) {
+        inset-inline-start: var(--ios-theme-vertical-bars-safe-area-right-resolved);
+      }
+    }
+
     &::part(container) {
       padding-inline-start: calc(var(--padding-start, 0px) + var(--ios-theme-vertical-bars-safe-area-left-resolved));
       padding-inline-end: calc(var(--padding-end, 0px) + var(--ios-theme-vertical-bars-safe-area-right-resolved));
@@ -416,4 +439,36 @@ ion-tab-button.ios.ion-cloned-element.ios27-vertical-tab-effect {
     min-height: 0;
     height: 100%;
   }
+}
+
+// Search shares the Web rail before Native UI Shell takes ownership.
+:is(ion-app.ios-theme-vertical-bars, ion-modal.ios-theme-vertical-bars-modal) > ion-fab.ios-theme-vertical-bars-search-projection {
+  position: fixed;
+  left: auto;
+  right: 25px;
+  top: auto;
+  bottom: 24px;
+  z-index: 3;
+  width: 46px;
+  height: 46px;
+  margin: 0;
+  > ion-fab-button {
+    width: 46px;
+    height: 46px;
+    margin: 0;
+  }
+}
+
+ion-app.ios-theme-vertical-bars ion-fab > ion-fab-button[data-native-ui-shell] {
+  visibility: hidden !important;
+}
+
+.ios-theme-vertical-bars-search-projection[hidden] {
+  display: none !important;
+}
+
+ion-app.ios-theme-vertical-bars-left > ion-fab.ios-theme-vertical-bars-search-projection,
+ion-app.ios-theme-vertical-bars-left ion-modal.ios-theme-vertical-bars-modal > ion-fab.ios-theme-vertical-bars-search-projection {
+  left: 25px;
+  right: auto;
 }

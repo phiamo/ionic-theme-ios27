@@ -1,6 +1,6 @@
 import { inVerticalBarsSurface, topModal, modalUsesVerticalBars, modalVerticalBarFrame } from './shared/modal';
 import type { PluginListenerHandle } from '@capacitor/core';
-import { LIFECYCLE_WILL_ENTER, LIFECYCLE_WILL_LEAVE, LIFECYCLE_DID_ENTER, LIFECYCLE_DID_LEAVE } from '@ionic/core';
+import { LIFECYCLE_WILL_ENTER, LIFECYCLE_WILL_LEAVE, LIFECYCLE_DID_ENTER, LIFECYCLE_DID_LEAVE } from '@ionic/core/components/index.js';
 import { VERTICAL_BARS_TRANSITION_CANCELED, getNativeSearchBindings, setNativeUIShellIntegration } from '../native-integration';
 import { createSearchSupport } from './components/searchable-tabs';
 import type {
@@ -18,6 +18,8 @@ import {
   isVerticalBarsSource,
   preferredVerticalBarsBack,
   marker,
+  syncToolbarText,
+  toolbarTextMarker,
   prehideOnlyMutation,
   rejectedClass,
   unprojected,
@@ -299,6 +301,7 @@ export const createRuntime = async (
     frame = 0;
     dirty = false;
     pending = true;
+    syncToolbarText(doc);
     handoffInstant = tabSwitchHandoff || handoffAcrossPending || modalPresentHandoff || win.performance.now() < handoffUntil;
     modalPresentHandoff = false;
     try {
@@ -466,6 +469,7 @@ export const createRuntime = async (
       records.some(
         (record) =>
           record.attributeName !== marker &&
+          record.attributeName !== toolbarTextMarker &&
           record.attributeName !== fadeMarker &&
           !prehideOnlyMutation(record) &&
           !(record.attributeName === 'style' && measuringPointerPages.has(record.target as HTMLElement)) &&

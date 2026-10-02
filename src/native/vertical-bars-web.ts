@@ -1,3 +1,4 @@
+import { createVerticalBarsWebSearch, searchProjectionClass } from './vertical-bars-web-search';
 import { inVerticalBarsSurface, topModal } from './shared/modal';
 import type { NativeUIShellHandle, NativeUIShellOptions, NativeUIShellStatus } from './definitions';
 import { VERTICAL_BARS_TRANSITION_CANCELED } from '../native-integration';
@@ -9,10 +10,13 @@ import {
   verticalBarsEnteringPage,
   verticalBarsToolbarActions,
   isExcluded,
+  isShellDisabled,
   isVerticalBarsToolbarGroup,
   preferredVerticalBarsBack,
   verticalBarsOwned,
   marker,
+  syncToolbarText,
+  toolbarTextMarker,
   prehideOnlyMutation,
   prehiddenClass,
   unprojected,
@@ -42,12 +46,7 @@ export const createVerticalBarsWebProjection = (
   enabled: () => boolean = () => true,
 ): NativeUIShellHandle => {
   const win = doc.defaultView!;
-  if (options.controls !== undefined && options.controls.toolbar !== true)
-    return {
-      getStatus: () => ({ state: 'web', projected: 0, updates: 0 }),
-      suspend: async () => ({ resume: async () => {} }),
-      destroy: async () => {},
-    };
+  const toolbarEnabled = options.controls === undefined || options.controls.toolbar === true;
   let root: HTMLElement | undefined;
   let backSource: HTMLIonBackButtonElement | undefined;
   let backProjection: HTMLIonBackButtonElement | undefined;
@@ -64,7 +63,7 @@ export const createVerticalBarsWebProjection = (
   const listeners = new AbortController();
   const verticalBarsRoot = () => doc.querySelector<HTMLElement>('ion-app.ios-theme-vertical-bars');
   const projectedSources = () =>
-    [backSource, ...toolbarProjections.flatMap(({ actions }) => actions.map(({ source }) => source))].filter(
+    [backSource, search.source, ...toolbarProjections.flatMap(({ actions }) => actions.map(({ source }) => source))].filter(
       (source): source is HTMLElement => !!source,
     );
   const isRendered = (element: HTMLElement) =>
@@ -73,6 +72,20 @@ export const createVerticalBarsWebProjection = (
       const rect = element.getBoundingClientRect();
       return element.isConnected && style.display !== 'none' && style.visibility === 'visible' && rect.width > 0 && rect.height > 0;
     });
+  const search = createVerticalBarsWebSearch(
+    doc,
+    (element) =>
+      (options.controls === undefined || options.controls.tabs === true) &&
+      !!verticalBarsRoot()?.contains(element) &&
+      inVerticalBarsSurface(element) &&
+      !isExcluded(element, verticalBarsEnteringPage(element)) &&
+      !isShellDisabled(element) &&
+      !verticalBarsPages.isDeparted(element) &&
+      isRendered(element),
+    () => {
+      void schedule();
+    },
+  );
   const inEligibleToolbar = (element: HTMLElement) =>
     !!verticalBarsRoot()?.contains(element) &&
     inVerticalBarsSurface(element) &&
@@ -108,6 +121,7 @@ export const createVerticalBarsWebProjection = (
   };
   const isCurrentToolbarAction = (source: HTMLElement) => findToolbarGroups().some(({ actions }) => actions.includes(source));
   const restore = () => {
+    search.restore();
     backProjection?.remove();
     backProjection = undefined;
     if (backSource) {
@@ -259,6 +273,7 @@ export const createVerticalBarsWebProjection = (
   };
   const performUpdate = () => {
     frame = 0;
+    syncToolbarText(doc);
     const currentRoot = verticalBarsRoot();
     if (observingVerticalBars !== !!currentRoot) {
       observingVerticalBars = !!currentRoot;
@@ -266,18 +281,22 @@ export const createVerticalBarsWebProjection = (
       observer.observe(doc.documentElement, {
         subtree: true,
         childList: true,
+        characterData: observingVerticalBars,
         attributes: true,
         attributeOldValue: true,
         attributeFilter: observingVerticalBars ? undefined : ['class'],
       });
     }
     if (stopped || suspended || !currentRoot || !enabled()) return restore();
-    const nextBack = findBack();
-    const groups = findToolbarGroups();
-    if (!nextBack && !groups.length) return restore();
+    const nextBack = toolbarEnabled ? findBack() : undefined;
+    const groups = toolbarEnabled ? findToolbarGroups() : [];
+    const projectionRoot = topModal(doc) ?? currentRoot;
+    search.update(projectionRoot);
+    if (!nextBack && !groups.length && !search.source) return restore();
     if (root === (topModal(doc) ?? currentRoot) && sameSources(nextBack, groups)) return syncExisting();
     restore();
     project(nextBack, groups);
+    search.update(projectionRoot);
     updates++;
   };
   const update = () => {
@@ -304,7 +323,9 @@ export const createVerticalBarsWebProjection = (
       const element = target instanceof Element ? target : target.parentNode instanceof Element ? target.parentNode : undefined;
       const rootNode = target.getRootNode();
       const shadowHost = rootNode instanceof ShadowRoot ? rootNode.host : undefined;
-      return !![element, shadowHost].some((candidate) => candidate?.closest(`.${backProjectionClass}, .${toolbarProjectionClass}`));
+      return !![element, shadowHost].some((candidate) =>
+        candidate?.closest(`.${backProjectionClass}, .${toolbarProjectionClass}, .${searchProjectionClass}`),
+      );
     };
     const verticalBarsChanged = records.some(
       (record) =>
@@ -318,7 +339,13 @@ export const createVerticalBarsWebProjection = (
     );
     if (
       (observingVerticalBars &&
-        records.some((record) => record.attributeName !== marker && !prehideOnlyMutation(record) && !insideProjection(record.target))) ||
+        records.some(
+          (record) =>
+            record.attributeName !== marker &&
+            record.attributeName !== toolbarTextMarker &&
+            !prehideOnlyMutation(record) &&
+            !insideProjection(record.target),
+        )) ||
       (!observingVerticalBars && verticalBarsChanged && records.some((record) => !prehideOnlyMutation(record)))
     )
       schedule();
@@ -351,7 +378,8 @@ export const createVerticalBarsWebProjection = (
   return {
     getStatus: (): NativeUIShellStatus => ({
       state: stopped ? 'stopped' : 'web',
-      projected: Number(!!backSource) + toolbarProjections.reduce((count, group) => count + group.actions.length, 0),
+      projected:
+        Number(!!backSource) + Number(!!search.source) + toolbarProjections.reduce((count, group) => count + group.actions.length, 0),
       updates,
     }),
     async suspend() {
