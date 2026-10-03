@@ -9,6 +9,10 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
 
     private static let swipeUpThreshold: CGFloat = 50
     private static let swipeMaxHorizontalDrift: CGFloat = 48
+    /// UITabAccessory's glass platter is about 42pt on iOS 26; content must fit that, not a CSS height.
+    private static let minInset: CGFloat = 4
+    private static let regularArtwork: CGFloat = 36
+    private static let inlineArtwork: CGFloat = 28
 
     private let artworkButton = UIButton(type: .custom)
     private let titleLabel = UILabel()
@@ -26,6 +30,7 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
     private var progress: CGFloat = -1
     private var progressColor: UIColor?
     private var artworkSize: NSLayoutConstraint?
+    private var artworkMax: NSLayoutConstraint?
     private var stackLeading: NSLayoutConstraint?
     private var stackTrailing: NSLayoutConstraint?
     private var stackTop: NSLayoutConstraint?
@@ -67,17 +72,22 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
         artworkButton.backgroundColor = .secondarySystemFill
         artworkButton.accessibilityLabel = "Artwork"
         artworkButton.addTarget(self, action: #selector(artworkTapped), for: .touchUpInside)
-        let artworkHeight = artworkButton.heightAnchor.constraint(equalToConstant: 36)
+        let artworkHeight = artworkButton.heightAnchor.constraint(equalToConstant: Self.regularArtwork)
+        artworkHeight.priority = .defaultHigh
         artworkHeight.isActive = true
         artworkSize = artworkHeight
         artworkButton.widthAnchor.constraint(equalTo: artworkButton.heightAnchor).isActive = true
+        artworkButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 22).isActive = true
         playPauseButton.addTarget(self, action: #selector(playPauseTapped), for: .touchUpInside)
         playPauseButton.tintColor = .label
         playPauseButton.accessibilityLabel = "Play or pause"
         playPauseButton.setContentHuggingPriority(.required, for: .horizontal)
         playPauseButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        playPauseButton.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
         playPauseButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
-        playPauseButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        let playHeight = playPauseButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
+        playHeight.priority = .defaultHigh
+        playHeight.isActive = true
         var config = UIButton.Configuration.plain()
         config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 6, bottom: 6, trailing: 6)
         playPauseButton.configuration = config
@@ -117,14 +127,20 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
         applyProgressColors()
         let leading = stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16)
         let trailing = stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10)
-        let top = stack.topAnchor.constraint(equalTo: topAnchor, constant: 8)
-        let bottom = stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -10)
+        let top = stack.topAnchor.constraint(greaterThanOrEqualTo: topAnchor, constant: Self.minInset)
+        let bottom = stack.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -Self.minInset)
+        let centerY = stack.centerYAnchor.constraint(equalTo: centerYAnchor)
         stackLeading = leading
         stackTrailing = trailing
         stackTop = top
         stackBottom = bottom
+        let artworkCap = artworkButton.heightAnchor.constraint(
+            lessThanOrEqualTo: heightAnchor, constant: -(Self.minInset * 2)
+        )
+        artworkMax = artworkCap
         NSLayoutConstraint.activate([
-            leading, trailing, top, bottom,
+            leading, trailing, top, bottom, centerY, artworkCap,
+            playPauseButton.heightAnchor.constraint(lessThanOrEqualTo: heightAnchor),
             progressTrack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             progressTrack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
             progressTrack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
@@ -202,18 +218,25 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
         titleLabel.font = inline
             ? .preferredFont(forTextStyle: .caption1)
             : .preferredFont(forTextStyle: .subheadline).withWeight(.semibold)
-        artworkSize?.constant = inline ? 28 : 36
+        artworkSize?.constant = inline ? Self.inlineArtwork : Self.regularArtwork
         stack.spacing = inline ? 8 : 10
         stackLeading?.constant = inline ? 14 : 16
         stackTrailing?.constant = inline ? -12 : -10
-        stackTop?.constant = inline ? 6 : 8
-        stackBottom?.constant = inline ? -6 : -10
+        stackTop?.constant = Self.minInset
+        stackBottom?.constant = -Self.minInset
+        artworkMax?.constant = -(Self.minInset * 2)
         var config = UIButton.Configuration.plain()
         let pad: CGFloat = inline ? 4 : 6
         config.contentInsets = NSDirectionalEdgeInsets(top: pad, leading: pad, bottom: pad, trailing: pad)
         playPauseButton.configuration = config
         updatePlayImage()
+        invalidateIntrinsicContentSize()
         setNeedsLayout()
+    }
+
+    override var intrinsicContentSize: CGSize {
+        let art = isInlineLayout ? Self.inlineArtwork : Self.regularArtwork
+        return CGSize(width: UIView.noIntrinsicMetric, height: art + Self.minInset * 2)
     }
 
     override func layoutSubviews() {
@@ -320,6 +343,84 @@ final class ShellTabAccessoryContentView: UIView, UIGestureRecognizerDelegate {
 @available(iOS 26.0, *)
 enum ShellTabAccessory {
     static let kind = ShellComponent.tabAccessory
+}
+
+/// Shared UITabAccessory wiring for ordinary tabs and searchable tabs.
+@available(iOS 26.0, *)
+final class ShellTabAccessoryBinding {
+    let content = ShellTabAccessoryContentView()
+    var activate: ((String) -> Void)?
+    private var playId = ""
+    private var artworkId = ""
+    private var tapId = ""
+    private var artworkLoad: URLSessionDataTask?
+
+    init() {
+        content.onPlayPause = { [weak self] in
+            guard let self, !self.playId.isEmpty else { return }
+            self.activate?(self.playId)
+        }
+        content.onArtwork = { [weak self] in
+            guard let self, !self.artworkId.isEmpty else { return }
+            self.activate?(self.artworkId)
+        }
+        content.onTap = { [weak self] in
+            guard let self, !self.tapId.isEmpty else { return }
+            self.activate?(self.tapId)
+        }
+    }
+
+    func apply(_ node: ShellControl?, on controller: UITabBarController) {
+        guard let node else {
+            playId = ""
+            artworkId = ""
+            tapId = ""
+            artworkLoad?.cancel()
+            content.reset()
+            controller.setBottomAccessory(nil, animated: false)
+            return
+        }
+        playId = node.items.first?.id ?? ""
+        artworkId = node.items.dropFirst().first?.id ?? ""
+        tapId = node.id
+        content.apply(node)
+        loadArtwork(node.artworkUrl)
+        controller.setBottomAccessory(UITabAccessory(contentView: content), animated: false)
+        content.setInlineLayout(controller.traitCollection.tabAccessoryEnvironment == .inline)
+    }
+
+    private func loadArtwork(_ urlString: String?) {
+        guard let urlString, !urlString.isEmpty else {
+            artworkLoad?.cancel()
+            content.currentArtworkUrl = nil
+            content.setArtwork(nil)
+            return
+        }
+        if urlString == content.currentArtworkUrl, content.hasArtwork { return }
+        content.currentArtworkUrl = urlString
+        artworkLoad?.cancel()
+        if urlString.hasPrefix("data:image"),
+           let comma = urlString.firstIndex(of: ","),
+           let data = Data(base64Encoded: String(urlString[urlString.index(after: comma)...])),
+           let image = UIImage(data: data) {
+            content.setArtwork(image)
+            return
+        }
+        if urlString.hasPrefix("file://"), let url = URL(string: urlString) {
+            content.setArtwork(UIImage(contentsOfFile: url.path))
+            return
+        }
+        guard let url = URL(string: urlString) else { return }
+        let task = URLSession.shared.dataTask(with: url) { [weak content] data, _, _ in
+            let image = data.flatMap { UIImage(data: $0) }
+            DispatchQueue.main.async {
+                guard content?.currentArtworkUrl == urlString else { return }
+                content?.setArtwork(image)
+            }
+        }
+        artworkLoad = task
+        task.resume()
+    }
 }
 
 private extension UIFont {

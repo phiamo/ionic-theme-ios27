@@ -25,6 +25,19 @@ test.describe('tab accessory web fallback', () => {
     expect(Number.parseFloat(bottom)).toBeGreaterThanOrEqual(70);
   });
 
+  test('thumbnail is vertically centered in the 64px toolbar', async ({ page }) => {
+    await openAlbum(page);
+    const toolbar = page.locator('ion-toolbar.ios-theme-tab-accessory');
+    const metrics = await toolbar.evaluate((el) => {
+      const thumb = el.querySelector('ion-thumbnail');
+      const bar = el.getBoundingClientRect();
+      const art = thumb!.getBoundingClientRect();
+      return { top: art.top - bar.top, bottom: bar.bottom - art.bottom, height: bar.height };
+    });
+    expect(metrics.height).toBe(64);
+    expect(Math.abs(metrics.top - metrics.bottom)).toBeLessThanOrEqual(1);
+  });
+
   test('classic preset uses a 12px radius and sits above the 62px island', async ({ page }) => {
     await openAlbum(page);
     const toolbar = page.locator('ion-toolbar.ios-theme-tab-accessory');

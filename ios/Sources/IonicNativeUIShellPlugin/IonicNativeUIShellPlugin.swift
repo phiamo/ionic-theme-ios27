@@ -378,6 +378,9 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                         previousCover.removeFromSuperview()
                     }
                     controller.surface.isHidden = self.keyboardVisible && !controller.ownsKeyboard
+                    if let searchController = controller as? ShellSearchController {
+                        searchController.applyAccessory(self.keyboardVisible ? nil : accessoryNode)
+                    }
                 }
             }
             for (id, control) in self.controls where !existing.contains(id) && self.searchControllers[id] == nil {

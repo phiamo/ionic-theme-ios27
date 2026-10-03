@@ -685,4 +685,36 @@ final class ShellSnapshotTests: XCTestCase {
         XCTAssertFalse(try decode([payload]).isValid)
     }
 
+    @MainActor
+    func testTabAccessoryContentCentersInCompactPlatter() throws {
+        guard #available(iOS 26.0, *) else { throw XCTSkip("Requires UITabAccessory") }
+        func artworkFrame(in root: UIView) throws -> CGRect {
+            func find(_ view: UIView) -> UIView? {
+                if view.accessibilityLabel == "Artwork" { return view }
+                return view.subviews.lazy.compactMap(find).first
+            }
+            let art = try XCTUnwrap(find(root))
+            return art.convert(art.bounds, to: root)
+        }
+        let node = try XCTUnwrap(decode([control([
+            "kind": "ion-toolbar",
+            "title": "Now Playing",
+            "subtitle": "Demo Artist",
+            "items": [item(["id": "play", "label": "Pause", "selected": true])],
+        ])]).controls.first)
+        let view = ShellTabAccessoryContentView(frame: CGRect(x: 0, y: 0, width: 358, height: 42))
+        view.apply(node)
+        view.layoutIfNeeded()
+        var frame = try artworkFrame(in: view)
+        XCTAssertEqual(frame.minY, view.bounds.maxY - frame.maxY, accuracy: 1)
+        XCTAssertLessThanOrEqual(frame.height, 34)
+        XCTAssertGreaterThan(frame.height, 20)
+        view.frame.size.height = 64
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        frame = try artworkFrame(in: view)
+        XCTAssertEqual(frame.height, 36, accuracy: 0.5)
+        XCTAssertEqual(frame.minY, view.bounds.maxY - frame.maxY, accuracy: 1)
+    }
+
 }

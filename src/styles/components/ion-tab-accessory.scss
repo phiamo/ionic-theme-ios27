@@ -3,6 +3,7 @@
 ion-toolbar.ios.tab-accessory:not(.ios-theme-disabled, .ios26-disabled),
 ion-toolbar.ios.ios-theme-tab-accessory:not(.ios-theme-disabled, .ios26-disabled) {
   --ios-theme-tab-accessory-radius: 28px;
+  // Web fallback only. Native UITabAccessory owns platter height (~42pt on iOS 26).
   --ios-theme-tab-accessory-height: 64px;
   --ios-theme-tab-accessory-padding-block: 8px;
   --ios-theme-tab-accessory-inset: 16px;

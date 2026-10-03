@@ -110,7 +110,7 @@ Native glass (`UITabAccessory`) requires iOS 26+. The Web mini-player is CSS, an
 | Safari 15–17.3 / iOS 15–17.3 | neither | Ionic chrome + accessory CSS (use `.ios-theme-tab-accessory-classic`) |
 | Safari 15–16.1 | no `color-mix` | Progress track uses `rgba(var(--ion-color-primary-rgb), .22)` |
 
-The default Web look is the 64×28px capsule. Override `--ios-theme-tab-accessory-height` (and `--ios-theme-tab-accessory-padding-block`, `--ios-theme-tab-accessory-thumb-size`) on `:root` or `.accessory-slide-clip` if a host needs a taller or tighter bar. Add `.ios-theme-tab-accessory-classic` for a 12px rounded rectangle that sits 8px above the in-flow tab bar (closer to iOS 15–18 Music / segmented controls than the pill):
+The default Web look is the 64×28px capsule: 8px block padding, a 36px thumb, two text lines, and a 2.5px progress track. That 64px is **not** the native height. `UITabAccessory` sizes its own glass platter (about 42pt on iOS 26). Native content is vertically centered with a shrinkable 36pt thumb so it fits that platter; there is no 42px plugin token. Override `--ios-theme-tab-accessory-height` (and `--ios-theme-tab-accessory-padding-block`, `--ios-theme-tab-accessory-thumb-size`) on `:root` or `.accessory-slide-clip` if a host needs a taller or tighter Web bar. Add `.ios-theme-tab-accessory-classic` for a 12px rounded rectangle that sits 8px above the in-flow tab bar (closer to iOS 15–18 Music / segmented controls than the pill):
 
 ```html
 <ion-toolbar class="ios-theme-tab-accessory ios-theme-tab-accessory-classic">
@@ -121,7 +121,7 @@ Override layout with CSS variables (defaults in parentheses):
 | Variable | Default | Classic |
 | --- | --- | --- |
 | `--ios-theme-tab-accessory-radius` | `28px` | `12px` |
-| `--ios-theme-tab-accessory-height` | `64px` | `64px` |
+| `--ios-theme-tab-accessory-height` | `64px` (Web only) | `64px` (Web only) |
 | `--ios-theme-tab-accessory-padding-block` | `8px` | `8px` |
 | `--ios-theme-tab-accessory-inset` | `16px` | `8px` |
 | `--ios-theme-tab-accessory-thumb-size` | `36px` | `36px` |
