@@ -436,3 +436,50 @@ ion-button.ios:not(.ios-theme-disabled, .ios26-disabled) {
 ion-back-button.ios:not(.ios-theme-disabled, .ios26-disabled) {
   @include theme-button($is-back-button: true);
 }
+
+// Toolbar button typography and spacing follow system toolbar controls.
+ion-toolbar.ios:not(.ios-theme-disabled, .ios26-disabled) {
+  ion-button.ios:not(.ios-theme-disabled, .ios26-disabled):not(.button-small, .button-large):not(
+      :where(ion-buttons.ios-theme-disabled *, ion-buttons.ios26-disabled *)
+    ) {
+    font-size: 1rem;
+    font-weight: 400;
+    // TODO(v2.0.0): Remove .back-button-has-icon-only; Ionic only adds it to ion-back-button.
+    &:not(.button-has-icon-only, .back-button-has-icon-only) {
+      --padding-start: 16px;
+      --padding-end: 16px;
+    }
+  }
+
+  ion-buttons.ios:not(.ios-theme-disabled, .ios26-disabled):has(ion-button ~ ion-button):not(
+      :has(
+        ion-back-button,
+        ion-button:not(.button-clear),
+        ion-menu-button,
+        .ios-theme-disabled,
+        .ios26-disabled,
+        .button-small,
+        .button-large
+      )
+    ) {
+    height: 44px;
+    padding-inline: 3.5px;
+    // SwiftUI toolbar items share glass with 16pt between their inner controls.
+    gap: 16px;
+
+    ion-button.ios:not(.ios-theme-disabled, .ios26-disabled).button-clear {
+      // Keep the action's hit area through the group's height, while the
+      // inner plain control follows the system's 36px visual layout.
+      height: 100%;
+      display: inline-flex;
+      align-items: center;
+      --padding-start: 7px;
+      --padding-end: 7px;
+      &::part(native) {
+        width: auto;
+        height: 36px;
+        min-height: 36px;
+      }
+    }
+  }
+}

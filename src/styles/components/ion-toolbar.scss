@@ -13,22 +13,27 @@ ion-header.ios:not(.ios-theme-disabled, .ios26-disabled) ion-toolbar:not(.ios-th
 ion-modal.ios:not(.ios-theme-disabled, .ios26-disabled).modal-card,
 ion-modal.ios:not(.ios-theme-disabled, .ios26-disabled).modal-sheet {
   ion-header.ios:not(.ios-theme-disabled, .ios26-disabled) ion-toolbar.ios:not(.ios-theme-disabled, .ios26-disabled):first-of-type {
-    padding-top: 0;
+    // The system's modal safe area places the 44px control 16px below the
+    // content edge, with or without a sheet drag indicator.
+    padding-top: 6px;
     padding-bottom: 0;
     --min-height: 64px;
-    --padding-start: 3px;
-    --padding-end: 3px;
   }
 }
 
 @media (min-width: 768px) and (min-height: 600px) {
-  ion-modal.ios:not(.ios-theme-disabled, .ios26-disabled) {
+  ion-modal.ios:not(.ios-theme-disabled, .ios26-disabled):not(.modal-sheet) {
     ion-header.ios:not(.ios-theme-disabled, .ios26-disabled) ion-toolbar.ios:not(.ios-theme-disabled, .ios26-disabled):first-of-type {
-      padding-top: 0;
+      // Center a 44px control at 10px, retaining the safe area in fullscreen modals.
+      padding-top: max(calc(var(--ion-safe-area-top, 0px) - 10px), 0px);
       padding-bottom: 0;
       --min-height: 64px;
-      --padding-start: 3px;
-      --padding-end: 3px;
+    }
+  }
+  // Ionic keeps the root safe area in card modals, including centered dialogs.
+  ion-modal.ios:not(.ios-theme-disabled, .ios26-disabled).modal-card {
+    ion-header.ios:not(.ios-theme-disabled, .ios26-disabled) ion-toolbar.ios:not(.ios-theme-disabled, .ios26-disabled):first-of-type {
+      padding-top: 0;
     }
   }
 }
@@ -105,5 +110,55 @@ ion-toolbar.ios:not(.ios-theme-disabled, .ios26-disabled) {
   }
   ion-buttons > ion-back-button {
     margin-inline: 0;
+  }
+
+  // Keep the outer inset for individual actions too. Adjacent actions in the
+  // same slot share a 12px gap rather than adding two outer margins together.
+  > ion-button:not(.ios-theme-disabled, .ios26-disabled) {
+    margin-inline: 12px;
+  }
+  // Rail sources leave toolbar layout; ordinary native projection retains it.
+  $visible: ':not([hidden], .ios-theme-native-ui-shell-prehidden, [data-native-ui-shell][data-native-ui-shell-vertical-bars], ion-menu-button.menu-button-hidden, ion-back-button:not(.show-back-button))';
+  $button: ':is(ion-button, ion-back-button)#{$visible}';
+  $group: 'ion-buttons#{$visible}';
+  $action: ':is(#{$button}, #{$group}:has(> #{$visible}))';
+  $optOut: ':is(.ios-theme-disabled, .ios26-disabled)';
+
+  > ion-buttons:not(:has(> #{$visible})) {
+    display: none;
+  }
+
+  @each $slot in start, end, primary, secondary {
+    // Keep standalone margins when the slot includes a visible opted-out action.
+    &:not(.toolbar-searchbar):not(:has(> #{$button}#{$optOut}[slot='#{$slot}'], > #{$group}#{$optOut}[slot='#{$slot}'] > #{$visible})) {
+      > #{$action}[slot='#{$slot}'] {
+        margin-inline: 6px;
+      }
+      > :nth-child(1 of #{$action}[slot='#{$slot}']) {
+        margin-inline-start: 12px;
+      }
+      > :nth-last-child(1 of #{$action}[slot='#{$slot}']) {
+        margin-inline-end: 12px;
+      }
+    }
+  }
+  // Ionic orders these slots together, independently of their DOM order.
+  @each $first, $second in (start, secondary), (primary, end) {
+    &:not(.toolbar-searchbar):has(> #{$button}[slot='#{$first}'], > #{$group}[slot='#{$first}'] > #{$visible}):has(
+        > #{$button}[slot='#{$second}'],
+        > #{$group}[slot='#{$second}'] > #{$visible}
+      ):not(
+        :has(
+          > #{$button}#{$optOut}:is([slot='#{$first}'], [slot='#{$second}']),
+          > #{$group}#{$optOut}:is([slot='#{$first}'], [slot='#{$second}']) > #{$visible}
+        )
+      ) {
+      > :nth-last-child(1 of #{$action}[slot='#{$first}']) {
+        margin-inline-end: 6px;
+      }
+      > :nth-child(1 of #{$action}[slot='#{$second}']) {
+        margin-inline-start: 6px;
+      }
+    }
   }
 }
