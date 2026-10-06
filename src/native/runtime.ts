@@ -24,6 +24,7 @@ import {
   toolbarTextMarker,
   prehideOnlyMutation,
   rejectedClass,
+  transformMeasurePages,
   unprojected,
 } from './shared/dom';
 import { createIconRenderer } from './shared/icons';
@@ -54,6 +55,18 @@ export const createRuntime = async (
   const icons = createIconRenderer();
   const crossfade = createCrossfade(win);
   const ids = new WeakMap<Element, string>();
+  const chromeTag = (element: HTMLElement) => element.tagName.toLowerCase();
+  const isHeaderChrome = (element: HTMLElement) => {
+    const tag = chromeTag(element);
+    return tag === 'ion-segment' || tag === 'ion-back-button' || tag === 'ion-header';
+  };
+  const chromeLabel = (element: HTMLElement) =>
+    `${chromeTag(element)}:${ids.get(element) ?? '?'}${isAtomicSwap(element) ? ':swap' : ''}${
+      element.closest('.ios-theme-shell-disabled,[data-shell="disabled"]') ? ':disabled' : ''
+    }`;
+  const shellTrace = (event: string, detail: Record<string, unknown> = {}) => {
+    console.warn('[SHELL]', event, { t: Math.round(win.performance.now()), ...detail });
+  };
   let rejected = new WeakMap<HTMLElement, string>();
   const sources = new Map<HTMLElement, string | null>();
   const verticalBarsOwners = new Set<HTMLElement>();
@@ -85,6 +98,8 @@ export const createRuntime = async (
   let handoffUntil = 0;
   /** Tab switch armed while a sync was already in flight; extend instant past that sync. */
   let handoffAcrossPending = false;
+  /** Keep instant native duration after an atomic retire so a dirty follow-up cannot fade. */
+  let atomicUntil = 0;
   /** Captured at the start of each sync so an in-flight update keeps a stable duration. */
   let handoffInstant = false;
   /** Retire native controls immediately as a modal starts covering the page. */
@@ -129,18 +144,22 @@ export const createRuntime = async (
 
   const restore = (element: HTMLElement) => {
     lastSnapshot = '';
+    const keepWebHidden = isAtomicSwap(element);
+    if (isHeaderChrome(element)) shellTrace('restore', { chrome: chromeLabel(element), keepWebHidden });
     search.release(element);
-    element.removeAttribute(marker);
-    if (!stopped)
-      crossfade.play(
-        element,
-        false,
-        isAtomicSwap(element) || (isVerticalBarsSource(element) ? !element.matches('ion-tab-bar') : handoffInstant),
-      );
-    if (element.getAttribute('aria-hidden') === 'true') {
-      const previous = sources.get(element);
-      if (previous == null) element.removeAttribute('aria-hidden');
-      else element.setAttribute('aria-hidden', previous);
+    if (!keepWebHidden) {
+      element.removeAttribute(marker);
+      if (!stopped)
+        crossfade.play(
+          element,
+          false,
+          isVerticalBarsSource(element) ? !element.matches('ion-tab-bar') : handoffInstant,
+        );
+      if (element.getAttribute('aria-hidden') === 'true') {
+        const previous = sources.get(element);
+        if (previous == null) element.removeAttribute('aria-hidden');
+        else element.setAttribute('aria-hidden', previous);
+      }
     }
     sources.delete(element);
     element.dispatchEvent(new CustomEvent('nativeUIShellChange'));
@@ -209,14 +228,20 @@ export const createRuntime = async (
     }
   };
   const underMovingSurface = (element: HTMLElement) => Array.from(moving.keys()).some((surface) => surface.contains(element));
+  const blockedReason = (element: HTMLElement): string | undefined => {
+    if (verticalBarsPages.isDeparted(element)) return 'departed';
+    if (isVerticalBarsSource(element)) return undefined;
+    // Swap chrome can first-project during the stack animation so native tracks
+    // the sliding Web rect instead of MAKE-ing after the page has already landed.
+    if (!sources.has(element) && isAtomicSwap(element)) return undefined;
+    if (Array.from(suspended).some((scopes) => scopes.some((scope) => scope.contains(element)))) return 'suspend';
+    if (Array.from(pages).some((scope) => scope.contains(element))) return 'pages';
+    if (!sources.has(element) && underMovingSurface(element)) return 'motion';
+    return undefined;
+  };
   // Ancestor CSS motion must not retire already-projected chrome. Suspend and
   // transitioning pages still restore so native overlays do not sit on the next page.
-  const blocked = (element: HTMLElement) =>
-    verticalBarsPages.isDeparted(element) ||
-    (!isVerticalBarsSource(element) &&
-      (Array.from(suspended).some((scopes) => scopes.some((scope) => scope.contains(element))) ||
-        Array.from(pages).some((scope) => scope.contains(element)) ||
-        (!sources.has(element) && underMovingSurface(element))));
+  const blocked = (element: HTMLElement) => !!blockedReason(element);
   const painted = () => new Promise<void>((resolve) => win.requestAnimationFrame(() => win.requestAnimationFrame(() => resolve())));
   const overlayOpen = (includeMenu = true, allowModal = false) => {
     const modal = topModal(doc);
@@ -246,7 +271,8 @@ export const createRuntime = async (
     if (doc.hidden || overlayOpen(false, true)) return [];
     if (win.visualViewport && (win.visualViewport.scale !== 1 || win.visualViewport.offsetTop !== 0) && !search.hasActive()) return [];
     const menuOpen = overlayOpen();
-    const candidates = unprojected(sources.keys(), () =>
+    const marked = Array.from(doc.querySelectorAll<HTMLElement>(`[${marker}]`));
+    const candidates = unprojected([...sources.keys(), ...marked], () =>
       search
         .decorate(
           Array.from(doc.querySelectorAll<HTMLElement>(selector))
@@ -339,12 +365,34 @@ export const createRuntime = async (
       if (stopped || dirty) return;
       const retained = new Set(candidates.flatMap(candidateSources));
       const removed = Array.from(sources.keys()).filter((element) => !retained.has(element));
+      const added = candidates.flatMap(candidateSources).filter((element) => !sources.has(element));
+      const atomicNow = isAtomicSwapDuration(removed, added);
+      if (atomicNow) atomicUntil = Math.max(atomicUntil, win.performance.now() + 400);
+      const deferSwapRetire =
+        added.length === 0 && pages.size > 0 && removed.length > 0 && removed.every(isAtomicSwap);
+      if (deferSwapRetire) {
+        shellTrace('defer-retire', {
+          chrome: removed.filter(isHeaderChrome).map((element) => chromeLabel(element)),
+          pages: pages.size,
+        });
+        dirty = true;
+        return;
+      }
+      const removedChrome = removed.filter(isHeaderChrome);
+      if (removedChrome.length) {
+        shellTrace('retire', {
+          chrome: removedChrome.map((element) => `${chromeLabel(element)}:${blockedReason(element) ?? 'ineligible'}`),
+          instant: handoffInstant,
+          atomic: atomicNow,
+        });
+      }
       if (removed.length) {
         // Restore the source and let WebKit paint before removing its native cover.
         removed.forEach(restore);
         // The outgoing tab is no longer visible, so waiting two frames only leaves its
         // native snapshot over the destination. Stack transitions still need the paint.
-        if (!handoffInstant && removed.some((element) => !isVerticalBarsSource(element))) {
+        // Atomic swap must not wait: the delay splits the retire into a later 180ms fade.
+        if (!handoffInstant && !atomicNow && removed.some((element) => !isVerticalBarsSource(element))) {
           await painted();
           if (stopped || dirty) return;
         }
@@ -365,12 +413,25 @@ export const createRuntime = async (
       };
       const serialized = JSON.stringify(data);
       if (serialized === lastSnapshot && !forceRefresh) return;
-      const added = candidates.flatMap(candidateSources).filter((element) => !sources.has(element));
       const snapshot: ShellSnapshot = {
         ...data,
         revision: ++revision,
-        transitionDuration: crossfade.duration(handoffInstant || isAtomicSwapDuration(removed, added)),
+        transitionDuration: crossfade.duration(handoffInstant || win.performance.now() < atomicUntil || atomicNow),
       };
+      const addedChrome = added.filter(isHeaderChrome);
+      if (removedChrome.length || addedChrome.length) {
+        shellTrace('sync', {
+          rev: snapshot.revision,
+          duration: snapshot.transitionDuration,
+          instant: handoffInstant,
+          atomic: atomicNow,
+          add: addedChrome.map(chromeLabel),
+          keep: candidates
+            .flatMap(candidateSources)
+            .filter((element) => isHeaderChrome(element) && sources.has(element))
+            .map(chromeLabel),
+        });
+      }
       // A native visibility notification during this update must survive its ack.
       forceRefresh = false;
       updates++;
@@ -439,6 +500,7 @@ export const createRuntime = async (
       for (const element of accepted.flatMap(candidateSources)) {
         const newlyProjected = !sources.has(element) || !element.hasAttribute(marker);
         if (!sources.has(element)) {
+          if (isHeaderChrome(element)) shellTrace('project', { chrome: chromeLabel(element), instant: handoffInstant });
           sources.set(element, element.getAttribute('aria-hidden'));
           crossfade.play(element, true, handoffInstant || isVerticalBarsSource(element) || isAtomicSwap(element));
         }
@@ -487,7 +549,11 @@ export const createRuntime = async (
           record.attributeName !== toolbarTextMarker &&
           record.attributeName !== fadeMarker &&
           !prehideOnlyMutation(record) &&
-          !(record.attributeName === 'style' && measuringPointerPages.has(record.target as HTMLElement)) &&
+          !(
+            record.attributeName === 'style' &&
+            (measuringPointerPages.has(record.target as HTMLElement) ||
+              transformMeasurePages.has(record.target as HTMLElement))
+          ) &&
           !(
             record.attributeName === 'aria-hidden' &&
             sources.has(record.target as HTMLElement) &&
@@ -502,6 +568,10 @@ export const createRuntime = async (
     target.addEventListener(name, callback, { capture: true, signal: listeners.signal });
   const pageWill: EventListener = (event) => {
     const page = event.target as HTMLElement;
+    shellTrace(event.type, {
+      page: `${page.tagName.toLowerCase()}.${(page.className || '').toString().replace(/\s+/g, '.').slice(0, 80)}`,
+      pages: pages.size + 1,
+    });
     verticalBarsPages.lifecycle(event);
     getNativeSearchBindings(doc)
       .filter((binding) => page.contains(binding.footer))
@@ -514,6 +584,10 @@ export const createRuntime = async (
   };
   const pageDid: EventListener = (event) => {
     const page = event.target as HTMLElement;
+    shellTrace(event.type, {
+      page: `${page.tagName.toLowerCase()}.${(page.className || '').toString().replace(/\s+/g, '.').slice(0, 80)}`,
+      pages: Math.max(0, pages.size - 1),
+    });
     verticalBarsPages.lifecycle(event);
     pages.delete(page);
     schedule();
@@ -766,6 +840,11 @@ export const createRuntime = async (
         return !stopped && search.projected(binding);
       },
       async suspend(scopes) {
+        shellTrace('suspend', {
+          scopes: scopes.map(
+            (scope) => `${scope.tagName.toLowerCase()}.${(scope.className || '').toString().replace(/\s+/g, '.').slice(0, 60)}`,
+          ),
+        });
         getNativeSearchBindings(doc)
           .filter((binding) => scopes.some((scope) => scope.contains(binding.footer) || scope.contains(binding.tabBar)))
           .forEach((binding) => search.retire(binding));

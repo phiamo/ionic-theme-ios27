@@ -27,6 +27,35 @@ export const prehideOnlyMutation = (record: MutationRecord): boolean => {
   return withoutPrehide(record.oldValue) === withoutPrehide((record.target as Element).getAttribute('class') ?? '');
 };
 
+/** Swap chrome on a page that is currently entering (`ion-page-invisible` + willEnter). */
+export const swapEnteringPage = (element: HTMLElement): HTMLElement | undefined => {
+  if (!isAtomicSwap(element)) return undefined;
+  const page = element.closest<HTMLElement>('.ion-page-invisible');
+  return page && enteringPages.has(page) ? page : undefined;
+};
+
+/** Pages whose transform is briefly cleared to measure swap chrome at rest. */
+export const transformMeasurePages = new WeakSet<HTMLElement>();
+
+/** Read geometry as if the entering page had already landed (native overlays do not slide). */
+export const withoutPageTransform = <T>(element: HTMLElement, read: () => T): T => {
+  const page = element.closest<HTMLElement>('.ion-page');
+  if (!page) return read();
+  const previous = page.style.getPropertyValue('transform');
+  const priority = page.style.getPropertyPriority('transform');
+  const hadStyle = page.hasAttribute('style');
+  transformMeasurePages.add(page);
+  page.style.setProperty('transform', 'none', 'important');
+  try {
+    return read();
+  } finally {
+    if (previous) page.style.setProperty('transform', previous, priority);
+    else page.style.removeProperty('transform');
+    if (!hadStyle && !page.style.length) page.removeAttribute('style');
+    transformMeasurePages.delete(page);
+  }
+};
+
 export const withoutPrehide = <T>(element: HTMLElement, read: () => T): T => {
   const changed: HTMLElement[] = [];
   for (let current: HTMLElement | null = element; current; current = current.parentElement) {
@@ -235,21 +264,23 @@ export const unprojected = <T>(elements: Iterable<HTMLElement>, read: () => T): 
 };
 
 const readVisible = (element: HTMLElement, allowOutsideViewport: boolean): boolean => {
-  const enteringPage = isVerticalBarsSource(element) ? verticalBarsEnteringPage(element) : undefined;
+  const enteringPage = isVerticalBarsSource(element) ? verticalBarsEnteringPage(element) : swapEnteringPage(element);
   if (!element.isConnected || isExcluded(element, enteringPage) || isShellDisabled(element)) return false;
   for (let current: HTMLElement | null = element; current; current = current.parentElement) {
     const style = getComputedStyle(current);
     if (
       style.display === 'none' ||
-      style.visibility !== 'visible' ||
+      (style.visibility !== 'visible' && current !== enteringPage) ||
       (Number(style.opacity) === 0 && !current.hasAttribute(fadeMarker) && current !== enteringPage)
     )
       return false;
     // Ordinary controls on moving/collapsing/custom transformed surfaces stay in Web coordinates.
     // VerticalBars rail controls are placed independently of their Web coordinates and must remain
     // owned while Ionic transforms the content behind an open menu.
+    // Swap chrome on an entering page is measured at rest; skip the sliding transform.
     if (
       !allowOutsideViewport &&
+      !enteringPage &&
       style.transform !== 'none' &&
       !new DOMMatrixReadOnly(style.transform).isIdentity &&
       current !== element &&
@@ -261,7 +292,9 @@ const readVisible = (element: HTMLElement, allowOutsideViewport: boolean): boole
   return (
     rect.width > 0 &&
     rect.height > 0 &&
-    (allowOutsideViewport || (rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1))
+    (allowOutsideViewport ||
+      !!enteringPage ||
+      (rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1))
   );
 };
 
