@@ -209,14 +209,14 @@ export const createRuntime = async (
     }
   };
   const underMovingSurface = (element: HTMLElement) => Array.from(moving.keys()).some((surface) => surface.contains(element));
-  // Ancestor CSS motion (header-transitioning, toolbar opacity) must not retire an
-  // already-projected control; that is the late Web/native resettle after push/pop.
-  const blocked = (element: HTMLElement) =>
-    verticalBarsPages.isDeparted(element) ||
-    (!isVerticalBarsSource(element) &&
-      (Array.from(suspended).some((scopes) => scopes.some((scope) => scope.contains(element))) ||
-        Array.from(pages).some((scope) => scope.contains(element)) ||
-        (!sources.has(element) && underMovingSurface(element))));
+  const waitToProject = (element: HTMLElement) =>
+    !isVerticalBarsSource(element) &&
+    (Array.from(suspended).some((scopes) => scopes.some((scope) => scope.contains(element))) ||
+      Array.from(pages).some((scope) => scope.contains(element)) ||
+      underMovingSurface(element));
+  // Suspend, transitioning pages, and ancestor CSS motion delay first projection.
+  // Already-projected controls stay native so stack push/pop does not hide then remake them.
+  const blocked = (element: HTMLElement) => verticalBarsPages.isDeparted(element) || (!sources.has(element) && waitToProject(element));
   const painted = () => new Promise<void>((resolve) => win.requestAnimationFrame(() => win.requestAnimationFrame(() => resolve())));
   const overlayOpen = (includeMenu = true, allowModal = false) => {
     const modal = topModal(doc);
@@ -771,7 +771,7 @@ export const createRuntime = async (
           .forEach((binding) => search.retire(binding));
         suspended.add(scopes);
         await flush();
-        // Source DOM has been restored before Ionic starts moving it.
+        // Already-projected sources stay native; only new controls wait until release.
         await new Promise<void>((resolve) => win.requestAnimationFrame(() => resolve()));
         return (canceled = false) => {
           suspended.delete(scopes);

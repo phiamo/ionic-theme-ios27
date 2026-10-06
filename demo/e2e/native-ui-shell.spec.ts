@@ -2870,6 +2870,19 @@ test('header CSS motion does not retire an already projected control', async ({ 
   await expect(segment).not.toHaveAttribute('data-native-ui-shell-fading');
 });
 
+test('stack lifecycle does not retire an already projected control', async ({ page }) => {
+  await mockNative(page);
+  await page.goto('/main/index/native-ui-shell');
+  const segment = page.locator('app-native-ui-shell ion-segment');
+  await expect(segment).toHaveAttribute('data-native-ui-shell', '');
+  await page.locator('app-native-ui-shell.ion-page').evaluate((element) => {
+    element.dispatchEvent(new CustomEvent('ionViewWillLeave', { bubbles: true }));
+  });
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect(segment).toHaveAttribute('data-native-ui-shell', '');
+  await expect(segment).not.toHaveAttribute('data-native-ui-shell-fading');
+});
+
 test('reduced motion hands off without a crossfade', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await mockNative(page);
