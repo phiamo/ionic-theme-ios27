@@ -2837,9 +2837,9 @@ test('atomic swap hands off without a crossfade', async ({ page }) => {
   await expect(buttons).toHaveAttribute('data-native-ui-shell', '');
   await segment.evaluate((el) => el.setAttribute('data-shell-handoff', 'swap'));
   await segment.evaluate((el) => el.classList.add('ios-theme-shell-disabled'));
-  await expect(segment).not.toHaveAttribute('data-native-ui-shell');
+  await expect(segment).toHaveAttribute('data-native-ui-shell', '');
   await expect(segment).not.toHaveAttribute('data-native-ui-shell-fading');
-  await expect(segment).toHaveCSS('opacity', '1');
+  await expect(segment).toHaveCSS('visibility', 'hidden');
   await expect
     .poll(() => page.evaluate(() => Capacitor.registerPlugin<ShellMock>('IonicNativeUIShell').updates.at(-1)!.transitionDuration))
     .toBe(0);

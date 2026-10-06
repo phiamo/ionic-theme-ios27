@@ -19,6 +19,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
     private var controls: [String: UIView] = [:]
     private var searchControllers: [String: ShellSearchControlling] = [:]
     private var fingerprints: [String: ShellControl] = [:]
+    private var parked: [String: UIView] = [:]
     private let rendering = ShellRendering()
     private var revision = 0
     private var sequence = 0
@@ -140,15 +141,27 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             detachTabsController(duration: duration)
             return
         }
+        NSLog("[SHELL] native remove %@ dur=%.0fms", id, duration * 1000)
         searchControllers.removeValue(forKey: id)?.detach()
-        if let control = controls.removeValue(forKey: id) { ShellCrossfade.retire(control, duration: duration) }
-        fingerprints.removeValue(forKey: id)
         pendingTabSelections.removeValue(forKey: id)
         pendingTabExpiryWorks.removeValue(forKey: id)?.cancel()
+        fingerprints.removeValue(forKey: id)
+        if let control = controls.removeValue(forKey: id) {
+            if duration == 0, !(control is UITabBar) {
+                NSLog("[SHELL] native park %@", id)
+                control.isHidden = true
+                parked[id] = control
+            } else {
+                parked.removeValue(forKey: id)
+                ShellCrossfade.retire(control, duration: duration)
+            }
+        }
     }
 
     private func removeControls(duration: TimeInterval = 0) {
         Array(controls.keys).forEach { removeControl($0, duration: duration) }
+        parked.values.forEach { $0.removeFromSuperview() }
+        parked.removeAll()
         host?.removeFromSuperview()
         host = nil
         detachTabsController(duration: duration)
@@ -202,6 +215,8 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             }
             self.notifyWebViewMetricsChange()
             let duration = ShellCrossfade.duration(snapshot.transitionDuration)
+            let incoming = snapshot.controls.map { "\($0.kind.rawValue):\($0.id)" }.joined(separator: ",")
+            NSLog("[SHELL] native update rev=%d dur=%.0fms controls=[%@]", next, duration * 1000, incoming)
             let existing = Set(self.controls.keys)
             let verticalBars = snapshot.controls.filter { $0.placement == .verticalBars }
             let snapshots = snapshot.controls.filter { $0.placement != .verticalBars }
@@ -265,6 +280,12 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                 if host.superview !== parent { parent.addSubview(host) }
                 for node in snapshots {
                     let id = node.id
+                    if self.controls[id] == nil, let parked = self.parked.removeValue(forKey: id) {
+                        NSLog("[SHELL] native unpark %@", id)
+                        parked.isHidden = false
+                        if parked.superview == nil { host.addSubview(parked) }
+                        self.controls[id] = parked
+                    }
                     let previous = self.controls[id]
                     let previousBounds = previous?.bounds
                     let previousCenter = previous?.center
@@ -323,10 +344,12 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                             self.controls[id] = fab
                             fabs.append((fab, node))
                         } else if let segment = self.controls[id] as? ShellSegment, node.kind == ShellSegment.kind {
+                            NSLog("[SHELL] native segment UPDATE %@", id)
                             segment.update(node, scale: scale, rendering: self.rendering)
                         } else if let tabBar = self.controls[id] as? UITabBar, node.kind == ShellTabBar.kind {
                             self.syncTabBar(tabBar, id: id, node: node)
                         } else {
+                            NSLog("[SHELL] native MAKE %@ %@ replace=%d", node.kind.rawValue, id, previous == nil ? 0 : 1)
                             guard let control = ShellComponents.make(node, scale: scale, rendering: self.rendering, tabDelegate: self,
                                 activate: { [weak self] id in self?.activate(id) }) else { reject(); continue }
                             self.controls.removeValue(forKey: id)?.removeFromSuperview()
@@ -384,6 +407,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                 }
             }
             for (id, control) in self.controls where !existing.contains(id) && self.searchControllers[id] == nil {
+                NSLog("[SHELL] native enter %@ dur=%.0fms", id, duration * 1000)
                 ShellCrossfade.enter(control, duration: duration)
             }
             if let accessoryNode, let bar = snapshots.first(where: { $0.id == accessoryBarId }),

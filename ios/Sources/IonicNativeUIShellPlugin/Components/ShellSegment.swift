@@ -40,6 +40,7 @@ final class ShellSegment: UISegmentedControl {
         let control = ShellSegment(items: [])
         control.isAccessibilityElement = false
         control.apportionsSegmentWidthsByContent = false
+        NSLog("[SHELL] native segment MAKE %@", node.id)
         control.update(node, scale: scale, rendering: rendering)
         control.addAction(UIAction { [weak control] _ in
             guard let control, control.items.indices.contains(control.selectedSegmentIndex) else { return }
@@ -83,6 +84,7 @@ final class ShellSegment: UISegmentedControl {
         labels = items.map { $0.content.accessibilityLabel }
         accessibilityIdentifier = node.id
         let selected = items.firstIndex { $0.content.selected } ?? UISegmentedControl.noSegment
+        NSLog("[SHELL] native segment.update %@ rebuilt=%d selected=%ld was=%ld", node.id, rebuilt ? 1 : 0, selected, selectedSegmentIndex)
         // A native tap has already selected this index. Reassigning it can interrupt
         // UIKit's in-flight lens animation when the Web selection echoes back.
         if selectedSegmentIndex != selected { selectedSegmentIndex = selected }
