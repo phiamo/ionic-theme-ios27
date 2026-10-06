@@ -208,12 +208,15 @@ export const createRuntime = async (
       await fail(error);
     }
   };
+  const underMovingSurface = (element: HTMLElement) => Array.from(moving.keys()).some((surface) => surface.contains(element));
+  // Ancestor CSS motion (header-transitioning, toolbar opacity) must not retire an
+  // already-projected control; that is the late Web/native resettle after push/pop.
   const blocked = (element: HTMLElement) =>
     verticalBarsPages.isDeparted(element) ||
     (!isVerticalBarsSource(element) &&
       (Array.from(suspended).some((scopes) => scopes.some((scope) => scope.contains(element))) ||
         Array.from(pages).some((scope) => scope.contains(element)) ||
-        Array.from(moving.keys()).some((surface) => surface.contains(element))));
+        (!sources.has(element) && underMovingSurface(element))));
   const painted = () => new Promise<void>((resolve) => win.requestAnimationFrame(() => win.requestAnimationFrame(() => resolve())));
   const overlayOpen = (includeMenu = true, allowModal = false) => {
     const modal = topModal(doc);
