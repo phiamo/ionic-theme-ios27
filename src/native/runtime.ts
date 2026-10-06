@@ -18,7 +18,7 @@ import {
   isVerticalBarsSource,
   preferredVerticalBarsBack,
   isAtomicSwap,
-  isAtomicSwapHandoff,
+  isAtomicSwapDuration,
   marker,
   syncToolbarText,
   toolbarTextMarker,
@@ -366,7 +366,7 @@ export const createRuntime = async (
       const snapshot: ShellSnapshot = {
         ...data,
         revision: ++revision,
-        transitionDuration: crossfade.duration(handoffInstant || isAtomicSwapHandoff([...removed, ...added])),
+        transitionDuration: crossfade.duration(handoffInstant || isAtomicSwapDuration(removed, added)),
       };
       // A native visibility notification during this update must survive its ack.
       forceRefresh = false;

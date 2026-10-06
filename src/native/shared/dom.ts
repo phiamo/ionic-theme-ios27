@@ -148,6 +148,10 @@ export const isAtomicSwap = (element: Element): boolean => !!element.closest(ato
 
 export const isAtomicSwapHandoff = (changed: readonly Element[]): boolean => changed.length > 0 && changed.every(isAtomicSwap);
 
+/** Native fade duration is 0 when every added source is atomic, or a retire-only sync is all atomic. */
+export const isAtomicSwapDuration = (removed: readonly Element[], added: readonly Element[]): boolean =>
+  added.length ? added.every(isAtomicSwap) : isAtomicSwapHandoff(removed);
+
 export const isVerticalBarsToolbarActionShape = (element: HTMLElement): boolean =>
   element.matches('ion-menu-button') ||
   (element.matches('ion-button') && !!element.querySelector('ion-icon[slot="icon-only"], svg[slot="icon-only"]'));

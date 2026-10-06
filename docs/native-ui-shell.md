@@ -64,7 +64,7 @@ Only the exact value `disabled` opts out; an empty or unknown value is ignored. 
 </ion-toolbar>
 ```
 
-Use `data-shell-handoff="swap"` (or the equivalent `ios-theme-shell-handoff-swap` class) on a projected control to skip the 180ms Web/native opacity crossfade on stack push/pop. The runtime still waits for the Web source to paint before removing the native cover, unlike tab-switch `handoffInstant`. Native `transitionDuration` is 0 only when every added or removed source in that sync uses this opt-in, so tab bars, back buttons and FABs keep the 180ms fade unless they opt in too. Only the exact value `swap` enables it.
+Use `data-shell-handoff="swap"` (or the equivalent `ios-theme-shell-handoff-swap` class) on a projected control to skip the 180ms Web/native opacity crossfade on stack push/pop. The runtime still waits for the Web source to paint before removing the native cover, unlike tab-switch `handoffInstant`. Native `transitionDuration` is 0 when every newly added source uses this opt-in, or when a retire-only sync's removed sources all use it, so unrelated tab bars, back buttons and FABs keep the 180ms fade unless they are part of that same change set. Only the exact value `swap` enables it.
 
 ```html
 <ion-segment data-shell-handoff="swap">
