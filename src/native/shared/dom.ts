@@ -39,21 +39,8 @@ export const transformMeasurePages = new WeakSet<HTMLElement>();
 
 /** Read geometry as if the entering page had already landed (native overlays do not slide). */
 export const withoutPageTransform = <T>(element: HTMLElement, read: () => T): T => {
-  const page = element.closest<HTMLElement>('.ion-page');
-  if (!page) return read();
-  const previous = page.style.getPropertyValue('transform');
-  const priority = page.style.getPropertyPriority('transform');
-  const hadStyle = page.hasAttribute('style');
-  transformMeasurePages.add(page);
-  page.style.setProperty('transform', 'none', 'important');
-  try {
-    return read();
-  } finally {
-    if (previous) page.style.setProperty('transform', previous, priority);
-    else page.style.removeProperty('transform');
-    if (!hadStyle && !page.style.length) page.removeAttribute('style');
-    transformMeasurePages.delete(page);
-  }
+  // Never write `transform` on the live `.ion-page` — Ionic's push uses that property.
+  return read();
 };
 
 export const withoutPrehide = <T>(element: HTMLElement, read: () => T): T => {
