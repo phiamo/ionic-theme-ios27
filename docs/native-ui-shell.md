@@ -54,7 +54,7 @@ The table below describes the ordinary Native UI Shell. Vertical Bars uses the s
 
 For the ordinary Native UI Shell, only iOS-mode components with the theme variables installed are eligible. Explicitly enabled Vertical Bars is mode-independent as described below. `ios-theme-disabled` and the legacy `ios26-disabled` on an element or ancestor always exclude it. A disabled theme on one tab/segment item keeps its whole group on the Web.
 
-Use `data-shell="disabled"` (or the equivalent `ios-theme-shell-disabled` class) to disable only the iOS Native UI Shell while keeping the Web theme. It excludes the element and all its descendants. Adding or removing the attribute or class at runtime automatically restores Web rendering or re-evaluates native eligibility.
+Use `data-shell="disabled"` (or the equivalent `ios-theme-shell-disabled` class) to disable only the iOS Native UI Shell while keeping the Web theme. It excludes the element and all its descendants. Adding or removing the attribute or class at runtime automatically restores Web rendering or re-evaluates native eligibility. Opting out during a stack animation retires the native cover immediately; it is not deferred like an ordinary `data-shell-handoff="swap"` handoff.
 
 Only the exact value `disabled` opts out; an empty or unknown value is ignored. Remove the attribute to re-enable projection. If the class is also present, remove both to re-enable projection. This does not disable clicks or change the Web theme. The data attribute is available in `1.2.0`.
 

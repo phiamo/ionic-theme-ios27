@@ -19,6 +19,7 @@ import {
   preferredVerticalBarsBack,
   isAtomicSwap,
   isAtomicSwapDuration,
+  isShellDisabled,
   marker,
   syncToolbarText,
   toolbarTextMarker,
@@ -368,8 +369,9 @@ export const createRuntime = async (
       const added = candidates.flatMap(candidateSources).filter((element) => !sources.has(element));
       const atomicNow = isAtomicSwapDuration(removed, added);
       if (atomicNow) atomicUntil = Math.max(atomicUntil, win.performance.now() + 400);
+      const explicitHide = removed.length > 0 && removed.every(isShellDisabled);
       const deferSwapRetire =
-        added.length === 0 && pages.size > 0 && removed.length > 0 && removed.every(isAtomicSwap);
+        added.length === 0 && pages.size > 0 && removed.length > 0 && removed.every(isAtomicSwap) && !explicitHide;
       if (deferSwapRetire) {
         shellTrace('defer-retire', {
           chrome: removed.filter(isHeaderChrome).map((element) => chromeLabel(element)),
@@ -392,7 +394,7 @@ export const createRuntime = async (
         // The outgoing tab is no longer visible, so waiting two frames only leaves its
         // native snapshot over the destination. Stack transitions still need the paint.
         // Atomic swap must not wait: the delay splits the retire into a later 180ms fade.
-        if (!handoffInstant && !atomicNow && removed.some((element) => !isVerticalBarsSource(element))) {
+        if (!handoffInstant && !atomicNow && !explicitHide && removed.some((element) => !isVerticalBarsSource(element))) {
           await painted();
           if (stopped || dirty) return;
         }
