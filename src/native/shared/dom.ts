@@ -29,10 +29,10 @@ export const prehideOnlyMutation = (record: MutationRecord): boolean => {
   return withoutPrehide(record.oldValue) === withoutPrehide((record.target as Element).getAttribute('class') ?? '');
 };
 
-/** Swap chrome on a page that is currently entering (`ion-page-invisible` + willEnter). */
+/** Swap chrome on a page between willEnter and didEnter (whole slide, not only ion-page-invisible). */
 export const swapEnteringPage = (element: HTMLElement): HTMLElement | undefined => {
   if (!isAtomicSwap(element)) return undefined;
-  const page = element.closest<HTMLElement>('.ion-page-invisible');
+  const page = element.closest<HTMLElement>('.ion-page');
   return page && enteringPages.has(page) ? page : undefined;
 };
 

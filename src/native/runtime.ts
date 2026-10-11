@@ -165,7 +165,11 @@ export const createRuntime = async (
     scopes.flatMap((scope) => Array.from(scope.querySelectorAll<HTMLElement>('ion-segment, ion-back-button'))).filter(isAtomicSwap);
   const revealSlidingSwap = (scopes: HTMLElement[]) => {
     for (const element of swapInScopes(scopes)) {
-      if (!sources.has(element)) showWeb(element);
+      if (sources.has(element)) continue;
+      const page = pageOf(element);
+      // Entering swap stays hidden for native. Only leaving Web rides the slide.
+      if (page && !leftPages.has(page) && !page.classList.contains('ion-page-hidden')) continue;
+      showWeb(element);
     }
   };
   const hideDepartedSwap = (scopes: HTMLElement[]) => {
@@ -266,12 +270,11 @@ export const createRuntime = async (
     const page = pageOf(element);
     if (page?.classList.contains('ion-page-hidden') && !sources.has(element)) return 'departed';
     if (page && leftPages.has(page) && !sources.has(element)) return 'departed';
-    // Swap chrome is Web during the slide. Native only after didEnter (page at rest).
-    // Projecting entering swap during suspend is appear→visible() fail→retire→reappear.
     if (isVerticalBarsSource(element) && !isAtomicSwap(element)) return undefined;
-    if (underSuspended(element)) return 'suspend';
-    // After the slide, first-project swap immediately. Waiting for didEnter
-    // leaves a rest frame of Web chrome, then a pop through the glass cover.
+    // Leaving swap retires so Web can slide. Entering swap stays native at rest
+    // for the whole animation — visible() used to fail mid-slide and retire it.
+    if (underSuspended(element) && !(isAtomicSwap(element) && page && !leftPages.has(page) && !page.classList.contains('ion-page-hidden')))
+      return 'suspend';
     if (Array.from(pages).some((scope) => scope.contains(element)) && !isAtomicSwap(element))
       return 'pages';
     if (!sources.has(element) && underMovingSurface(element)) return 'motion';
@@ -391,7 +394,18 @@ export const createRuntime = async (
         return;
       }
       observe();
+      const holdEnteringSwap = (element: HTMLElement) => {
+        if (!sources.has(element) || !isAtomicSwap(element)) return false;
+        const page = pageOf(element);
+        return !!page && !leftPages.has(page) && !page.classList.contains('ion-page-hidden') &&
+          (underSuspended(element) || pages.has(page));
+      };
       const candidates = read();
+      for (const element of sources.keys()) {
+        if (!holdEnteringSwap(element) || candidates.some((candidate) => candidateSources(candidate).includes(element))) continue;
+        const extra = readEnabledCandidate(element);
+        if (extra) candidates.push(extra);
+      }
       const signatures = new Map(candidates.map((candidate) => [candidate.element, signature(candidate)]));
       for (const candidate of candidates) {
         for (const icon of candidate.icons) {
@@ -405,7 +419,7 @@ export const createRuntime = async (
       }
       if (stopped || dirty) return;
       const retained = new Set(candidates.flatMap(candidateSources));
-      const removed = Array.from(sources.keys()).filter((element) => !retained.has(element));
+      const removed = Array.from(sources.keys()).filter((element) => !retained.has(element) && !holdEnteringSwap(element));
       const added = candidates.flatMap(candidateSources).filter((element) => !sources.has(element));
       const atomicNow = isAtomicSwapDuration(removed, added);
       if (atomicNow) {
