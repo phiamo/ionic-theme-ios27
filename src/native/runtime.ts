@@ -20,6 +20,7 @@ import {
   isAtomicSwap,
   isAtomicSwapDuration,
   marker,
+  measureMarker,
   syncToolbarText,
   toolbarTextMarker,
   prehideOnlyMutation,
@@ -73,6 +74,7 @@ export const createRuntime = async (
   const verticalBarsMembers = new Set<HTMLElement>();
   const suspended = new Set<HTMLElement[]>();
   const pages = new Set<HTMLElement>();
+  const leftPages = new WeakSet<HTMLElement>();
   const verticalBarsPages = createVerticalBarsPageState();
   const presented = new Set<HTMLElement>();
   const manualSuspensions = new Set<symbol>();
@@ -134,6 +136,7 @@ export const createRuntime = async (
   const hidden = `[${marker}]:not([${fadeMarker}])`;
   style.textContent = `${hidden}, ${hidden} *, ${hidden}::before, ${hidden}::after, ${hidden}::part(native) { visibility: hidden !important; }
     [${marker}], [${marker}] * { pointer-events: none !important; }
+    [${measureMarker}], [${measureMarker}] * { pointer-events: auto !important; }
     /* Ionic disables the covered page while a menu is open. VerticalBars rail
        controls remain outside that page; zero specificity preserves any
        pointer-events rule supplied by the application itself. */
@@ -144,24 +147,51 @@ export const createRuntime = async (
       pointer-events: none;
     }`;
 
+  const pageOf = (element: HTMLElement) => element.closest<HTMLElement>('.ion-page');
+  const underSuspended = (element: HTMLElement) =>
+    Array.from(suspended).some((scopes) => scopes.some((scope) => scope.contains(element)));
+  const showWeb = (element: HTMLElement) => {
+    element.removeAttribute(marker);
+    if (element.getAttribute('aria-hidden') === 'true') {
+      const previous = sources.get(element);
+      if (previous == null) element.removeAttribute('aria-hidden');
+      else element.setAttribute('aria-hidden', previous);
+    }
+  };
+  const hideWeb = (element: HTMLElement) => {
+    element.setAttribute(marker, '');
+  };
+  const swapInScopes = (scopes: HTMLElement[]) =>
+    scopes.flatMap((scope) => Array.from(scope.querySelectorAll<HTMLElement>('ion-segment, ion-back-button'))).filter(isAtomicSwap);
+  const revealSlidingSwap = (scopes: HTMLElement[]) => {
+    for (const element of swapInScopes(scopes)) {
+      if (!sources.has(element)) showWeb(element);
+    }
+  };
+  const hideDepartedSwap = (scopes: HTMLElement[]) => {
+    for (const element of swapInScopes(scopes)) {
+      const page = pageOf(element);
+      if (!page || sources.has(element)) continue;
+      if (leftPages.has(page) || page.classList.contains('ion-page-hidden')) hideWeb(element);
+    }
+  };
   const restore = (element: HTMLElement) => {
     lastSnapshot = '';
-    const keepWebHidden = isAtomicSwap(element);
-    if (isHeaderChrome(element)) shellTrace('restore', { chrome: chromeLabel(element), keepWebHidden });
+    // Web must paint while the page is sliding. Hide it only at rest on a
+    // departed page so leftover Home chrome cannot flash on the detail.
+    const page = pageOf(element);
+    const sliding = underSuspended(element) || (!!page && pages.has(page));
+    const keepWebHidden = isAtomicSwap(element) && !sliding;
+    if (isHeaderChrome(element)) shellTrace('restore', { chrome: chromeLabel(element), keepWebHidden, sliding });
     search.release(element);
     if (!keepWebHidden) {
-      element.removeAttribute(marker);
+      showWeb(element);
       if (!stopped)
         crossfade.play(
           element,
           false,
           isVerticalBarsSource(element) ? !element.matches('ion-tab-bar') : handoffInstant,
         );
-      if (element.getAttribute('aria-hidden') === 'true') {
-        const previous = sources.get(element);
-        if (previous == null) element.removeAttribute('aria-hidden');
-        else element.setAttribute('aria-hidden', previous);
-      }
     }
     sources.delete(element);
     element.dispatchEvent(new CustomEvent('nativeUIShellChange'));
@@ -232,13 +262,18 @@ export const createRuntime = async (
   const underMovingSurface = (element: HTMLElement) =>
     Array.from(moving.keys()).some((surface) => surface !== element && surface.contains(element));
   const blockedReason = (element: HTMLElement): string | undefined => {
-    if (verticalBarsPages.isDeparted(element)) return 'departed';
-    if (isVerticalBarsSource(element)) return undefined;
-    // Swap chrome can first-project during the stack animation so native tracks
-    // the sliding Web rect instead of MAKE-ing after the page has already landed.
-    if (!sources.has(element) && isAtomicSwap(element)) return undefined;
-    if (Array.from(suspended).some((scopes) => scopes.some((scope) => scope.contains(element)))) return 'suspend';
-    if (Array.from(pages).some((scope) => scope.contains(element))) return 'pages';
+    if (verticalBarsPages.isDeparted(element) && !(sources.has(element) && isAtomicSwap(element))) return 'departed';
+    const page = pageOf(element);
+    if (page?.classList.contains('ion-page-hidden') && !sources.has(element)) return 'departed';
+    if (page && leftPages.has(page) && !sources.has(element)) return 'departed';
+    // Swap chrome is Web during the slide. Native only after didEnter (page at rest).
+    // Projecting entering swap during suspend is appear→visible() fail→retire→reappear.
+    if (isVerticalBarsSource(element) && !isAtomicSwap(element)) return undefined;
+    if (underSuspended(element)) return 'suspend';
+    // After the slide, first-project swap immediately. Waiting for didEnter
+    // leaves a rest frame of Web chrome, then a pop through the glass cover.
+    if (Array.from(pages).some((scope) => scope.contains(element)) && !isAtomicSwap(element))
+      return 'pages';
     if (!sources.has(element) && underMovingSurface(element)) return 'motion';
     return undefined;
   };
@@ -282,7 +317,10 @@ export const createRuntime = async (
             .filter(
               (element) =>
                 inVerticalBarsSurface(element) &&
-                !verticalBarsPages.isDeparted(element) &&
+                !(
+                  verticalBarsPages.isDeparted(element) &&
+                  !(sources.has(element) && isAtomicSwap(element))
+                ) &&
                 (!blocked(element) || (menuOpen && isVerticalBarsSource(element))),
             )
             .map(readEnabledCandidate)
@@ -373,16 +411,6 @@ export const createRuntime = async (
       if (atomicNow) {
         swapPending = true;
         atomicUntil = Math.max(atomicUntil, win.performance.now() + 400);
-      }
-      const deferSwapRetire =
-        added.length === 0 && pages.size > 0 && removed.length > 0 && removed.every(isAtomicSwap);
-      if (deferSwapRetire) {
-        shellTrace('defer-retire', {
-          chrome: removed.filter(isHeaderChrome).map((element) => chromeLabel(element)),
-          pages: pages.size,
-        });
-        dirty = true;
-        return;
       }
       const removedChrome = removed.filter(isHeaderChrome);
       if (removedChrome.length) {
@@ -590,7 +618,12 @@ export const createRuntime = async (
       .forEach((binding) => search.retire(binding));
     // Angular updates the URL before willLeave, but keeps ion-tab-bar.selectedTab on the
     // leaving tab until DidChange. A mismatch means this leave is a tab switch, not a stack push.
-    if (event.type === LIFECYCLE_WILL_LEAVE) beginTabSwitchHandoffIfNeeded(page);
+    if (event.type === LIFECYCLE_WILL_LEAVE) {
+      leftPages.add(page);
+      beginTabSwitchHandoffIfNeeded(page);
+    } else if (event.type === LIFECYCLE_WILL_ENTER) {
+      leftPages.delete(page);
+    }
     pages.add(page);
     schedule();
   };
@@ -601,6 +634,8 @@ export const createRuntime = async (
       pages: Math.max(0, pages.size - 1),
     });
     verticalBarsPages.lifecycle(event);
+    if (event.type === LIFECYCLE_DID_ENTER) leftPages.delete(page);
+    else if (event.type === LIFECYCLE_DID_LEAVE) leftPages.add(page);
     pages.delete(page);
     schedule();
     if (tabSwitchHandoff && pages.size === 0) endTabSwitchHandoff();
@@ -665,6 +700,8 @@ export const createRuntime = async (
     const leaving = event.target as HTMLElement;
     const entering = (event as CustomEvent<{ entering?: HTMLElement }>).detail?.entering;
     verticalBarsPages.cancel(entering, leaving);
+    leftPages.delete(leaving);
+    if (entering) leftPages.add(entering);
     pages.delete(leaving);
     if (entering) pages.delete(entering);
     schedule();
@@ -865,17 +902,20 @@ export const createRuntime = async (
           .forEach((binding) => search.retire(binding));
         suspended.add(scopes);
         await flush();
+        revealSlidingSwap(scopes);
         // Source DOM has been restored before Ionic starts moving it.
         await new Promise<void>((resolve) => win.requestAnimationFrame(() => resolve()));
         return (canceled = false) => {
           suspended.delete(scopes);
-          if (canceled || !scopes.some((scope) => scope.closest('ion-app.ios-theme-vertical-bars'))) {
-            scopes.forEach((scope) => pages.delete(scope)); // Preserve ordinary iPhone handoff; cancellation has no DidLeave.
-            if (canceled) {
-              verticalBarsPages.cancel(scopes[0], scopes[1]); // The entering page is abandoned; the leaving page stays active.
-            }
+          if (canceled) {
+            scopes.forEach((scope) => pages.delete(scope)); // Cancellation has no DidLeave.
+            verticalBarsPages.cancel(scopes[0], scopes[1]); // The entering page is abandoned; the leaving page stays active.
+            schedule();
+            return;
           }
-          schedule();
+          hideDepartedSwap(scopes);
+          if (!pending) void sync();
+          else schedule();
         };
       },
     });

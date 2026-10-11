@@ -4,6 +4,8 @@ import { modalUsesVerticalBars } from './modal';
 import type { Frame } from '../definitions';
 
 export const marker = 'data-native-ui-shell';
+/** Measure projected chrome without clearing `marker` (that paints Web for a frame). */
+export const measureMarker = 'data-native-ui-shell-measure';
 // Scoped runtimes (Stencil slot emulation) patch child accessors on upgraded
 // elements and may report none before hydration; the prototype getter still
 // reports the real light DOM.
@@ -255,23 +257,24 @@ export const activateProjectedElement = (element: HTMLElement): void => {
 
 export const unprojected = <T>(elements: Iterable<HTMLElement>, read: () => T): T => {
   const hidden = Array.from(elements).filter((element) => element.hasAttribute(marker));
-  hidden.forEach((element) => element.removeAttribute(marker));
+  hidden.forEach((element) => element.setAttribute(measureMarker, ''));
   try {
     return read();
   } finally {
-    hidden.forEach((element) => element.setAttribute(marker, ''));
+    hidden.forEach((element) => element.removeAttribute(measureMarker));
   }
 };
 
 const readVisible = (element: HTMLElement, allowOutsideViewport: boolean): boolean => {
   const enteringPage = isVerticalBarsSource(element) ? verticalBarsEnteringPage(element) : swapEnteringPage(element);
+  const measuring = !!element.closest(`[${measureMarker}]`);
   if (!element.isConnected || isExcluded(element, enteringPage) || isShellDisabled(element)) return false;
   for (let current: HTMLElement | null = element; current; current = current.parentElement) {
     const style = getComputedStyle(current);
     if (
       style.display === 'none' ||
-      (style.visibility !== 'visible' && current !== enteringPage) ||
-      (Number(style.opacity) === 0 && !current.hasAttribute(fadeMarker) && current !== enteringPage)
+      (!measuring && style.visibility !== 'visible' && current !== enteringPage) ||
+      (!measuring && Number(style.opacity) === 0 && !current.hasAttribute(fadeMarker) && current !== enteringPage)
     )
       return false;
     // Ordinary controls on moving/collapsing/custom transformed surfaces stay in Web coordinates.
