@@ -4,6 +4,8 @@ import { modalUsesVerticalBars } from './modal';
 import type { Frame } from '../definitions';
 
 export const marker = 'data-native-ui-shell';
+/** Measure projected chrome without clearing `marker` (that paints Web for a frame). */
+export const measureMarker = 'data-native-ui-shell-measure';
 // Scoped runtimes (Stencil slot emulation) patch child accessors on upgraded
 // elements and may report none before hydration; the prototype getter still
 // reports the real light DOM.
@@ -62,6 +64,35 @@ export const setVerticalBarsEnteringPage = (page: HTMLElement, entering: boolean
 export const verticalBarsEnteringPage = (element: HTMLElement): HTMLElement | undefined => {
   const page = element.closest<HTMLElement>('.ion-page-invisible');
   return page && enteringPages.has(page) && page.closest('ion-app.ios-theme-vertical-bars') ? page : undefined;
+};
+
+/** Swap chrome on a page between willEnter and didEnter (whole slide, not only ion-page-invisible). */
+export const swapEnteringPage = (element: HTMLElement): HTMLElement | undefined => {
+  if (!isAtomicSwap(element)) return undefined;
+  const page = element.closest<HTMLElement>('.ion-page');
+  return page && enteringPages.has(page) ? page : undefined;
+};
+
+/** Pages whose transform is briefly cleared to measure swap chrome at rest. */
+export const transformMeasurePages = new WeakSet<HTMLElement>();
+
+/** Read geometry as if the entering page had already landed (native overlays do not slide). */
+export const withoutPageTransform = <T>(element: HTMLElement, read: () => T): T => {
+  const page = element.closest<HTMLElement>('.ion-page');
+  if (!page) return read();
+  const previous = page.style.getPropertyValue('transform');
+  const priority = page.style.getPropertyPriority('transform');
+  const hadStyle = page.hasAttribute('style');
+  transformMeasurePages.add(page);
+  page.style.setProperty('transform', 'none', 'important');
+  try {
+    return read();
+  } finally {
+    if (previous) page.style.setProperty('transform', previous, priority);
+    else page.style.removeProperty('transform');
+    if (!hadStyle && !page.style.length) page.removeAttribute('style');
+    transformMeasurePages.delete(page);
+  }
 };
 export const createVerticalBarsPageState = () => {
   const departed = new WeakSet<HTMLElement>();
@@ -226,30 +257,33 @@ export const activateProjectedElement = (element: HTMLElement): void => {
 
 export const unprojected = <T>(elements: Iterable<HTMLElement>, read: () => T): T => {
   const hidden = Array.from(elements).filter((element) => element.hasAttribute(marker));
-  hidden.forEach((element) => element.removeAttribute(marker));
+  hidden.forEach((element) => element.setAttribute(measureMarker, ''));
   try {
     return read();
   } finally {
-    hidden.forEach((element) => element.setAttribute(marker, ''));
+    hidden.forEach((element) => element.removeAttribute(measureMarker));
   }
 };
 
 const readVisible = (element: HTMLElement, allowOutsideViewport: boolean): boolean => {
-  const enteringPage = isVerticalBarsSource(element) ? verticalBarsEnteringPage(element) : undefined;
+  const enteringPage = isVerticalBarsSource(element) ? verticalBarsEnteringPage(element) : swapEnteringPage(element);
+  const measuring = !!element.closest(`[${measureMarker}]`);
   if (!element.isConnected || isExcluded(element, enteringPage) || isShellDisabled(element)) return false;
   for (let current: HTMLElement | null = element; current; current = current.parentElement) {
     const style = getComputedStyle(current);
     if (
       style.display === 'none' ||
-      style.visibility !== 'visible' ||
-      (Number(style.opacity) === 0 && !current.hasAttribute(fadeMarker) && current !== enteringPage)
+      (!measuring && style.visibility !== 'visible' && current !== enteringPage) ||
+      (!measuring && Number(style.opacity) === 0 && !current.hasAttribute(fadeMarker) && current !== enteringPage)
     )
       return false;
     // Ordinary controls on moving/collapsing/custom transformed surfaces stay in Web coordinates.
     // VerticalBars rail controls are placed independently of their Web coordinates and must remain
     // owned while Ionic transforms the content behind an open menu.
+    // Swap chrome on an entering page is measured at rest; skip the sliding transform.
     if (
       !allowOutsideViewport &&
+      !enteringPage &&
       style.transform !== 'none' &&
       !new DOMMatrixReadOnly(style.transform).isIdentity &&
       current !== element &&
@@ -261,7 +295,9 @@ const readVisible = (element: HTMLElement, allowOutsideViewport: boolean): boole
   return (
     rect.width > 0 &&
     rect.height > 0 &&
-    (allowOutsideViewport || (rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1))
+    (allowOutsideViewport ||
+      !!enteringPage ||
+      (rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1))
   );
 };
 

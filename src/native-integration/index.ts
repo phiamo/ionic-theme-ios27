@@ -81,11 +81,12 @@ export const connectNativeUIShellTransition = (animation: Animation, entering: H
   };
   animation.onFinish((step) => finish(step === 0));
   animation.play = async (options) => {
-    await prepare();
+    const ready = prepare();
     if (disposed) return;
     try {
       await play(options);
     } finally {
+      await ready;
       finish();
     }
   };
