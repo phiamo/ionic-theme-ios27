@@ -21,6 +21,7 @@ import {
   isAtomicSwapDuration,
   marker,
   measureMarker,
+  swapEnteringPage,
   syncToolbarText,
   toolbarTextMarker,
   prehideOnlyMutation,
@@ -56,18 +57,6 @@ export const createRuntime = async (
   const icons = createIconRenderer();
   const crossfade = createCrossfade(win);
   const ids = new WeakMap<Element, string>();
-  const chromeTag = (element: HTMLElement) => element.tagName.toLowerCase();
-  const isHeaderChrome = (element: HTMLElement) => {
-    const tag = chromeTag(element);
-    return tag === 'ion-segment' || tag === 'ion-back-button' || tag === 'ion-header';
-  };
-  const chromeLabel = (element: HTMLElement) =>
-    `${chromeTag(element)}:${ids.get(element) ?? '?'}${isAtomicSwap(element) ? ':swap' : ''}${
-      element.closest('.ios-theme-shell-disabled,[data-shell="disabled"]') ? ':disabled' : ''
-    }`;
-  const shellTrace = (event: string, detail: Record<string, unknown> = {}) => {
-    console.warn('[SHELL]', event, { t: Math.round(win.performance.now()), ...detail });
-  };
   let rejected = new WeakMap<HTMLElement, string>();
   const sources = new Map<HTMLElement, string | null>();
   const verticalBarsOwners = new Set<HTMLElement>();
@@ -102,8 +91,6 @@ export const createRuntime = async (
   let handoffUntil = 0;
   /** Tab switch armed while a sync was already in flight; extend instant past that sync. */
   let handoffAcrossPending = false;
-  /** Keep instant native duration after an atomic retire so a dirty follow-up cannot fade. */
-  let atomicUntil = 0;
   /** Captured at the start of each sync so an in-flight update keeps a stable duration. */
   let handoffInstant = false;
   /** Retire native controls immediately as a modal starts covering the page. */
@@ -150,52 +137,20 @@ export const createRuntime = async (
   const pageOf = (element: HTMLElement) => element.closest<HTMLElement>('.ion-page');
   const underSuspended = (element: HTMLElement) =>
     Array.from(suspended).some((scopes) => scopes.some((scope) => scope.contains(element)));
-  const showWeb = (element: HTMLElement) => {
+  const restore = (element: HTMLElement) => {
+    lastSnapshot = '';
+    search.release(element);
     element.removeAttribute(marker);
+    if (!stopped)
+      crossfade.play(
+        element,
+        false,
+        isAtomicSwap(element) || (isVerticalBarsSource(element) ? !element.matches('ion-tab-bar') : handoffInstant),
+      );
     if (element.getAttribute('aria-hidden') === 'true') {
       const previous = sources.get(element);
       if (previous == null) element.removeAttribute('aria-hidden');
       else element.setAttribute('aria-hidden', previous);
-    }
-  };
-  const hideWeb = (element: HTMLElement) => {
-    element.setAttribute(marker, '');
-  };
-  const swapInScopes = (scopes: HTMLElement[]) =>
-    scopes.flatMap((scope) => Array.from(scope.querySelectorAll<HTMLElement>('ion-segment, ion-back-button'))).filter(isAtomicSwap);
-  const revealSlidingSwap = (scopes: HTMLElement[]) => {
-    for (const element of swapInScopes(scopes)) {
-      if (sources.has(element)) continue;
-      const page = pageOf(element);
-      // Entering swap stays hidden for native. Only leaving Web rides the slide.
-      if (page && !leftPages.has(page) && !page.classList.contains('ion-page-hidden')) continue;
-      showWeb(element);
-    }
-  };
-  const hideDepartedSwap = (scopes: HTMLElement[]) => {
-    for (const element of swapInScopes(scopes)) {
-      const page = pageOf(element);
-      if (!page || sources.has(element)) continue;
-      if (leftPages.has(page) || page.classList.contains('ion-page-hidden')) hideWeb(element);
-    }
-  };
-  const restore = (element: HTMLElement) => {
-    lastSnapshot = '';
-    // Web must paint while the page is sliding. Hide it only at rest on a
-    // departed page so leftover Home chrome cannot flash on the detail.
-    const page = pageOf(element);
-    const sliding = underSuspended(element) || (!!page && pages.has(page));
-    const keepWebHidden = isAtomicSwap(element) && !sliding;
-    if (isHeaderChrome(element)) shellTrace('restore', { chrome: chromeLabel(element), keepWebHidden, sliding });
-    search.release(element);
-    if (!keepWebHidden) {
-      showWeb(element);
-      if (!stopped)
-        crossfade.play(
-          element,
-          false,
-          isVerticalBarsSource(element) ? !element.matches('ion-tab-bar') : handoffInstant,
-        );
     }
     sources.delete(element);
     element.dispatchEvent(new CustomEvent('nativeUIShellChange'));
@@ -271,10 +226,8 @@ export const createRuntime = async (
     if (page?.classList.contains('ion-page-hidden') && !sources.has(element)) return 'departed';
     if (page && leftPages.has(page) && !sources.has(element)) return 'departed';
     if (isVerticalBarsSource(element) && !isAtomicSwap(element)) return undefined;
-    // Leaving swap retires so Web can slide. Entering swap stays native at rest
-    // for the whole animation — visible() used to fail mid-slide and retire it.
-    if (underSuspended(element) && !(isAtomicSwap(element) && page && !leftPages.has(page) && !page.classList.contains('ion-page-hidden')))
-      return 'suspend';
+    // Leaving swap retires so Web can slide. Entering swap stays native at rest.
+    if (underSuspended(element) && !swapEnteringPage(element)) return 'suspend';
     if (Array.from(pages).some((scope) => scope.contains(element)) && !isAtomicSwap(element))
       return 'pages';
     if (!sources.has(element) && underMovingSurface(element)) return 'motion';
@@ -394,18 +347,7 @@ export const createRuntime = async (
         return;
       }
       observe();
-      const holdEnteringSwap = (element: HTMLElement) => {
-        if (!sources.has(element) || !isAtomicSwap(element)) return false;
-        const page = pageOf(element);
-        return !!page && !leftPages.has(page) && !page.classList.contains('ion-page-hidden') &&
-          (underSuspended(element) || pages.has(page));
-      };
       const candidates = read();
-      for (const element of sources.keys()) {
-        if (!holdEnteringSwap(element) || candidates.some((candidate) => candidateSources(candidate).includes(element))) continue;
-        const extra = readEnabledCandidate(element);
-        if (extra) candidates.push(extra);
-      }
       const signatures = new Map(candidates.map((candidate) => [candidate.element, signature(candidate)]));
       for (const candidate of candidates) {
         for (const icon of candidate.icons) {
@@ -419,21 +361,10 @@ export const createRuntime = async (
       }
       if (stopped || dirty) return;
       const retained = new Set(candidates.flatMap(candidateSources));
-      const removed = Array.from(sources.keys()).filter((element) => !retained.has(element) && !holdEnteringSwap(element));
+      const removed = Array.from(sources.keys()).filter((element) => !retained.has(element));
       const added = candidates.flatMap(candidateSources).filter((element) => !sources.has(element));
       const atomicNow = isAtomicSwapDuration(removed, added);
-      if (atomicNow) {
-        swapPending = true;
-        atomicUntil = Math.max(atomicUntil, win.performance.now() + 400);
-      }
-      const removedChrome = removed.filter(isHeaderChrome);
-      if (removedChrome.length) {
-        shellTrace('retire', {
-          chrome: removedChrome.map((element) => `${chromeLabel(element)}:${blockedReason(element) ?? 'ineligible'}`),
-          instant: handoffInstant,
-          atomic: atomicNow,
-        });
-      }
+      if (atomicNow) swapPending = true;
       if (removed.length) {
         // Restore the source and let WebKit paint before removing its native cover.
         removed.forEach(restore);
@@ -467,25 +398,9 @@ export const createRuntime = async (
       const snapshot: ShellSnapshot = {
         ...data,
         revision: ++revision,
-        transitionDuration: crossfade.duration(
-          handoffInstant || swapPending || atomicNow || win.performance.now() < atomicUntil,
-        ),
+        transitionDuration: crossfade.duration(handoffInstant || swapPending || atomicNow),
       };
       swapPending = false;
-      const addedChrome = added.filter(isHeaderChrome);
-      if (removedChrome.length || addedChrome.length) {
-        shellTrace('sync', {
-          rev: snapshot.revision,
-          duration: snapshot.transitionDuration,
-          instant: handoffInstant,
-          atomic: atomicNow,
-          add: addedChrome.map(chromeLabel),
-          keep: candidates
-            .flatMap(candidateSources)
-            .filter((element) => isHeaderChrome(element) && sources.has(element))
-            .map(chromeLabel),
-        });
-      }
       // A native visibility notification during this update must survive its ack.
       forceRefresh = false;
       updates++;
@@ -554,7 +469,6 @@ export const createRuntime = async (
       for (const element of accepted.flatMap(candidateSources)) {
         const newlyProjected = !sources.has(element) || !element.hasAttribute(marker);
         if (!sources.has(element)) {
-          if (isHeaderChrome(element)) shellTrace('project', { chrome: chromeLabel(element), instant: handoffInstant });
           sources.set(element, element.getAttribute('aria-hidden'));
           crossfade.play(element, true, handoffInstant || isVerticalBarsSource(element) || isAtomicSwap(element));
         }
@@ -622,10 +536,6 @@ export const createRuntime = async (
     target.addEventListener(name, callback, { capture: true, signal: listeners.signal });
   const pageWill: EventListener = (event) => {
     const page = event.target as HTMLElement;
-    shellTrace(event.type, {
-      page: `${page.tagName.toLowerCase()}.${(page.className || '').toString().replace(/\s+/g, '.').slice(0, 80)}`,
-      pages: pages.size + 1,
-    });
     verticalBarsPages.lifecycle(event);
     getNativeSearchBindings(doc)
       .filter((binding) => page.contains(binding.footer))
@@ -643,10 +553,6 @@ export const createRuntime = async (
   };
   const pageDid: EventListener = (event) => {
     const page = event.target as HTMLElement;
-    shellTrace(event.type, {
-      page: `${page.tagName.toLowerCase()}.${(page.className || '').toString().replace(/\s+/g, '.').slice(0, 80)}`,
-      pages: Math.max(0, pages.size - 1),
-    });
     verticalBarsPages.lifecycle(event);
     if (event.type === LIFECYCLE_DID_ENTER) leftPages.delete(page);
     else if (event.type === LIFECYCLE_DID_LEAVE) leftPages.add(page);
@@ -906,17 +812,11 @@ export const createRuntime = async (
         return !stopped && search.projected(binding);
       },
       async suspend(scopes) {
-        shellTrace('suspend', {
-          scopes: scopes.map(
-            (scope) => `${scope.tagName.toLowerCase()}.${(scope.className || '').toString().replace(/\s+/g, '.').slice(0, 60)}`,
-          ),
-        });
         getNativeSearchBindings(doc)
           .filter((binding) => scopes.some((scope) => scope.contains(binding.footer) || scope.contains(binding.tabBar)))
           .forEach((binding) => search.retire(binding));
         suspended.add(scopes);
         await flush();
-        revealSlidingSwap(scopes);
         // Source DOM has been restored before Ionic starts moving it.
         await new Promise<void>((resolve) => win.requestAnimationFrame(() => resolve()));
         return (canceled = false) => {
@@ -924,12 +824,8 @@ export const createRuntime = async (
           if (canceled) {
             scopes.forEach((scope) => pages.delete(scope)); // Cancellation has no DidLeave.
             verticalBarsPages.cancel(scopes[0], scopes[1]); // The entering page is abandoned; the leaving page stays active.
-            schedule();
-            return;
           }
-          hideDepartedSwap(scopes);
-          if (!pending) void sync();
-          else schedule();
+          schedule();
         };
       },
     });
