@@ -130,14 +130,6 @@ private func verticalBarsButton(_ item: ShellVerticalBarsModel.Item, model: Shel
 }
 
 @available(iOS 26.0, *)
-private extension View {
-    /// Xcode 26.3 prefers `toolbar(@ViewBuilder:)`, which rejects `ToolbarItem`.
-    func nativeShellToolbar<Toolbar: ToolbarContent>(@ToolbarContentBuilder content: () -> Toolbar) -> some View {
-        toolbar(content: content)
-    }
-}
-
-@available(iOS 26.0, *)
 private struct ShellVerticalBarsButton: ToolbarContent {
     @ObservedObject var model: ShellVerticalBarsModel
     let id: String
@@ -205,7 +197,7 @@ private struct ShellVerticalBarsPage: View {
     var body: some View {
         NavigationStack {
             Color.clear.modifier(ShellVerticalBarsToolbarAdapter(model: model))
-                .nativeShellToolbar {
+                .toolbar {
                     if model.search?.configuration.available == true {
                         // Let the system adapt bottom-bar search to the vertical rail.
                         DefaultToolbarItem(kind: .search, placement: .bottomBar)
@@ -263,24 +255,29 @@ private struct ShellVerticalBarsToolbar: ViewModifier {
     @ObservedObject var model: ShellVerticalBarsModel
 
     func body(content: Content) -> some View {
-        content.nativeShellToolbar {
-            ToolbarItem(placement: .navigation) {
-                if let back = model.back {
+        content.toolbar {
+            if let back = model.back {
+                ToolbarItem(placement: .navigation) {
                     verticalBarsBackButton(back, model: model)
                 }
+                .axisBehavior(.verticalPreferred)
             }
-            ToolbarItemGroup(placement: .topBarLeading) {
-                ForEach(model.groups.filter { $0.slot == .start }) { group in
-                    ForEach(group.items) { item in
-                        verticalBarsButton(item, model: model)
-                    }
+            ForEach(model.groups.filter { $0.slot == .start }) { group in
+                if group.id != model.groups.first(where: { $0.slot == .start })?.id {
+                    ToolbarSpacer(.fixed, placement: .topBarLeading)
+                }
+                ForEach(group.items) { item in
+                    ShellVerticalBarsButton(model: model, id: item.id, placement: .topBarLeading)
+                    .axisBehavior(.verticalPreferred)
                 }
             }
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                ForEach(model.groups.filter { $0.slot != .start }) { group in
-                    ForEach(group.items) { item in
-                        verticalBarsButton(item, model: model)
-                    }
+            ForEach(model.groups.filter { $0.slot != .start }) { group in
+                if group.id != model.groups.first(where: { $0.slot != .start })?.id {
+                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                }
+                ForEach(group.items) { item in
+                    ShellVerticalBarsButton(model: model, id: item.id, placement: .topBarTrailing)
+                    .axisBehavior(.verticalPreferred)
                 }
             }
         }
@@ -293,18 +290,41 @@ private struct ShellVerticalBarsLegacyToolbar: ViewModifier {
     @ObservedObject var model: ShellVerticalBarsModel
 
     func body(content: Content) -> some View {
-        content.nativeShellToolbar {
-            ToolbarItem(placement: .navigation) {
-                if let back = model.back {
+        #if canImport(SwiftUI, _version: 8.0)
+        content.toolbar {
+            if let back = model.back {
+                ToolbarItem(placement: .navigation) {
                     verticalBarsBackButton(back, model: model)
                 }
             }
-            ToolbarItemGroup(placement: .primaryAction) {
-                ForEach(model.groups.flatMap(\.items)) { item in
-                    verticalBarsButton(item, model: model)
+            ForEach(model.groups) { group in
+                if group.id != model.groups.first?.id {
+                    ToolbarSpacer(.fixed, placement: .primaryAction)
+                }
+                ForEach(group.items) { item in
+                    ShellVerticalBarsButton(model: model, id: item.id, placement: .primaryAction)
                 }
             }
         }
+        #else
+        // Older SDKs cannot use ForEach as ToolbarContent; attach each item separately.
+        let base = AnyView(content.toolbar {
+            if let back = model.back {
+                ToolbarItem(placement: .navigation) { verticalBarsBackButton(back, model: model) }
+            }
+        })
+        // Outer toolbar modifiers precede inner ones, so attach in reverse order.
+        return model.groups.reversed().reduce(base) { view, group in
+            let items = group.items.reversed().reduce(view) { view, item in
+                AnyView(view.toolbar {
+                    ShellVerticalBarsButton(model: model, id: item.id, placement: .primaryAction)
+                })
+            }
+            return group.id == model.groups.first?.id ? items : AnyView(items.toolbar {
+                ToolbarSpacer(.fixed, placement: .primaryAction)
+            })
+        }
+        #endif
     }
 }
 
