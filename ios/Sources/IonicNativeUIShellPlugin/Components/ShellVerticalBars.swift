@@ -346,10 +346,41 @@ private struct ShellVerticalBarsLegacyToolbar: ViewModifier {
     @ObservedObject var model: ShellVerticalBarsModel
 
     func body(content: Content) -> some View {
-        // Xcode 26.2 treats this `.toolbar` closure as ViewBuilder, so ToolbarContent
-        // (ToolbarItem / ForEach of ShellVerticalBarsButton) does not compile. Vertical
-        // Bars are unused in this app; native rail toolbar is iOS 27.1+ only.
-        content
+        #if canImport(SwiftUI, _version: 8.0)
+        content.toolbar {
+            if let back = model.back {
+                ToolbarItem(placement: .navigation) {
+                    verticalBarsBackButton(back, model: model)
+                }
+            }
+            ForEach(model.groups) { group in
+                if group.id != model.groups.first?.id {
+                    ToolbarSpacer(.fixed, placement: .primaryAction)
+                }
+                ForEach(group.items) { item in
+                    ShellVerticalBarsButton(model: model, id: item.id, placement: .primaryAction)
+                }
+            }
+        }
+        #else
+        // Older SDKs cannot use ForEach as ToolbarContent; attach each item separately.
+        let base = AnyView(content.toolbar {
+            if let back = model.back {
+                ToolbarItem(placement: .navigation) { verticalBarsBackButton(back, model: model) }
+            }
+        })
+        // Outer toolbar modifiers precede inner ones, so attach in reverse order.
+        return model.groups.reversed().reduce(base) { view, group in
+            let items = group.items.reversed().reduce(view) { view, item in
+                AnyView(view.toolbar {
+                    ShellVerticalBarsButton(model: model, id: item.id, placement: .primaryAction)
+                })
+            }
+            return group.id == model.groups.first?.id ? items : AnyView(items.toolbar {
+                ToolbarSpacer(.fixed, placement: .primaryAction)
+            })
+        }
+        #endif
     }
 }
 
