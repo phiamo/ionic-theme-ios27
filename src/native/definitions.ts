@@ -1,3 +1,4 @@
+import type { NativeUIExtension } from './extensions';
 import type { PluginListenerHandle } from '@capacitor/core';
 
 import type { NativeUIShellComponent } from './components';
@@ -11,6 +12,8 @@ export interface NativeUIShellStatus {
 }
 
 export interface VerticalControlAreaOptions {
+  /** App-local DOM readers with matching SwiftUI registrations. */
+  extensions?: readonly NativeUIExtension[];
   /** Opt-in popovers anchored to native Vertical Bars buttons. */
   controls?: Pick<NativeUIShellControls, 'popover'>;
   /** Appearance of native vertical ion-button and ion-menu-button actions.
@@ -128,7 +131,8 @@ export interface ShellItem extends Frame {
 
 export interface ShellControl extends Frame {
   id: string;
-  kind: NativeUIShellComponent;
+  kind: NativeUIShellComponent | 'extension';
+  extension?: { name: string; props: string; actions: Record<string, string>; tabBarId?: string };
   /** Lets the native host own adaptive placement instead of mirroring the DOM frame. */
   placement?: 'vertical-bars';
   /** Logical Ionic toolbar slot, preserved when projecting to the vertical rail. */
@@ -177,6 +181,8 @@ export interface ShellActivation {
   revision: number;
   id: string;
   sequence: number;
+  /** Native extension action awaiting a Web dispatch acknowledgement. */
+  requestId?: string;
 }
 
 export interface WebViewMetrics {
@@ -185,7 +191,8 @@ export interface WebViewMetrics {
 }
 
 export interface NativeUIShellPlugin {
-  configure(options?: { verticalBarsOnly?: boolean }): Promise<{ supported: boolean }>;
+  configure(options?: { verticalBarsOnly?: boolean }): Promise<{ supported: boolean; extensions?: string[] }>;
+  completeExtensionAction(options: { requestId: string; accepted: boolean }): Promise<void>;
   getWebViewMetrics(): Promise<WebViewMetrics>;
   getVerticalBarsGeometry(options: { viewportWidth: number; ids: string[] }): Promise<{ revision?: number; items: Record<string, Frame> }>;
   prepareOverlay(options: { id: string }): Promise<void>;

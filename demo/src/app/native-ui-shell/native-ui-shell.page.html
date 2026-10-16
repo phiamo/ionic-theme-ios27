@@ -32,6 +32,16 @@
 </ion-header>
 <ion-content [fullscreen]="true">
   <section class="controls">
+    <button type="button" (click)="modalOpen.set(true)">Open modal</button>
+    <p>App-local SwiftUI extensions (Web fallback on unsupported hosts):</p>
+    <div data-native-counter [attr.data-count]="counter()" style="height: 52px; width: 280px">
+      <span>Count: {{ counter() }}</span>
+      <button type="button" (click)="counter.update(increment)">Increment</button>
+    </div>
+    <div data-native-accessory-counter [attr.data-count]="accessoryCounter()" style="height: 52px; width: 280px">
+      <span>Accessory count: {{ accessoryCounter() }}</span>
+      <button type="button" (click)="accessoryCounter.update(increment)">Increment accessory</button>
+    </div>
     <form #formRef (submit)="save($event)">
       <p>
         Save count: <strong data-save-count>{{ saves() }}</strong>
@@ -42,7 +52,6 @@
       Selection: <strong data-selection>{{ selected() }}</strong> / Change count: <strong data-changes>{{ changes() }}</strong>
     </p>
     <button type="button" (click)="selected.set('one')">Select One programmatically</button>
-    <button type="button" (click)="modalOpen.set(true)">Open modal</button>
     <p>Scroll the background to compare transparency and refraction in the top-right button.</p>
     <button type="button" (click)="disabled.set(!disabled())">disabled: {{ disabled() }}</button>
     <button type="button" (click)="hidden.set(!hidden())">Parent hidden: {{ hidden() }}</button>

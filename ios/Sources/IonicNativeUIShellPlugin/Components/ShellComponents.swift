@@ -13,6 +13,7 @@ enum ShellComponents {
         case .tabBar: return ShellTabBar.make(node, rendering: rendering, delegate: tabDelegate)
         case .segment: return ShellSegment.make(node, scale: scale, rendering: rendering, activate: activate)
         case .fab: return ShellFab()
+        case .extension: return nil // App-local SwiftUI content is hosted by the shell.
         }
     }
 }

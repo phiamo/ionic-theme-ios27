@@ -1,5 +1,6 @@
 import Capacitor
 import UIKit
+import SwiftUI
 import WebKit
 
 @objc(IonicNativeUIShellPlugin)
@@ -7,6 +8,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
     public let identifier = "IonicNativeUIShellPlugin"
     public let jsName = "IonicNativeUIShell"
     public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "completeExtensionAction", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "configure", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getWebViewMetrics", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getVerticalBarsGeometry", returnType: CAPPluginReturnPromise),
@@ -23,6 +25,10 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
     private var verticalBars: ShellVerticalBarsControlling?
     private var controls: [String: UIView] = [:]
     private var searchControllers: [String: ShellSearchControlling] = [:]
+    private var extensionControllers: [String: ShellExtensionController] = [:]
+    private var extensionSessions: [String: UUID] = [:]
+    private var extensionNodes: [String: ShellControl] = [:]
+    private let extensionActions = ShellExtensionActions()
     private var fingerprints: [String: ShellControl] = [:]
     private let rendering = ShellRendering()
     private var configurationGeneration = 0
@@ -53,6 +59,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                 if !keyboard {
                     self.host?.isHidden = true
                     self.verticalBars?.view.isHidden = true
+                    self.extensionControllers.values.forEach { $0.view.isHidden = true }
                 }
                 var searchOwnsKeyboard = self.verticalBars?.ownsKeyboardChrome == true
                 self.searchControllers.values.forEach { controller in
@@ -188,7 +195,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                         effect.isHidden = true
                         self.restoreTopEdge = { [weak effect] in effect?.isHidden = hidden }
                     }
-                    call.resolve(["supported": true])
+                    call.resolve(["supported": true, "extensions": NativeUIShell.names])
                 }
                 else { call.resolve(["supported": false]) }
             }
@@ -219,6 +226,36 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
         }
     }
 
+    @objc func completeExtensionAction(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { [weak self] in
+            guard let request = call.getString("requestId"), let accepted = call.getBool("accepted") else {
+                call.reject("Invalid extension acknowledgement"); return
+            }
+            self?.extensionActions.finish(request, error: accepted ? nil : NativeUIError.rejected)
+            call.resolve()
+        }
+    }
+
+    @MainActor private func extensionContent(_ node: ShellControl) throws -> AnyView {
+        guard let data = node.extensionContent else { throw NativeUIError.unavailable }
+        let session = extensionSessions[node.id] ?? UUID()
+        extensionSessions[node.id] = session
+        let actions = NativeUIActions { [weak self] name in
+            guard let self, self.extensionNodes[node.id] == node, self.extensionSessions[node.id] == session, let target = data.actions[name] else {
+                throw NativeUIError.unavailable
+            }
+            try await self.extensionActions.perform(owner: node.id) { request in
+                self.sequence += 1
+                self.notifyListeners("activate", data: ["id": target, "revision": self.revision,
+                    "sequence": self.sequence, "requestId": request])
+            }
+        }
+        return AnyView(try NativeUIShell.content(data, actions: actions)
+            .environment(\.layoutDirection, node.rtl ? .rightToLeft : .leftToRight)
+            .environment(\.colorScheme, node.dark ? .dark : .light)
+            .id(node.id))
+    }
+
     @objc func clear(_ call: CAPPluginCall) {
         DispatchQueue.main.async { [weak self] in
             guard let self else { call.resolve(); return }
@@ -234,14 +271,23 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
     }
 
     private func removeControl(_ id: String, duration: TimeInterval = 0) {
+        extensionActions.cancel(owner: id)
+        extensionNodes.removeValue(forKey: id)
+        extensionSessions.removeValue(forKey: id)
+        let extensionController = extensionControllers.removeValue(forKey: id)
         searchControllers.removeValue(forKey: id)?.detach()
-        if let control = controls.removeValue(forKey: id) { ShellCrossfade.retire(control, duration: duration) }
+        let control = controls.removeValue(forKey: id)
+        if let extensionController { extensionController.detach(duration: duration) }
+        else if let control { ShellCrossfade.retire(control, duration: duration) }
         fingerprints.removeValue(forKey: id)
         pendingTabSelections.removeValue(forKey: id)
         pendingTabExpiryWorks.removeValue(forKey: id)?.cancel()
     }
 
     private func removeControls(duration: TimeInterval = 0) {
+        extensionActions.cancel()
+        extensionNodes.removeAll()
+        extensionSessions.removeAll()
         Array(controls.keys).forEach { removeControl($0, duration: duration) }
         host?.removeFromSuperview()
         host = nil
@@ -297,11 +343,18 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             let duration = ShellCrossfade.duration(snapshot.transitionDuration)
             let existing = Set(self.controls.keys)
             let verticalBars = snapshot.controls.filter { $0.placement == .verticalBars }
-            let snapshots = snapshot.controls.filter { $0.placement != .verticalBars }
+            let accessories = snapshot.controls.filter { $0.extensionContent?.tabBarId != nil }
+            let snapshots = snapshot.controls.filter { $0.placement != .verticalBars && $0.extensionContent?.tabBarId == nil }
+            let extensionIDs = Set(snapshot.controls.filter { $0.kind == .extension }.map(\.id))
+            for id in Array(self.extensionNodes.keys) where !extensionIDs.contains(id) {
+                self.extensionActions.cancel(owner: id)
+                self.extensionNodes.removeValue(forKey: id)
+                self.extensionSessions.removeValue(forKey: id)
+            }
             let verticalSearchActive = verticalBars.contains { $0.search.map { $0.available && $0.active } ?? false }
             let width = snapshot.viewportWidth
             self.revision = next
-            if snapshots.isEmpty && verticalBars.isEmpty {
+            if snapshots.isEmpty && verticalBars.isEmpty && accessories.isEmpty {
                 self.removeControls(duration: duration)
                 call.resolve(["revision": next]); return
             }
@@ -339,6 +392,22 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
             } else {
                 rejectedControls.append(contentsOf: verticalBars.map(\.id))
             }
+            // A system tab host has one accessory slot. Ambiguous owners stay on the Web.
+            var accessoryContent: AnyView?
+            for node in accessories {
+                guard #available(iOS 26.1, *), accessories.count == 1, !self.keyboardVisible, self.verticalBars != nil,
+                      verticalBars.filter({ $0.kind == .tabBar }).map(\.id) == [node.extensionContent!.tabBarId!],
+                      let content = try? self.extensionContent(node) else {
+                    rejectedControls.append(node.id)
+                    self.extensionNodes.removeValue(forKey: node.id)
+                    self.extensionSessions.removeValue(forKey: node.id)
+                    self.extensionActions.cancel(owner: node.id)
+                    continue
+                }
+                self.extensionNodes[node.id] = node
+                accessoryContent = content
+            }
+            self.verticalBars?.setAccessory(accessoryContent)
             if snapshots.isEmpty {
                 self.host?.removeFromSuperview()
                 self.host = nil
@@ -355,6 +424,7 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                 if host.superview !== parent { parent.addSubview(host) }
                 for node in snapshots {
                     let id = node.id
+                    if node.kind != .extension, self.extensionControllers[id] != nil { self.removeControl(id) }
                     let previous = self.controls[id]
                     let previousBounds = previous?.bounds
                     let previousCenter = previous?.center
@@ -374,6 +444,28 @@ public class IonicNativeUIShellPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDele
                     let local = node.frame.rect
                     let bounds = webView.convert(CGRect(x: local.minX * scale, y: local.minY * scale,
                                                        width: local.width * scale, height: local.height * scale), to: parent)
+                    if node.kind == .extension {
+                        guard let owner = self.bridge?.viewController, let content = try? self.extensionContent(node) else {
+                            self.extensionNodes.removeValue(forKey: id)
+                            self.extensionSessions.removeValue(forKey: id)
+                            self.extensionActions.cancel(owner: id)
+                            reject(); continue
+                        }
+                        if let controller = self.extensionControllers[id] {
+                            controller.update(content)
+                        } else {
+                            if let previous = self.controls.removeValue(forKey: id) { previous.removeFromSuperview() }
+                            self.searchControllers.removeValue(forKey: id)?.detach()
+                            let controller = ShellExtensionController(content: content, owner: owner)
+                            self.extensionControllers[id] = controller
+                            self.controls[id] = controller.view
+                        }
+                        self.extensionNodes[id] = node
+                        self.controls[id]?.frame = parent.convert(bounds, to: owner.view)
+                        self.controls[id]?.isHidden = false
+                        self.controls[id]?.overrideUserInterfaceStyle = node.dark ? .dark : .light
+                        continue
+                    }
                     if let search = node.search {
                         guard let owner = self.bridge?.viewController else { rejectedSearches.append(id); continue }
                         let controller: ShellSearchControlling

@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 
 enum ShellComponent: String, Decodable {
+    case `extension`
     case button = "ion-button", buttons = "ion-buttons"
     case backButton = "ion-back-button", menuButton = "ion-menu-button"
     case tabBar = "ion-tab-bar", segment = "ion-segment", fab = "ion-fab"
@@ -47,8 +48,12 @@ struct ShellControl: Decodable, Equatable {
     let rtl: Bool
     let tabBarAnchor: ShellTabBar.Anchor?
     let search: ShellSearch?
+    let extensionContent: ShellExtension?
 
-    private enum CodingKeys: String, CodingKey { case id, kind, placement, toolbarSlot, items, dark, rtl, tabBarAnchor, search }
+    private enum CodingKeys: String, CodingKey {
+        case id, kind, placement, toolbarSlot, items, dark, rtl, tabBarAnchor, search
+        case extensionContent = "extension"
+    }
 
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -62,10 +67,15 @@ struct ShellControl: Decodable, Equatable {
         rtl = try values.decode(Bool.self, forKey: .rtl)
         tabBarAnchor = try values.decodeIfPresent(ShellTabBar.Anchor.self, forKey: .tabBarAnchor)
         search = try values.decodeIfPresent(ShellSearch.self, forKey: .search)
+        extensionContent = try values.decodeIfPresent(ShellExtension.self, forKey: .extensionContent)
     }
 
     var isValid: Bool {
-        ShellComponents.supported.contains(kind) && !id.isEmpty && frame.isValid && !items.isEmpty && items.count <= 30 &&
+        if kind == .extension {
+            return !id.isEmpty && frame.isValid && items.isEmpty && placement == nil && toolbarSlot == nil &&
+                search == nil && tabBarAnchor == nil && extensionContent?.isValid == true
+        }
+        return extensionContent == nil && ShellComponents.supported.contains(kind) && !id.isEmpty && frame.isValid && !items.isEmpty && items.count <= 30 &&
         (!ShellButton.kinds.contains(kind) || items.count == 1) &&
         (toolbarSlot == nil || (placement == .verticalBars && [.button, .buttons, .menuButton].contains(kind))) &&
         Set(items.map(\.id)).count == items.count && items.allSatisfy(\.isValid) &&

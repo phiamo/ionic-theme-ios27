@@ -2,6 +2,8 @@
 title: Native UI Shell (Preview)
 ---
 
+For application-specific SwiftUI content, see [App-local Native UI extensions](native-ui-extensions.md).
+
 # Native UI Shell (Preview)
 
 Native UI Shell is available as a **preview** in `1.2.0`. Its API and supported controls may change before stable status. Stable status is planned after the official release of Xcode 27.1.

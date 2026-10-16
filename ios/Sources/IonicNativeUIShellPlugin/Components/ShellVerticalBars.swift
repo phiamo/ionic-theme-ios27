@@ -7,6 +7,7 @@ protocol ShellVerticalBarsControlling: AnyObject {
     func measuredFrames(relativeTo webView: UIView) -> [String: CGRect]
     @MainActor func attach(to owner: UIViewController, in parent: UIView)
     @MainActor func apply(_ controls: [ShellControl], rendering: ShellRendering, edge: String, animated: Bool)
+    @MainActor func setAccessory(_ content: AnyView?)
     var ownsKeyboardChrome: Bool { get }
     func presentPopover(anchor: String, host: ShellOverlayHost, completion: @escaping (Bool) -> Void) -> Bool
     @MainActor func detach(duration: TimeInterval)
@@ -34,6 +35,7 @@ final class ShellVerticalBarsModel: ObservableObject {
         let slot: ShellControl.ToolbarSlot?
     }
 
+    @Published var accessory: AnyView?
     @Published var popoverAnchor: String?
     var popoverHost: ShellOverlayHost?
     var popoverPresented: ((Bool) -> Void)?
@@ -235,6 +237,7 @@ private struct ShellVerticalBarsView: View {
                         .accessibilityIdentifier(item.id)
                     }
                 }
+                .modifier(ShellExtensionAccessory(content: model.accessory))
             }
         }
         .modifier(ShellVerticalBarsSearch(model: model))
@@ -437,6 +440,8 @@ final class ShellVerticalBarsController: ShellVerticalBarsControlling {
     private let container = RailContainer()
     private weak var owner: UIViewController?
     private let changed: (String, ShellSearchPhase, String, Bool, Int) -> Int
+
+    func setAccessory(_ content: AnyView?) { model.accessory = content }
 
     var view: UIView { container }
     func measuredFrames(relativeTo webView: UIView) -> [String: CGRect] {

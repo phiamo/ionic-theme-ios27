@@ -1,3 +1,4 @@
+import { validateExtensions, type NativeUIExtension } from './extensions';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { setConfig } from '../transition/ios.transition';
 import type {
@@ -16,6 +17,8 @@ import { createOverlayController } from './overlays/controller';
 import { createVerticalBarsWebProjection } from './vertical-bars-web';
 import { prehideVerticalBarsToolbarSources } from './prehide';
 import { observeVerticalBarsModals } from './shared/modal';
+export { defineNativeUI } from './extensions';
+export type { NativeUIExtension, NativeUIValue } from './extensions';
 export type {
   NativeUIShellComponent,
   NativeUIShellControls,
@@ -34,6 +37,7 @@ const plugin = registerPlugin<NativeUIShellPlugin>('IonicNativeUIShell');
 export const IonicNativeUIShell = plugin;
 let active: Promise<NativeUIShellHandle> | undefined;
 let activeConfiguration: string | undefined;
+let activeExtensions: readonly NativeUIExtension[] = [];
 let stopping: Promise<void> | undefined;
 
 // Every stop entry point releases the activation immediately but reserves the
@@ -42,6 +46,7 @@ const stopActivation = (owner: Promise<NativeUIShellHandle>, destruction: Promis
   if (active !== owner) return;
   active = undefined;
   activeConfiguration = undefined;
+  activeExtensions = [];
   stopping = destruction;
   const release = () => {
     if (stopping === destruction) stopping = undefined;
@@ -189,6 +194,7 @@ export const setVerticalControlAreaPlacement = (placement: VerticalBarEdge | Ver
  */
 export const enableVerticalControlArea = async (options: VerticalControlAreaOptions = {}): Promise<VerticalControlAreaHandle> => {
   const handle = await enableNativeUIShell({
+    extensions: options.extensions,
     buttonProjection: options.buttonProjection,
     buttonDefaultFill: options.buttonDefaultFill,
     controls: { tabs: true, toolbar: true, popover: options.controls?.popover === true },
@@ -214,6 +220,12 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
     return (stopping ?? Promise.resolve()).then(() => web('Disabled'));
   }
   if (typeof document === 'undefined') return Promise.resolve(web('Requires a document'));
+  const extensions = [...(options.extensions ?? [])];
+  try {
+    validateExtensions(extensions, document);
+  } catch (error) {
+    return Promise.reject(error);
+  }
   const controls = options.controls;
   const configuration = JSON.stringify([
     options.verticalBarsOnly === true,
@@ -223,12 +235,18 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
     ...(['tabs', 'toolbar', 'segment', 'fab'] as const).map((component) => !controls || controls[component] === true),
     controls?.popover === true,
   ]);
-  if (active && activeConfiguration !== configuration)
+  if (
+    active &&
+    (activeConfiguration !== configuration ||
+      extensions.length !== activeExtensions.length ||
+      extensions.some((extension, index) => extension !== activeExtensions[index]))
+  )
     return Promise.reject(
-      new Error('Native UI Shell is already running with different controls; destroy it before changing configuration.'),
+      new Error('Native UI Shell is already running with different controls or extensions; destroy it before changing configuration.'),
     );
   if (active) return active;
   activeConfiguration = configuration;
+  activeExtensions = extensions;
   const previousStop = stopping;
   let start: Promise<NativeUIShellHandle>;
   const stop = (destruction: Promise<void>) => stopActivation(start, destruction);
@@ -276,7 +294,13 @@ export const enableNativeUIShell = (options: NativeUIShellOptions = {}): Promise
           );
           await configureNativeTransition().catch(() => undefined);
         }
-        const native = await createRuntime(document, plugin, options, nativeVerticalBars, options.verticalBarsOnly === true);
+        const native = await createRuntime(
+          document,
+          plugin,
+          { ...options, extensions: extensions.filter((extension) => capabilities.extensions?.includes(extension.name)) },
+          nativeVerticalBars,
+          options.verticalBarsOnly === true,
+        );
         runtime = combine(
           native,
           createVerticalBarsWebProjection(document, options, () => !nativeVerticalBars() || native.getStatus().projected === 0),

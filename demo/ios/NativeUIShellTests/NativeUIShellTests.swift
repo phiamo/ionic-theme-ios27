@@ -604,6 +604,41 @@ final class NativeUIShellTests: XCTestCase {
         }
     }
 
+    func testAppLocalExtensionsFollowWebStateAndOverlayOwnership() throws {
+        let app = XCUIApplication(bundleIdentifier: "io.ionic.theme.ios27")
+        for vertical in [false, true] {
+            app.launch()
+            let toggle = app.webViews.switches["iPhone Duo Mode"]
+            XCTAssertTrue(toggle.waitForExistence(timeout: 15), app.debugDescription)
+            if (toggle.value as? String == "1") != vertical { toggle.tap() }
+            openPage(app, name: "native-ui-shell")
+            let counter = app.buttons["Increment native counter"].firstMatch
+            XCTAssertTrue(counter.waitForExistence(timeout: 10), app.debugDescription)
+            for count in 1...3 {
+                counter.tap()
+                XCTAssertTrue(app.staticTexts["Count: \(count)"].firstMatch.waitForExistence(timeout: 5), app.debugDescription)
+            }
+            if vertical {
+                let accessory = app.buttons["Increment native accessory"].firstMatch
+                XCTAssertTrue(accessory.waitForExistence(timeout: 10), app.debugDescription)
+                XCTAssertTrue(accessory.isHittable, app.debugDescription)
+                accessory.tap()
+                XCTAssertTrue(app.staticTexts["Accessory count: 1"].firstMatch.waitForExistence(timeout: 5), app.debugDescription)
+            } else {
+                XCTAssertTrue(app.webViews.buttons["Increment accessory"].firstMatch.exists, app.debugDescription)
+            }
+            app.webViews.buttons["Open modal"].firstMatch.tap()
+            XCTAssertTrue(app.webViews.buttons["Close modal"].firstMatch.waitForExistence(timeout: 5), app.debugDescription)
+            XCTAssertTrue(counter.waitForNonExistence(timeout: 5), app.debugDescription)
+            app.webViews.buttons["Close modal"].firstMatch.tap()
+            XCTAssertTrue(counter.waitForExistence(timeout: 10), app.debugDescription)
+            counter.tap()
+            XCTAssertTrue(app.staticTexts["Count: 4"].firstMatch.waitForExistence(timeout: 5), app.debugDescription)
+            capture(vertical ? "app-extension-accessory" : "app-extension-element")
+            app.terminate()
+        }
+    }
+
     private func openPage(_ app: XCUIApplication, name: String) {
         let label = name == "native-ui-shell" ? "native-ui-shell (Preview)" : name
         let entry = app.webViews.buttons[label].exists ? app.webViews.buttons[label] : app.webViews.links[label]

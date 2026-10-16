@@ -1,3 +1,4 @@
+import { extensionAncestors, readExtension } from './extensions';
 import { bounded, boundedListener } from './shared/bridge';
 import { popoverTrigger } from './overlays/popover';
 import {
@@ -53,6 +54,8 @@ export const createRuntime = async (
   verticalBarsOnly = false,
 ): Promise<NativeUIShellHandle & { retain: (deferActivation?: (id: string) => boolean) => () => void }> => {
   const win = doc.defaultView!;
+  const extensions = options.extensions ?? [];
+  const discovery = [selector, ...extensions.map((extension) => extension.selector)].join(', ');
   const icons = createIconRenderer();
   const crossfade = createCrossfade(win);
   const ids = new WeakMap<Element, string>();
@@ -108,6 +111,7 @@ export const createRuntime = async (
     return 'toolbar';
   };
   const controlEnabled = (candidate: Candidate) => {
+    if (candidate.control.kind === 'extension') return true;
     const controls = options.controls;
     return controls === undefined || controls[control(candidate.control.kind)] === true;
   };
@@ -173,6 +177,11 @@ export const createRuntime = async (
   const readEnabledCandidate = (element: HTMLElement): Candidate | undefined => {
     if (element.matches('ion-back-button') && element.closest('ion-app.ios-theme-vertical-bars') && !isVerticalBarsCandidate(element))
       return;
+    if (extensions.some((extension) => element.matches(extension.selector))) {
+      const candidate = readExtension(element, extensions, id);
+      if (verticalBarsOnly && (!candidate?.control.extension?.tabBarId || !nativeVerticalBars())) return;
+      return candidate;
+    }
     if (verticalBarsOnly && !isVerticalBarsCandidate(element)) return;
     const pointerPage = isVerticalBarsCandidate(element) ? element.closest<HTMLElement>('.ion-page') : undefined;
     let candidate: Candidate | undefined;
@@ -256,7 +265,7 @@ export const createRuntime = async (
     const candidates = unprojected(measurableSources, () =>
       search
         .decorate(
-          Array.from(doc.querySelectorAll<HTMLElement>(selector))
+          Array.from(doc.querySelectorAll<HTMLElement>(discovery))
             .filter(
               (element) =>
                 inVerticalBarsSurface(element) &&
@@ -269,13 +278,26 @@ export const createRuntime = async (
         )
         .filter((candidate) => !rejected.has(candidate.element) || rejected.get(candidate.element) !== signature(candidate)),
     );
+    // An extension owns its entire source subtree. Never project a nested built-in twice.
+    const extensionSources = candidates.filter((candidate) => candidate.control.kind === 'extension');
+    const exclusive = candidates.filter((candidate) => {
+      if (extensionSources.some((owner) => owner !== candidate && owner.element.contains(candidate.element))) return false;
+      const tabBarId = candidate.control.extension?.tabBarId;
+      if (!tabBarId) return true;
+      // Wait for the owning native tab host; do not cache an early rejection while its icons load.
+      return (
+        candidates.some(
+          (owner) => owner.control.id === tabBarId && owner.control.kind === 'ion-tab-bar' && owner.control.placement === 'vertical-bars',
+        ) && extensionSources.filter((source) => source.control.extension?.tabBarId === tabBarId).length === 1
+      );
+    });
     const back = preferredVerticalBarsBack(
       candidates
         .filter((candidate) => candidate.control.kind === 'ion-back-button' && isVerticalBarsCandidate(candidate.element))
         .map((candidate) => candidate.element),
       doc,
     );
-    const selected = candidates.filter(
+    const selected = exclusive.filter(
       (candidate) =>
         candidate.control.kind !== 'ion-back-button' || !isVerticalBarsCandidate(candidate.element) || candidate.element === back,
     );
@@ -283,9 +305,16 @@ export const createRuntime = async (
   };
   const observe = () => {
     const wanted = new Set<Element | ShadowRoot>();
-    for (const element of Array.from(doc.querySelectorAll<HTMLElement>(selector))) {
+    for (const element of Array.from(doc.querySelectorAll<HTMLElement>(discovery))) {
       wanted.add(element);
       if (element.parentElement) wanted.add(element.parentElement);
+      if (extensions.some((extension) => element.matches(extension.selector))) {
+        for (const ancestor of extensionAncestors(element)) {
+          wanted.add(ancestor);
+          const root = ancestor.getRootNode();
+          if (root instanceof ShadowRoot) wanted.add(root);
+        }
+      }
       const inspectShadow = (node: Element) => {
         if (node.shadowRoot) {
           wanted.add(node.shadowRoot);
@@ -299,12 +328,15 @@ export const createRuntime = async (
     if (wanted.size === observed.size && Array.from(wanted).every((element) => observed.has(element))) return;
     observer.disconnect();
     resize.disconnect();
+    for (const element of observed) if (element instanceof ShadowRoot) element.removeEventListener('scroll', schedule, true);
     observed.clear();
     observer.observe(doc.documentElement, observation);
     for (const element of wanted) {
       observed.add(element);
-      if (element instanceof ShadowRoot) observer.observe(element, observation);
-      else resize.observe(element);
+      if (element instanceof ShadowRoot) {
+        observer.observe(element, observation);
+        on(element, 'scroll');
+      } else resize.observe(element);
     }
   };
   const fail = async (error: unknown) => {
@@ -611,7 +643,7 @@ export const createRuntime = async (
   };
   const motion: EventListener = (event) => {
     const target = event.target as HTMLElement;
-    if (!target.matches?.(motionSelector)) return;
+    if (!target.matches?.(`${motionSelector}, ${discovery}`)) return;
     const key = (event as TransitionEvent).propertyName ?? (event as AnimationEvent).animationName;
     if (event.type === CSS_MOTION_EVENTS.transitionRun || event.type === CSS_MOTION_EVENTS.animationStart) {
       const keys = moving.get(target) ?? new Set<string>();
@@ -790,7 +822,14 @@ export const createRuntime = async (
     },
   };
   const activate = (event: ShellActivation) => {
-    if (stopped || doc.hidden || event.revision < acceptedRevision || event.revision > revision || event.sequence <= lastSequence) return;
+    const accepted = dispatchActivation(event);
+    if (event.requestId && accepted !== undefined) {
+      void bounded(plugin.completeExtensionAction({ requestId: event.requestId, accepted })).catch(() => {});
+    }
+  };
+  const dispatchActivation = (event: ShellActivation): boolean | undefined => {
+    if (stopped || doc.hidden || event.revision < acceptedRevision || event.revision > revision || event.sequence <= lastSequence)
+      return false;
     const element = actions.get(event.id);
     const owner = element && Array.from(sources.keys()).find((source) => source === element || source.contains(element));
     const ignored = owner && isVerticalBarsSource(owner) ? (retentions.size ? 'ion-toast, ion-picker' : railPreservingOverlays) : undefined;
@@ -801,7 +840,7 @@ export const createRuntime = async (
             retention.activation = event;
         }
       }
-      return;
+      return false;
     }
     // Native may send input before update() resolves on the JS bridge.
     // Revalidate it after ownership is accepted, using the same action path.
@@ -810,18 +849,20 @@ export const createRuntime = async (
       return;
     }
     lastSequence = event.sequence;
-    if (!element) return;
-    if (!owner || !inVerticalBarsSurface(owner)) return;
+    if (!element) return false;
+    if (!owner || !inVerticalBarsSurface(owner)) return false;
     const direct = !blocked(owner) && unprojected(sources.keys(), () => readEnabledCandidate(owner));
     const candidate = direct || read().find((candidate) => candidate.actions.has(event.id));
     const item = candidate?.control.items.find((item) => item.id === event.id);
     const searchAction =
       candidate?.control.search && [candidate.control.search.trigger.id, candidate.control.search.closeId].includes(event.id);
-    if (!searchAction && (!item || item.disabled || item.visible === false)) return;
+    const extensionAction = candidate?.control.kind === 'extension' && candidate.actions.get(event.id) === element;
+    if (!extensionAction && !searchAction && (!item || item.disabled || item.visible === false)) return false;
     // The original Ionic host owns form submission, routerLink and selection events.
     activateProjectedElement(element);
     lastSnapshot = ''; // Reconcile even if Ionic rejects the proposed native selection.
     schedule();
+    return true;
   };
   try {
     listener = await boundedListener(plugin.addListener('activate', activate));

@@ -37,6 +37,8 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NativeUIShellPage {
+  readonly counter = signal(0);
+  readonly accessoryCounter = signal(0);
   readonly saves = signal(0);
   readonly github = signal(0);
   readonly refreshes = signal(0);
