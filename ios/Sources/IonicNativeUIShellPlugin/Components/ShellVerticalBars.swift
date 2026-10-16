@@ -346,21 +346,10 @@ private struct ShellVerticalBarsLegacyToolbar: ViewModifier {
     @ObservedObject var model: ShellVerticalBarsModel
 
     func body(content: Content) -> some View {
-        content.toolbar {
-            if let back = model.back {
-                ToolbarItem(placement: .navigation) {
-                    verticalBarsBackButton(back, model: model)
-                }
-            }
-            ForEach(model.groups) { group in
-                if group.id != model.groups.first?.id {
-                    ToolbarSpacer(.fixed, placement: .primaryAction)
-                }
-                ForEach(group.items) { item in
-                    ShellVerticalBarsButton(model: model, id: item.id, placement: .primaryAction)
-                }
-            }
-        }
+        // Xcode 26.2 treats this `.toolbar` closure as ViewBuilder, so ToolbarContent
+        // (ToolbarItem / ForEach of ShellVerticalBarsButton) does not compile. Vertical
+        // Bars are unused in this app; native rail toolbar is iOS 27.1+ only.
+        content
     }
 }
 
