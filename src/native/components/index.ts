@@ -6,7 +6,14 @@ import * as menuButton from './ion-menu-button';
 import * as tabBar from './ion-tab-bar';
 import * as segment from './ion-segment';
 import * as fab from './ion-fab';
-import { isDisabledButtonGroupChild, isVerticalBarsSource, visible, withoutPrehide } from '../shared/dom';
+import {
+  isDisabledButtonGroupChild,
+  isVerticalBarsSource,
+  swapEnteringPage,
+  visible,
+  withoutPageTransform,
+  withoutPrehide,
+} from '../shared/dom';
 import type { Candidate, Identify } from '../shared/candidate';
 
 // Static composition only. Each component declares its own tag, discovery and reader.
@@ -32,9 +39,10 @@ export const isVerticalBarsCandidate = isVerticalBarsSource;
 
 export const readCandidate = (element: HTMLElement, id: Identify, options: VerticalControlAreaOptions = {}): Candidate | undefined => {
   const verticalBars = isVerticalBarsCandidate(element);
+  const swapEnter = !!swapEnteringPage(element);
   if (
-    (!element.classList.contains('ios') && !verticalBars) ||
-    !visible(element, verticalBars) ||
+    (!element.classList.contains('ios') && !verticalBars && !swapEnter) ||
+    !visible(element, verticalBars || swapEnter) ||
     element.closest('ion-popover') ||
     (element.closest('ion-modal') && !verticalBars)
   )
@@ -44,10 +52,12 @@ export const readCandidate = (element: HTMLElement, id: Identify, options: Verti
     !isDisabledButtonGroupChild(element) &&
     !style.getPropertyValue('--ios-theme-glass-background-rgb').trim() &&
     !style.getPropertyValue('--ios26-glass-background-rgb').trim() &&
-    !verticalBars
+    !verticalBars &&
+    !swapEnter
   )
     return;
   if (element.contains(element.ownerDocument.activeElement)) return;
   // Read icon and control geometry before restoring prehide, which can collapse the toolbar.
-  return withoutPrehide(element, () => components.find((component) => component.tag === element.localName)?.read(element, id, options));
+  const read = () => components.find((component) => component.tag === element.localName)?.read(element, id, options);
+  return withoutPrehide(element, () => (swapEnter ? withoutPageTransform(element, read) : read()));
 };

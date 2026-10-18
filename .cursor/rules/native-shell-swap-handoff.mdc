@@ -1,0 +1,31 @@
+---
+description: Native UI Shell swap handoff invariants. Do not reintroduce two-phase retire/project or Web flashes.
+globs: src/native/**/*.ts,src/native-integration/**/*.ts
+alwaysApply: false
+---
+
+# Swap handoff (segment / back)
+
+`data-shell-handoff="swap"` means **one native update**, duration 0. Native overlays do not slide with the page. Lean set: duration 0 + entering-stay + rest measure + play/prepare overlap + `leftPages` + `measureMarker`.
+
+Ported onto this extensions runtime without dropping `defineNativeUI` / extension discovery. Do not copy `runtime.ts` over from `ionic-theme-ios27`.
+
+## Do not
+
+- Re-add `hideDepartedSwap`, `revealSlidingSwap`, `keepWebHidden`, traces, or `hideWeb` on `ion-header`.
+- Let `verticalBarsPages.isDeparted` drop already-projected swap from `read()` at `willLeave`. That retires chrome at tap.
+- Block entering swap until `didEnter` while retiring leaving at suspend. That is two flushes (hole, then pop-in).
+- Treat entering swap as departed because of `ion-page-hidden`, `leftPages`, `data-shell="disabled"`, or `visibility:hidden` on the header. Measure at rest (`swapEnteringPage` for the whole willEnter window).
+- Await `prepare()` then `play()`. That retires native at rest (tap flicker). Overlap them; `unprojected` must not clear `marker` (use `measureMarker`).
+- Replace this file with a fork `runtime.ts` that drops extension `read()` / ancestor observation.
+
+## Do
+
+- Keep already-projected swap through `willLeave` / `pages`; retire only when `suspended`.
+- During suspend, allow **entering** swap (`swapEnteringPage`) so leave+enter land in the same flush.
+- `isAtomicSwapDuration`: 0 only if every **added** source is swap (or retire-only all swap). Mixed add-set stays 180ms on purpose.
+- `withoutPageTransform` measures entering chrome as if the page had already landed.
+- After resume, `leftPages` prevents the leaving page from first-projecting again.
+- `restore()` always shows Web.
+
+App catalog pages must wrap custom stack builders with `withNativeUIShellTransition` (see myrecordings-app `native-shell-catalog-handoff`). Ionic's default `iosTransitionAnimation` is already wrapped.

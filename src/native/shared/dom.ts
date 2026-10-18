@@ -4,6 +4,8 @@ import { modalUsesVerticalBars } from './modal';
 import type { Frame } from '../definitions';
 
 export const marker = 'data-native-ui-shell';
+/** Measure projected chrome without clearing `marker` (that paints Web for a frame). */
+export const measureMarker = 'data-native-ui-shell-measure';
 // Scoped runtimes (Stencil slot emulation) patch child accessors on upgraded
 // elements and may report none before hydration; the prototype getter still
 // reports the real light DOM.
@@ -25,6 +27,35 @@ export const prehideOnlyMutation = (record: MutationRecord): boolean => {
       .filter((name) => name && !prehideClasses.has(name))
       .join(' ');
   return withoutPrehide(record.oldValue) === withoutPrehide((record.target as Element).getAttribute('class') ?? '');
+};
+
+/** Swap chrome on a page between willEnter and didEnter (whole slide, not only ion-page-invisible). */
+export const swapEnteringPage = (element: HTMLElement): HTMLElement | undefined => {
+  if (!isAtomicSwap(element)) return undefined;
+  const page = element.closest<HTMLElement>('.ion-page');
+  return page && enteringPages.has(page) ? page : undefined;
+};
+
+/** Pages whose transform is briefly cleared to measure swap chrome at rest. */
+export const transformMeasurePages = new WeakSet<HTMLElement>();
+
+/** Read geometry as if the entering page had already landed (native overlays do not slide). */
+export const withoutPageTransform = <T>(element: HTMLElement, read: () => T): T => {
+  const page = element.closest<HTMLElement>('.ion-page');
+  if (!page) return read();
+  const previous = page.style.getPropertyValue('transform');
+  const priority = page.style.getPropertyPriority('transform');
+  const hadStyle = page.hasAttribute('style');
+  transformMeasurePages.add(page);
+  page.style.setProperty('transform', 'none', 'important');
+  try {
+    return read();
+  } finally {
+    if (previous) page.style.setProperty('transform', previous, priority);
+    else page.style.removeProperty('transform');
+    if (!hadStyle && !page.style.length) page.removeAttribute('style');
+    transformMeasurePages.delete(page);
+  }
 };
 
 export const withoutPrehide = <T>(element: HTMLElement, read: () => T): T => {
@@ -90,6 +121,7 @@ export const createVerticalBarsPageState = () => {
 };
 const disabledButtonGroup = 'ion-buttons:is(.ios-theme-disabled, .ios26-disabled)';
 const shellDisabledSelector = '.ios-theme-shell-disabled, [data-shell="disabled"]';
+const atomicSwapSelector = '.ios-theme-shell-handoff-swap, [data-shell-handoff="swap"]';
 
 export const isDisabledButtonGroupChild = (element: HTMLElement): boolean =>
   element.matches('ion-button') && element.parentElement?.matches(disabledButtonGroup) === true;
@@ -136,11 +168,22 @@ const excludedBy = (element: HTMLElement, selector: string): boolean => {
 
 export const isPermanentlyExcluded = (element: HTMLElement): boolean => excludedBy(element, permanentlyExcluded);
 export const isExcluded = (element: HTMLElement, enteringPage?: HTMLElement): boolean =>
-  excludedBy(element, `${permanentlyExcluded}, .ion-page-hidden`) || (!!element.closest('.ion-page-invisible') && !enteringPage);
+  excludedBy(element, permanentlyExcluded) ||
+  (!enteringPage && excludedBy(element, '.ion-page-hidden')) ||
+  (!!element.closest('.ion-page-invisible') && !enteringPage);
 
 // A shared native surface must not cover an opted-out descendant either.
 export const isShellDisabled = (element: Element): boolean =>
   !!element.closest(shellDisabledSelector) || !!element.querySelector(shellDisabledSelector);
+
+/** Instant Web/native swap on stack push/pop; does not skip the painted wait. */
+export const isAtomicSwap = (element: Element): boolean => !!element.closest(atomicSwapSelector);
+
+export const isAtomicSwapHandoff = (changed: readonly Element[]): boolean => changed.length > 0 && changed.every(isAtomicSwap);
+
+/** Native fade duration is 0 when every added source is atomic, or a retire-only sync is all atomic. */
+export const isAtomicSwapDuration = (removed: readonly Element[], added: readonly Element[]): boolean =>
+  added.length ? added.every(isAtomicSwap) : isAtomicSwapHandoff(removed);
 
 export const isVerticalBarsToolbarActionShape = (element: HTMLElement): boolean =>
   element.matches('ion-menu-button') ||
@@ -216,30 +259,34 @@ export const activateProjectedElement = (element: HTMLElement): void => {
 
 export const unprojected = <T>(elements: Iterable<HTMLElement>, read: () => T): T => {
   const hidden = Array.from(elements).filter((element) => element.hasAttribute(marker));
-  hidden.forEach((element) => element.removeAttribute(marker));
+  hidden.forEach((element) => element.setAttribute(measureMarker, ''));
   try {
     return read();
   } finally {
-    hidden.forEach((element) => element.setAttribute(marker, ''));
+    hidden.forEach((element) => element.removeAttribute(measureMarker));
   }
 };
 
 const readVisible = (element: HTMLElement, allowOutsideViewport: boolean): boolean => {
-  const enteringPage = isVerticalBarsSource(element) ? verticalBarsEnteringPage(element) : undefined;
-  if (!element.isConnected || isExcluded(element, enteringPage) || isShellDisabled(element)) return false;
+  const enteringPage = isVerticalBarsSource(element) ? verticalBarsEnteringPage(element) : swapEnteringPage(element);
+  const measuring = !!element.closest(`[${measureMarker}]`);
+  if (!element.isConnected || isExcluded(element, enteringPage) || (isShellDisabled(element) && !enteringPage)) return false;
   for (let current: HTMLElement | null = element; current; current = current.parentElement) {
     const style = getComputedStyle(current);
+    const onEnteringPage = current === enteringPage || !!enteringPage?.contains(current);
     if (
       style.display === 'none' ||
-      style.visibility !== 'visible' ||
-      (Number(style.opacity) === 0 && !current.hasAttribute(fadeMarker) && current !== enteringPage)
+      (!measuring && style.visibility !== 'visible' && !onEnteringPage) ||
+      (!measuring && Number(style.opacity) === 0 && !current.hasAttribute(fadeMarker) && !onEnteringPage)
     )
       return false;
     // Ordinary controls on moving/collapsing/custom transformed surfaces stay in Web coordinates.
     // VerticalBars rail controls are placed independently of their Web coordinates and must remain
     // owned while Ionic transforms the content behind an open menu.
+    // Swap chrome on an entering page is measured at rest; skip the sliding transform.
     if (
       !allowOutsideViewport &&
+      !enteringPage &&
       style.transform !== 'none' &&
       !new DOMMatrixReadOnly(style.transform).isIdentity &&
       current !== element &&
@@ -251,7 +298,9 @@ const readVisible = (element: HTMLElement, allowOutsideViewport: boolean): boole
   return (
     rect.width > 0 &&
     rect.height > 0 &&
-    (allowOutsideViewport || (rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1))
+    (allowOutsideViewport ||
+      !!enteringPage ||
+      (rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1))
   );
 };
 
