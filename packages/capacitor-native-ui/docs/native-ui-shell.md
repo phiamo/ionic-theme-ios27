@@ -135,6 +135,8 @@ Ordinary native/Web handoffs share a 180ms opacity crossfade, including Vertical
 
 Tab switches skip the Web/native crossfade so a retiring UIKit snapshot cannot linger over the next tab. Detection uses the router URL versus the still-selected tab on `ionViewWillLeave` (and vanilla `ionTabsWillChange` / `ionTabsDidChange` DOM events). Stack pushes and pops keep the normal 180ms handoff.
 
+Opt in to an atomic swap with `data-shell-handoff="swap"` (or the `ios-theme-shell-handoff-swap` class) on controls whose native chrome differs between two stacked pages, for example a header segment that becomes a back button. Native chrome is measured at rest on the entering page, the shell hands off with duration 0 instead of the crossfade, and a page that is leaving is not re-projected. Mixed sets keep the 180ms handoff. Without the attribute nothing changes. `withNativeUIShellTransition` starts the suspend while the page animation plays instead of before it, so native chrome is not retired while the page is still at rest; wrap custom page builders (for example a nested outlet) the same way.
+
 Standard Ionic overlays suspend ordinary native projection until dismissal. Vertical Bars use a separate policy:
 
 | Surface or condition | Vertical Bars behavior |
